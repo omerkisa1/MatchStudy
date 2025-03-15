@@ -1,0 +1,2 @@
+relative path kullandığımızdan dolayı sağ üstten "run" tuşuna basarak calıstırmayacağız kodu onun yerine
+python -m backend.database.users --> backend klasörü içindeki database klasörü içindeki users dosyası boyle calısıtırlacak

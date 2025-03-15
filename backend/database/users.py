@@ -1,4 +1,4 @@
-from .db import get_db_connection
+from backend.database.db import get_db_connection
 
 def add_user(email, password):
     connection = get_db_connection()
@@ -35,3 +35,23 @@ def get_user_by_id(user_id):
     finally:
         cursor.close()
         connection.close()
+
+def list_users():
+    connection = get_db_connection()
+    if not connection:
+        return []
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM users"
+        cursor.execute(query)
+        users = cursor.fetchall()
+        return users
+    except Exception as e:
+        print(f"❌ Kullanıcılar getirilemedi: {e}")
+        return []
+    finally:
+        cursor.close()
+        connection.close()
+
+list_users()

@@ -16,4 +16,4 @@ def get_db_connection():
         print(f"❌ Veritabanına bağlanırken hata oluştu: {e}")
         return None
 
-get_db_connection() # Veritabanına bağlanıp bağlanamadığını kontrol etmek için
+#get_db_connection() # Veritabanına bağlanıp bağlanamadığını kontrol etmek için
