@@ -1,0 +1,4 @@
+request_id,requester_id,responder_id,status,matched_at
+1,1,2,accepted,2024-03-16 14:00:00
+2,2,3,pending,2024-03-16 15:00:00
+3,3,1,rejected,2024-03-16 16:00:00

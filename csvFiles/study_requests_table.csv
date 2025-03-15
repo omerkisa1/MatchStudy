@@ -1,0 +1,4 @@
+user_id,category,duration,study_date,topic,note,created_at
+1,Matematik,3-4 saat,2024-03-20,Türev ve İntegral,"İleri seviye, deneyimli kişiler lütfen!",2024-03-15 10:30:00
+2,Fizik,1-2 saat,2024-03-21,Kuantum Mekaniği,Başlangıç seviyesi,2024-03-15 11:30:00
+3,Yazılım,5-6 saat,2024-03-22,Python Veri Analizi,Orta seviye kodlama çalışması,2024-03-15 12:30:00

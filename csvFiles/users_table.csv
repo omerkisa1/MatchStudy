@@ -1,0 +1,4 @@
+email,password,created_at
+user1@example.com,hashed_pass1,2024-03-15 10:00:00
+user2@example.com,hashed_pass2,2024-03-15 11:00:00
+user3@example.com,hashed_pass3,2024-03-15 12:00:00

@@ -1,0 +1,4 @@
+user_id,name,surname,age,education_level,institution,created_at
+1,Ahmet,Yılmaz,23,lisans,Boğaziçi Üniversitesi,2024-03-15 10:10:00
+2,Mehmet,Demir,25,yükseklisans,ODTÜ,2024-03-15 11:10:00
+3,Ayşe,Kaya,22,önlisans,İstanbul Üniversitesi,2024-03-15 12:10:00
