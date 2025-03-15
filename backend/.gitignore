@@ -1,0 +1,4 @@
+# __pycache__ klasörlerini yok say
+__pycache__/
+*.pyc
+*.pyo
