@@ -1,1 +1,1 @@
-myPath = r"backend\routes\filePaths.py"
+myPath = r"C:\repos\MatchStudy\database"

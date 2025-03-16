@@ -1,4 +1,7 @@
-# __pycache__ klasörlerini yok say
-__pycache__/
+# Python bytecode files
 *.pyc
 *.pyo
+
+# __pycache__ directories
+__pycache__/
+node_modules
