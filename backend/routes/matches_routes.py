@@ -5,9 +5,13 @@ from .filePaths import myPath
 
 sys.path.append(myPath)
 
-from database.matches import (
-    create_match, get_match_by_id, update_match_status,
-    delete_match, list_matches, list_user_matches
+from matches import (
+    add_match,
+    get_match_by_id,
+    get_matches_by_requester_id,
+    get_matches_by_responder_id,
+    update_match_status,
+    delete_match,
 )
 
 router = APIRouter()

@@ -5,8 +5,8 @@ from .filePaths import myPath
 
 sys.path.append(myPath)
 
-from database.profiles import (
-    create_profile, get_profile_by_id, update_profile, delete_profile, list_profiles
+from profiles import (
+    add_profile, get_profile_by_id, update_profile, delete_profile, list_profiles
 )
 
 router = APIRouter()

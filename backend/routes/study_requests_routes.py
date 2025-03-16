@@ -5,9 +5,14 @@ from .filePaths import myPath
 
 sys.path.append(myPath)
 
-from database.study_requests import (
-    create_request, get_request_by_id, update_request_status,
-    delete_request, list_requests, list_user_requests
+from study_requests import (
+    add_study_request,
+    get_study_request_by_id,
+    get_study_requests_by_user,
+    get_all_study_requests,
+    update_study_request,
+    delete_study_request
+
 )
 
 router = APIRouter()
