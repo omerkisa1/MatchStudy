@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import mysql.connector
 from mysql.connector import Error
-from config import DB_CONFIG
+from backend.database.config import DB_CONFIG
 
 def get_db_connection():
     try:

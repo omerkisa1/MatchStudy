@@ -1,7 +1,10 @@
-from backend.database.db import get_db_connection
+from config import DB_CONFIG
+from mysql.connector import Error
+import mysql.connector
+
 
 def add_user(email, password):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -19,7 +22,7 @@ def add_user(email, password):
         connection.close()
 
 def get_user_by_id(user_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return None
 
@@ -37,7 +40,7 @@ def get_user_by_id(user_id):
         connection.close()
 
 def list_users():
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return []
 
@@ -56,7 +59,7 @@ def list_users():
 
 
 def delete_user_by_id(user_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
