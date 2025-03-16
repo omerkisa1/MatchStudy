@@ -35,3 +35,48 @@ def get_match_by_id(match_id):
         print(f"Eşleşme getirilemedi: {e}")
         return None
     
+def get_matches_by_requester_id(requester_id):
+    connection = get_db_connection()
+    if not connection:
+        return
+    try:
+        cursor = connection.cursor()
+        query = "SELECT * FROM matches WHERE requester_id = %s"
+        cursor.execute(query, (requester_id,))
+        request = cursor.fetchall()
+        return request
+    except Exception as e:
+        print(f"Dbden veri gelmedi. {e}")
+        return None
+
+def get_matches_by_responder_id(responder_id):
+    connection = get_db_connection()
+    if not connection:
+        return
+    try:
+        cursor = connection.cursor()
+        query = "SELECT * FROM matches WHERE responder_id = %s"
+        cursor.execute(query, (responder_id,))
+        request = cursor.fetchall()
+        return request
+    except Exception as e:
+        print(f"Dbden veri gelmedi. {e}")
+        return None
+
+
+def update_match_status(match_id, status):
+    connection = get_db_connection()
+    if not connection:
+        return
+    try:
+        cursor = connection.cursor()
+        query = "UPDATE matches SET status = %s WHERE id = %s"
+        cursor.execute(query, (status, match_id))
+        connection.commit()
+        print(f"Eşleşme {match_id} başarıyla güncellendi.")
+    except Exception as e:
+        connection.rollback()
+        print(f"güncelleme hatası: {e}")
+    finally:
+        cursor.close()
+        connection.close()
