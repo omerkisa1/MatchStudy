@@ -80,3 +80,20 @@ def update_match_status(match_id, status):
     finally:
         cursor.close()
         connection.close()
+
+def delete_match(match_id):
+    connection = get_db_connection()
+    if not connection:
+        return
+    try:
+        cursor = connection.cursor()
+        query = "DELETE FROM matches WHERE id = %s"
+        cursor.execute(query, (match_id,))
+        connection.commit()
+        print(f"Eşleşme {match_id} başarıyla silindi.")
+    except Exception as e:
+        connection.rollback()
+        print(f"Silme hatası: {e}")
+    finally:
+        cursor.close()
+        connection.close()

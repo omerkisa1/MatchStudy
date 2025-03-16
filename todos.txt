@@ -1,34 +1,34 @@
 users
 
-add_profile(user_id, name, surname, age, education_level, institution)
-get_profile_by_user_id(user_id)
-update_profile(user_id, name, surname, age, education_level, institution)
-delete_profile(user_id)
+add_profile(user_id, name, surname, age, education_level, institution) ✅
+get_profile_by_user_id(user_id) ✅
+update_profile(user_id, name, surname, age, education_level, institution)✅
+delete_profile(user_id)✅
 
 
 -------------
 profiles
 
-add_profile(user_id, name, surname, age, education_level, institution)
-get_profile_by_user_id(user_id)
-update_profile(user_id, name, surname, age, education_level, institution)
-delete_profile(user_id)
+add_profile(user_id, name, surname, age, education_level, institution)✅
+get_profile_by_user_id(user_id)✅
+update_profile(user_id, name, surname, age, education_level, institution)✅
+delete_profile(user_id)✅
 
 -----------
 study_requests
 
-add_study_request(user_id, category, duration, study_date, topic, note)
-get_study_request_by_id(request_id)
-get_study_requests_by_user(user_id)
-get_all_study_requests()
-update_study_request(request_id, category, duration, study_date, topic, note)
-delete_study_request(request_id)
+add_study_request(user_id, category, duration, study_date, topic, note)✅
+get_study_request_by_id(request_id)✅
+get_study_requests_by_user(user_id)✅
+get_all_study_requests()✅
+update_study_request(request_id, category, duration, study_date, topic, note)✅
+delete_study_request(request_id)✅
 
 -----------
 matches
 
-add_match(request_id, requester_id, responder_id, status)
-get_match_by_id(match_id)
-get_matches_by_user(user_id)
-update_match_status(match_id, status)
-delete_match(match_id)
+add_match(request_id, requester_id, responder_id, status)✅
+get_match_by_id(match_id)✅
+get_matches_by_user(user_id)✅
+update_match_status(match_id, status)✅
+delete_match(match_id)✅
