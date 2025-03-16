@@ -2,7 +2,7 @@ from fastapi import FastAPI
 #from fastapi.staticfiles import StaticFiles
 
 # Router'ları içe aktarma
-from routes.users_routes import router as users_router
+from .routes.users_routes import router as users_router
 #from routes.profiles_routes import router as profiles_router
 #from routes.study_requests_routes import router as study_requests_router
 #from routes.matches_routes import router as matches_router

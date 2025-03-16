@@ -1,6 +1,13 @@
+import sys
 from fastapi import APIRouter, HTTPException
-from database.users import add_user, get_user_by_id, list_users,delete_user_by_id
 
+from .filePaths import myPath
+
+sys.path.append(myPath)
+
+from backend.database.users import (
+    add_user, get_user_by_id, list_users, delete_user_by_id
+)
 router = APIRouter()
 
 @router.post("/users")
