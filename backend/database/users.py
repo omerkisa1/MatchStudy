@@ -54,4 +54,23 @@ def list_users():
         cursor.close()
         connection.close()
 
-list_users()
+
+def delete_user_by_id(user_id):
+    connection = get_db_connection()
+    if not connection:
+        return
+
+    try:
+        cursor = connection.cursor()
+        query = "DELETE FROM users WHERE id = %s"
+        cursor.execute(query, (user_id,))
+        connection.commit()
+        print(f"✅ Kullanıcı başarıyla silindi.")
+    except Exception as e:
+        connection.rollback()
+        print(f"❌ Kullanıcı silinirken hata oluştu: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+#list_users() 
