@@ -13,10 +13,10 @@ def add_profile(user_id, name, surname, age, education_level, institution):
         """
         cursor.execute(query, (user_id, name, surname, age, education_level, institution))
         connection.commit()
-        print(f"✅ Profil {name} {surname} başarıyla eklendi.")
+        print(f"Profil {name} {surname} başarıyla eklendi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Profil eklenirken hata oluştu: {e}")
+        print(f"Profil eklenirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -33,7 +33,7 @@ def get_profile_by_user_id(user_id):
         profile = cursor.fetchone()
         return profile
     except Exception as e:
-        print(f"❌ Profil getirilemedi: {e}")
+        print(f" Profil getirilemedi: {e}")
         return None
     finally:
         cursor.close()
@@ -53,10 +53,10 @@ def update_profile(user_id, name, surname, age, education_level, institution):
         """
         cursor.execute(query, (name, surname, age, education_level, institution, user_id))
         connection.commit()
-        print(f"✅ Profil başarıyla güncellendi.")
+        print(f"Profil başarıyla güncellendi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Profil güncellenirken hata oluştu: {e}")
+        print(f"Profil güncellenirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -71,10 +71,10 @@ def delete_profile_by_user_id(user_id):
         query = "DELETE FROM profiles WHERE user_id = %s"
         cursor.execute(query, (user_id,))
         connection.commit()
-        print("✅ Profil başarıyla silindi.")
+        print(" Profil başarıyla silindi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Profil silinirken hata oluştu: {e}")
+        print(f" Profil silinirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()

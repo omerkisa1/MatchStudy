@@ -13,10 +13,10 @@ def add_study_request(user_id, category, duration, study_date, topic, note):
         """
         cursor.execute(query, (user_id, category, duration, study_date, topic, note))
         connection.commit()
-        print(f"✅ Çalışma isteği ({topic}) başarıyla eklendi.")
+        print(f" Çalışma isteği ({topic}) başarıyla eklendi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Çalışma isteği eklenirken hata oluştu: {e}")
+        print(f"Çalışma isteği eklenirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -33,7 +33,7 @@ def get_study_request_by_id(request_id):
         request = cursor.fetchone()
         return request
     except Exception as e:
-        print(f"❌ Çalışma isteği getirilemedi: {e}")
+        print(f"Çalışma isteği getirilemedi: {e}")
         return None
     finally:
         cursor.close()
@@ -51,7 +51,7 @@ def get_study_requests_by_user(user_id):
         requests = cursor.fetchall()
         return requests
     except Exception as e:
-        print(f"❌ Kullanıcının çalışma istekleri getirilemedi: {e}")
+        print(f"Kullanıcının çalışma istekleri getirilemedi: {e}")
         return []
     finally:
         cursor.close()
@@ -69,7 +69,7 @@ def get_all_study_requests():
         requests = cursor.fetchall()
         return requests
     except Exception as e:
-        print(f"❌ Tüm çalışma istekleri getirilemedi: {e}")
+        print(f" Tüm çalışma istekleri getirilemedi: {e}")
         return []
     finally:
         cursor.close()
@@ -89,10 +89,10 @@ def update_study_request(request_id, category, duration, study_date, topic, note
         """
         cursor.execute(query, (category, duration, study_date, topic, note, request_id))
         connection.commit()
-        print(f"✅ Çalışma isteği ({request_id}) başarıyla güncellendi.")
+        print(f"Çalışma isteği ({request_id}) başarıyla güncellendi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Çalışma isteği güncellenirken hata oluştu: {e}")
+        print(f"Çalışma isteği güncellenirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -108,10 +108,10 @@ def delete_study_request(request_id):
         query = "DELETE FROM study_requests WHERE id = %s"
         cursor.execute(query, (request_id,))
         connection.commit()
-        print(f"✅ Çalışma isteği ({request_id}) başarıyla silindi.")
+        print(f"Çalışma isteği ({request_id}) başarıyla silindi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Çalışma isteği silinirken hata oluştu: {e}")
+        print(f"Çalışma isteği silinirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()

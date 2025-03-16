@@ -10,10 +10,10 @@ def add_user(email, password):
         query = "INSERT INTO users (email, password, created_at) VALUES (%s, %s, NOW())"
         cursor.execute(query, (email, password))
         connection.commit()
-        print(f"✅ Kullanıcı {email} başarıyla eklendi.")
+        print(f"Kullanıcı {email} başarıyla eklendi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Kullanıcı eklenirken hata oluştu: {e}")
+        print(f"Kullanıcı eklenirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -30,7 +30,7 @@ def get_user_by_id(user_id):
         user = cursor.fetchone()
         return user
     except Exception as e:
-        print(f"❌ Kullanıcı getirilemedi: {e}")
+        print(f" Kullanıcı getirilemedi: {e}")
         return None
     finally:
         cursor.close()
@@ -48,7 +48,7 @@ def list_users():
         users = cursor.fetchall()
         return users
     except Exception as e:
-        print(f"❌ Kullanıcılar getirilemedi: {e}")
+        print(f"Kullanıcılar getirilemedi: {e}")
         return []
     finally:
         cursor.close()
@@ -65,10 +65,10 @@ def delete_user_by_id(user_id):
         query = "DELETE FROM users WHERE id = %s"
         cursor.execute(query, (user_id,))
         connection.commit()
-        print(f"✅ Kullanıcı başarıyla silindi.")
+        print(f"Kullanıcı başarıyla silindi.")
     except Exception as e:
         connection.rollback()
-        print(f"❌ Kullanıcı silinirken hata oluştu: {e}")
+        print(f"Kullanıcı silinirken hata oluştu: {e}")
     finally:
         cursor.close()
         connection.close()
