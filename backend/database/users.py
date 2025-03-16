@@ -1,4 +1,4 @@
-from config import DB_CONFIG
+from database.config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
 
@@ -49,6 +49,7 @@ def list_users():
         query = "SELECT * FROM users"
         cursor.execute(query)
         users = cursor.fetchall()
+        #print(users)
         return users
     except Exception as e:
         print(f"Kullanıcılar getirilemedi: {e}")
