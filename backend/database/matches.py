@@ -1,7 +1,9 @@
-from .db import get_db_connection
+from config import DB_CONFIG
+from mysql.connector import Error
+import mysql.connector
 
 def add_match(request_id, requester_id, responder_id, status):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -22,7 +24,7 @@ def add_match(request_id, requester_id, responder_id, status):
         connection.close()
 
 def get_match_by_id(match_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
     try:
@@ -36,7 +38,7 @@ def get_match_by_id(match_id):
         return None
     
 def get_matches_by_requester_id(requester_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
     try:
@@ -50,7 +52,7 @@ def get_matches_by_requester_id(requester_id):
         return None
 
 def get_matches_by_responder_id(responder_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
     try:
@@ -65,7 +67,7 @@ def get_matches_by_responder_id(responder_id):
 
 
 def update_match_status(match_id, status):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
     try:
@@ -82,7 +84,7 @@ def update_match_status(match_id, status):
         connection.close()
 
 def delete_match(match_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
     try:

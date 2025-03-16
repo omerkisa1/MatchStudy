@@ -1,7 +1,8 @@
-from .db import get_db_connection
-
+from config import DB_CONFIG
+from mysql.connector import Error
+import mysql.connector
 def add_profile(user_id, name, surname, age, education_level, institution):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -22,7 +23,7 @@ def add_profile(user_id, name, surname, age, education_level, institution):
         connection.close()
 
 def get_profile_by_user_id(user_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return None
 
@@ -40,7 +41,7 @@ def get_profile_by_user_id(user_id):
         connection.close()
 
 def update_profile(user_id, name, surname, age, education_level, institution):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -62,7 +63,7 @@ def update_profile(user_id, name, surname, age, education_level, institution):
         connection.close()
 
 def delete_profile_by_user_id(user_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 

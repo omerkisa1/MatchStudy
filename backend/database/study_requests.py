@@ -1,7 +1,9 @@
-from .db import get_db_connection
+from config import DB_CONFIG
+from mysql.connector import Error
+import mysql.connector
 
 def add_study_request(user_id, category, duration, study_date, topic, note):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -22,7 +24,7 @@ def add_study_request(user_id, category, duration, study_date, topic, note):
         connection.close()
 
 def get_study_request_by_id(request_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return None
 
@@ -40,7 +42,7 @@ def get_study_request_by_id(request_id):
         connection.close()
 
 def get_study_requests_by_user(user_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return []
 
@@ -58,7 +60,7 @@ def get_study_requests_by_user(user_id):
         connection.close()
 
 def get_all_study_requests():
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return []
 
@@ -76,7 +78,7 @@ def get_all_study_requests():
         connection.close()
 
 def update_study_request(request_id, category, duration, study_date, topic, note):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
@@ -99,7 +101,7 @@ def update_study_request(request_id, category, duration, study_date, topic, note
 
 
 def delete_study_request(request_id):
-    connection = get_db_connection()
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
