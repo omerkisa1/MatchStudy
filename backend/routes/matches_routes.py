@@ -12,6 +12,7 @@ from matches import (
     get_matches_by_responder_id,
     update_match_status,
     delete_match,
+    list_macthes
 )
 
 router = APIRouter()
@@ -19,7 +20,7 @@ router = APIRouter()
 @router.post("/create")
 async def create_match_endpoint(user1_id: int, user2_id: int, request_id: int):
     try:
-        create_match(user1_id, user2_id, request_id)
+        add_match(user1_id, user2_id, request_id)
         return {"message": "Match created successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -59,7 +60,7 @@ async def delete_match_endpoint(match_id: int):
 @router.get("/list")
 async def list_matches_endpoint():
     try:
-        matches = list_matches()
+        matches = list_macthes()
         return {"message": "Matches found", "matches": matches}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Eşleşmeler getirilemedi.")
@@ -67,7 +68,7 @@ async def list_matches_endpoint():
 @router.get("/user/{user_id}")
 async def list_user_matches_endpoint(user_id: int):
     try:
-        matches = list_user_matches(user_id)
+        matches = get_match_by_id(user_id)
         return {"message": "User matches found", "matches": matches}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Kullanıcı eşleşmeleri getirilemedi.") 

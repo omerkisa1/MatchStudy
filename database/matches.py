@@ -99,3 +99,17 @@ def delete_match(match_id):
     finally:
         cursor.close()
         connection.close()
+
+def list_macthes():
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return
+    try:
+        cursor = connection.cursor()
+        query = "SELECT * FROM matches"
+        cursor.execute(query)
+        matches = cursor.fetchall()
+        return matches
+    except Exception as e:
+        print(f"Dbden veri gelmedi. {e}")
+        return None
