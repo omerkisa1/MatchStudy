@@ -1,11 +1,17 @@
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-  </header>
+  <div>
+    <header>
+      <h1>MatchStudy</h1>
+      <nav>
+        <router-link to="/">Ana Sayfa</router-link> |
+        <router-link to="/login">Giriş Yap</router-link>
+      </nav>
+    </header>
 
-  <main>
-    <LoginPage />
-  </main>
+    <main>
+      <router-view />
+    </main>
+  </div>
 </template>
 
 <script>

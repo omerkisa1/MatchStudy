@@ -52,6 +52,7 @@ async handleLogin() {
     console.log("Giriş Başarılı, Token:", response.data.token);
     localStorage.setItem("token", response.data.token);
     alert("Giriş başarılı!");
+    this.$router.push("/");
   } catch (err) {
     console.error(err);
     alert("Giriş başarısız, bilgilerinizi kontrol edin!");
