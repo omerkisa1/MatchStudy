@@ -117,3 +117,22 @@ def delete_study_request(request_id):
     finally:
         cursor.close()
         connection.close()
+
+def list_user_requests(user_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return []
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM study_requests WHERE user_id = %s"
+        cursor.execute(query, (user_id,))
+        requests = cursor.fetchall()
+        return requests
+    except Exception as e:
+        print(f"Kullanıcı istekleri getirilemedi: {e}")
+        return []
+    finally:
+        cursor.close()
+        connection.close()
+    

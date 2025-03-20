@@ -11,17 +11,18 @@ from study_requests import (
     get_study_requests_by_user,
     get_all_study_requests,
     update_study_request,
-    delete_study_request
+    delete_study_request,
+    list_user_requests
 
 )
 
 router = APIRouter()
 
 @router.post("/create")
-async def create_request_endpoint(user_id: int, subject: str, description: str, 
-                                study_time: str, location: str):
+async def create_request_endpoint(user_id: int, category: str, duration: str, 
+                                study_date: str, topic: str, note: str):
     try:
-        create_request(user_id, subject, description, study_time, location)
+        add_study_request(user_id, category, duration, study_date, topic, note)
         return {"message": "Study request created successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -31,7 +32,7 @@ async def create_request_endpoint(user_id: int, subject: str, description: str,
 @router.get("/{request_id}")
 async def get_request_endpoint(request_id: int):
     try:
-        request = get_request_by_id(request_id)
+        request = get_study_request_by_id(request_id)
         if request:
             return {"message": "Request found", "request": request}
         raise HTTPException(status_code=404, detail="İstek bulunamadı.")
@@ -41,7 +42,7 @@ async def get_request_endpoint(request_id: int):
 @router.put("/update/{request_id}")
 async def update_request_status_endpoint(request_id: int, status: str):
     try:
-        update_request_status(request_id, status)
+        update_study_request(request_id, status)
         return {"message": "Request status updated successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -51,7 +52,7 @@ async def update_request_status_endpoint(request_id: int, status: str):
 @router.delete("/delete/{request_id}")
 async def delete_request_endpoint(request_id: int):
     try:
-        delete_request(request_id)
+        delete_study_request(request_id)
         return {"message": "Request deleted successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -61,7 +62,7 @@ async def delete_request_endpoint(request_id: int):
 @router.get("/list")
 async def list_requests_endpoint():
     try:
-        requests = list_requests()
+        requests = get_all_study_requests()
         return {"message": "Requests found", "requests": requests}
     except Exception as e:
         raise HTTPException(status_code=500, detail="İstekler getirilemedi.")
