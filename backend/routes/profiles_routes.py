@@ -6,15 +6,15 @@ from .filePaths import myPath
 sys.path.append(myPath)
 
 from profiles import (
-    add_profile, get_profile_by_id, update_profile, delete_profile, list_profiles
+    add_profile, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
 )
 
 router = APIRouter()
 
 @router.post("/create")
-async def create_profile_endpoint(user_id: int, name: str, university: str, department: str, interests: list[str]):
+async def add_profile_endpoint(user_id: int, name: str, university: str, department: str, interests: list[str]):
     try:
-        create_profile(user_id, name, university, department, interests)
+        add_profile(user_id, name, university, department, interests)
         return {"message": "Profile created successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -24,7 +24,7 @@ async def create_profile_endpoint(user_id: int, name: str, university: str, depa
 @router.get("/{profile_id}")
 async def get_profile_endpoint(profile_id: int):
     try:
-        profile = get_profile_by_id(profile_id)
+        profile = get_profile_by_user_id(profile_id)
         if profile:
             return {"message": "Profile found", "profile": profile}
         raise HTTPException(status_code=404, detail="Profil bulunamadı.")
@@ -45,7 +45,7 @@ async def update_profile_endpoint(profile_id: int, name: str = None, university:
 @router.delete("/delete/{profile_id}")
 async def delete_profile_endpoint(profile_id: int):
     try:
-        delete_profile(profile_id)
+        delete_profile_by_user_id(profile_id)
         return {"message": "Profile deleted successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

@@ -1,4 +1,4 @@
-from database.config import DB_CONFIG
+from config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
 def add_profile(user_id, name, surname, age, education_level, institution):
@@ -76,6 +76,24 @@ def delete_profile_by_user_id(user_id):
     except Exception as e:
         connection.rollback()
         print(f" Profil silinirken hata oluştu: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+def list_profiles():
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return []
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM profiles"
+        cursor.execute(query)
+        profiles = cursor.fetchall()
+        return profiles
+    except Exception as e:
+        print(f"Profiller getirilemedi: {e}")
+        return []
     finally:
         cursor.close()
         connection.close()

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 #from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 # Router'ları içe aktarma
 from routes.users_routes import router as users_router
@@ -9,6 +10,14 @@ from routes.matches_routes import router as matches_router
 
 # FastAPI uygulaması oluştur
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],       # Gerekirse spesifik domain(ler) ekleyin: ["http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],       # Tüm HTTP metodlarına izin ver (GET, POST, OPTIONS vb.)
+    allow_headers=["*"],       # Tüm headerlara izin ver
+)
 
 # Router'ları API'ye ekle
 app.include_router(users_router, prefix="/users", tags=["Users"])

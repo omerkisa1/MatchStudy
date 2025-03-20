@@ -1,4 +1,4 @@
-from database.config import DB_CONFIG
+from config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
 

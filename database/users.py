@@ -77,4 +77,21 @@ def delete_user_by_id(user_id):
         cursor.close()
         connection.close()
 
-#list_users() 
+
+def login_user(email: str, password: str) -> bool:
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return None
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM users WHERE email = %s AND password = %s"
+        cursor.execute(query, (email, password))
+        user = cursor.fetchone()
+        return True if user else False
+    except Exception as e:
+        print(f" Kullanıcı getirilemedi: {e}")
+        return None
+    finally:
+        cursor.close()
+        connection.close()

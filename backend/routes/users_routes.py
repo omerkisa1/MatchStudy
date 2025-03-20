@@ -1,14 +1,30 @@
 import sys
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from .filePaths import myPath
 
 sys.path.append(myPath)
 
 from users import (
-    add_user, get_user_by_id, list_users, delete_user_by_id
+    add_user, get_user_by_id, list_users, delete_user_by_id, login_user
 )
 router = APIRouter()
+
+class LoginCredentials(BaseModel):
+    email: str
+    password: str
+
+@router.post("/login")
+async def login_user_endpoint(credentials: LoginCredentials):
+    try:
+        if login_user(credentials.email, credentials.password):
+            return {"message": "User logged in"}
+        raise HTTPException(status_code=401, detail="Kullanıcı giriş yapamadı.")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Kullanıcı giriş yapamadı.")
 
 @router.post("/add")
 async def add_user_endpoint(email: str, password: str):
