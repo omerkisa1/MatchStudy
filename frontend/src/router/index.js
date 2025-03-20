@@ -3,7 +3,7 @@ import HomePage from "../components/HomePage.vue";
 import LoginPage from "../components/LoginPage.vue";
 
 const routes = [
-  { path: "/login", name: "Home", component: HomePage },
+  { path: "/home", name: "Home", component: HomePage },
   { path: "/", name: "Login", component: LoginPage },
 ];
 
