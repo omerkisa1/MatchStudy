@@ -7,7 +7,7 @@ from .filePaths import myPath
 sys.path.append(myPath)
 
 from users import (
-    add_user, get_user_by_id, list_users, delete_user_by_id, login_user
+    add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id
 )
 router = APIRouter()
 
@@ -67,3 +67,11 @@ async def delete_user_by_id_enpoint(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Kullanıcı silinemedi.")
 
+
+@router.get("/get_id")
+async def get_user_id_endpoint(email: str, password: str):
+    try:
+        user_id = get_user_id(email, password)
+        return {"message": "User found", "user_id": user_id, "status": 200}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))

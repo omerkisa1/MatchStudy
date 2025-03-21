@@ -135,4 +135,3 @@ def list_user_requests(user_id):
     finally:
         cursor.close()
         connection.close()
-    

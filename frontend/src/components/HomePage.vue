@@ -91,18 +91,89 @@
           <h1>Ders İsteği Oluştur</h1>
           <div class="create-request-form">
             <div class="form-group">
-              <label>Ders Konusu</label>
-              <input type="text" placeholder="Örn: Calculus, Physics, Programming" />
+              <label>Ders Kategorisi</label>
+              <div class="custom-select" data-dropdown="category" ref="categorySelect">
+                <div class="selected-option" @click="toggleDropdown('category')">
+                  {{ selectedCategory || 'Ders Seçiniz' }}
+                  <div class="select-arrow" :class="{ 'open': dropdowns.category }">▼</div>
+                </div>
+                <div class="options-container" v-if="dropdowns.category">
+                  <input type="text" 
+                         v-model="categorySearch" 
+                         @input="filterCategories" 
+                         placeholder="Ders Ara..."
+                         class="search-input"
+                         @click.stop>
+                  <div class="options-list">
+                    <div v-for="category in filteredCategories" 
+                         :key="category"
+                         class="option"
+                         @click.stop="selectCategory(category)">
+                      {{ category }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <div class="form-group">
+              <label>Çalışma Tarihi</label>
+              <input type="date" 
+                     v-model="selectedDay"
+                     class="form-input"
+                     :min="getCurrentDate()"
+                     :max="getMaxDate()" />
+            </div>
+
+            <div class="form-group">
+              <label>Çalışma Süresi</label>
+              <div class="custom-select" data-dropdown="duration" ref="durationSelect">
+                <div class="selected-option" @click="toggleDropdown('duration')">
+                  {{ selectedDuration?.label || 'Süre Seçiniz' }}
+                  <div class="select-arrow" :class="{ 'open': dropdowns.duration }">▼</div>
+                </div>
+                <div class="options-container" v-if="dropdowns.duration">
+                  <div class="options-list">
+                    <div v-for="duration in durations" 
+                         :key="duration.value"
+                         class="option"
+                         @click.stop="selectDuration(duration)">
+                      {{ duration.label }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Konu Başlığı</label>
+              <input type="text" 
+                     v-model="topic" 
+                     placeholder="Örn: Diferansiyel Denklemler, Veri Yapıları..."
+                     class="form-input" />
+            </div>
+
             <div class="form-group">
               <label>Açıklama</label>
-              <textarea placeholder="Çalışmak istediğiniz konuyu detaylandırın..."></textarea>
+              <textarea v-model="note" 
+                        placeholder="Çalışmak istediğiniz konuyu ve tercihlerinizi detaylandırın..."
+                        class="form-textarea"></textarea>
             </div>
-            <div class="form-group">
-              <label>Tarih ve Saat</label>
-              <input type="datetime-local" />
+
+            <button class="submit-btn" @click="createStudyRequest" :disabled="!isFormValid">
+              <span class="btn-text">{{ isFormValid ? 'İstek Oluştur' : 'Tüm Alanları Doldurun' }}</span>
+              <div class="btn-loader" v-if="isLoading"></div>
+            </button>
+
+            <!-- Debug bilgileri -->
+            <div class="debug-info" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-secondary);">
+              <p>Category: {{ selectedCategory ? '✓' : '✗' }}</p>
+              <p>Day: {{ selectedDay ? '✓' : '✗' }}</p>
+              <p>Duration: {{ selectedDuration ? '✓' : '✗' }}</p>
+              <p>Topic: {{ topic.trim() ? '✓' : '✗' }}</p>
+              <p>Note: {{ note.trim() ? '✓' : '✗' }}</p>
+              <p>User ID: {{ userStore.id ? '✓' : '✗' }} ({{ userStore.id }})</p>
             </div>
-            <button class="submit-btn">İstek Oluştur</button>
           </div>
         </div>
 
@@ -199,20 +270,251 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useUserStore } from '../stores/userStore';
+import { useRouter } from 'vue-router';
 
 export default {
   name: "HomePage",
   setup() {
+    const router = useRouter();
     const currentContent = ref('home');
+    const userStore = useUserStore();
 
+    // Form state
+    const selectedCategory = ref(null);
+    const selectedDay = ref(null);
+    const selectedDuration = ref(null);
+    const topic = ref('');
+    const note = ref('');
+    const isLoading = ref(false);
+    const categorySearch = ref('');
+
+    // Check user authentication
+    onMounted(async () => {
+      // localStorage'dan kullanıcı bilgilerini al
+      const userId = localStorage.getItem('userId');
+      const userEmail = localStorage.getItem('userEmail');
+      const userName = localStorage.getItem('userName');
+
+      // Eğer localStorage'da kullanıcı bilgileri varsa store'a yükle
+      if (userId && userEmail && userName) {
+        userStore.$patch({
+          id: parseInt(userId),
+          email: userEmail,
+          name: userName,
+          isAuthenticated: true
+        });
+      }
+
+      // Store'da kullanıcı bilgileri yoksa ve localStorage'da da yoksa login'e yönlendir
+      if (!userStore.isAuthenticated && !userId) {
+        router.push('/login');
+      }
+    });
+
+    // Tarih yardımcı fonksiyonları
+    const getCurrentDate = () => {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    };
+
+    const getMaxDate = () => {
+      const maxDate = new Date();
+      maxDate.setMonth(maxDate.getMonth() + 3); // 3 ay sonrasına kadar seçilebilir
+      return maxDate.toISOString().split('T')[0];
+    };
+
+    // Form validation
+    const isFormValid = computed(() => {
+      const validation = {
+        category: !!selectedCategory.value,
+        day: !!selectedDay.value,
+        duration: !!selectedDuration.value,
+        topic: !!topic.value?.trim(),
+        note: !!note.value?.trim(),
+        userId: !!userStore.id
+      };
+
+      console.log('Form Validation:', validation);
+      console.log('User Store:', userStore);
+      console.log('Selected Date:', selectedDay.value);
+
+      return Object.values(validation).every(v => v === true);
+    });
+
+    const createStudyRequest = async () => {
+      if (!isFormValid.value) {
+        alert('Lütfen tüm alanları doldurun ve giriş yaptığınızdan emin olun.');
+        return;
+      }
+
+      if (!userStore.id) {
+        alert('Oturum açmanız gerekiyor.');
+        router.push('/login');
+        return;
+      }
+
+      isLoading.value = true;
+      try {
+        const response = await fetch('http://127.0.0.1:8000/study_requests/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: userStore.id,
+            category: selectedCategory.value,
+            duration: selectedDuration.value.value,
+            study_date: selectedDay.value,
+            topic: topic.value,
+            note: note.value
+          })
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(responseData.detail || 'Bir hata oluştu');
+        }
+
+        // Form başarıyla gönderildi, formu sıfırla
+        selectedCategory.value = null;
+        selectedDay.value = null;
+        selectedDuration.value = null;
+        topic.value = '';
+        note.value = '';
+        
+        // Başarı mesajı göster
+        alert('Çalışma isteği başarıyla oluşturuldu!');
+        // Ana sayfaya dön
+        changeContent('home');
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error.message || 'Çalışma isteği oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    // Content change function
     const changeContent = (content) => {
       currentContent.value = content;
     };
 
+    // Dropdowns state
+    const dropdowns = ref({
+      category: false,
+      day: false,
+      duration: false
+    });
+
+    // Categories
+    const categories = [
+      'Matematik',
+      'Fizik',
+      'Kimya',
+      'Biyoloji',
+      'Bilgisayar Bilimleri',
+      'Elektrik-Elektronik',
+      'Makine Mühendisliği',
+      'İnşaat Mühendisliği',
+      'Ekonomi',
+      'İşletme',
+      'Psikoloji',
+      'Sosyoloji',
+      'Tarih',
+      'Felsefe',
+      'Hukuk',
+      'Tıp',
+      'Eczacılık',
+      'Diş Hekimliği',
+      'Mimarlık',
+      'Grafik Tasarım',
+      'İngilizce',
+      'Almanca',
+      'Fransızca',
+      'İspanyolca',
+      'Japonca',
+      'Çince'
+    ].sort();
+
+    const filteredCategories = ref([...categories]);
+
+    // Durations
+    const durations = [
+      { value: '1-2', label: '1-2 saat' },
+      { value: '2-5', label: '2-5 saat' },
+      { value: '5-6', label: '5-6 saat' }
+    ];
+
+    // Click outside handler
+    const closeDropdowns = (event) => {
+      if (!event.target.closest('.custom-select')) {
+        Object.keys(dropdowns.value).forEach(key => {
+          dropdowns.value[key] = false;
+        });
+      }
+    };
+
+    // Methods
+    const toggleDropdown = (type) => {
+      Object.keys(dropdowns.value).forEach(key => {
+        dropdowns.value[key] = key === type ? !dropdowns.value[key] : false;
+      });
+    };
+
+    const filterCategories = () => {
+      const search = categorySearch.value.toLowerCase();
+      filteredCategories.value = categories.filter(category => 
+        category.toLowerCase().includes(search)
+      );
+    };
+
+    const selectCategory = (category) => {
+      selectedCategory.value = category;
+      dropdowns.value.category = false;
+      categorySearch.value = '';
+      filteredCategories.value = [...categories];
+    };
+
+    const selectDuration = (duration) => {
+      selectedDuration.value = duration;
+      dropdowns.value.duration = false;
+    };
+
+    // Lifecycle hooks
+    onMounted(() => {
+      window.addEventListener('click', closeDropdowns);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('click', closeDropdowns);
+    });
+
     return {
       currentContent,
-      changeContent
+      userStore,
+      changeContent,
+      selectedCategory,
+      selectedDay,
+      selectedDuration,
+      topic,
+      note,
+      isLoading,
+      categorySearch,
+      dropdowns,
+      categories,
+      filteredCategories,
+      durations,
+      toggleDropdown,
+      filterCategories,
+      selectCategory,
+      selectDuration,
+      isFormValid,
+      createStudyRequest,
+      getCurrentDate,
+      getMaxDate
     };
   }
 };
@@ -247,17 +549,19 @@ export default {
 }
 
 .home-container {
-  display: flex;
   min-height: 100vh;
+  width: 100%;
+  display: flex;
   background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+  color: var(--text-primary);
 }
 
-/* Sidebar Stili */
+/* Sidebar stili */
 .sidebar {
   width: 280px;
   background: var(--surface-color);
   backdrop-filter: blur(20px);
-  padding: 2rem 1rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -270,55 +574,29 @@ export default {
   gap: 2rem;
 }
 
-/* Logo Stili */
 .logo-container {
-  padding: 1rem;
   display: flex;
   justify-content: center;
+  margin-bottom: 1rem;
 }
 
 .logo-circle {
-  position: relative;
   width: 60px;
   height: 60px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.logo-inner {
-  width: 45px;
-  height: 45px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background: var(--primary-color);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: var(--shadow-md);
-  z-index: 2;
 }
 
 .logo-letter {
-  color: var(--text-primary);
+  color: white;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: bold;
 }
 
-.logo-ring {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid var(--primary-light);
-  animation: spin 10s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotateZ(0deg); }
-  100% { transform: rotateZ(360deg); }
-}
-
-/* Navigasyon Menü */
 .nav-menu {
   display: flex;
   flex-direction: column;
@@ -328,38 +606,32 @@ export default {
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
   color: var(--text-secondary);
   text-decoration: none;
-  border-radius: 8px;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .nav-item:hover {
-  background: var(--surface-color-light);
+  background: rgba(126, 87, 194, 0.1);
   color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--primary-color);
+  color: white;
 }
 
 .nav-icon {
   width: 24px;
   height: 24px;
-  margin-right: 1rem;
+  margin-right: 12px;
 }
 
-.nav-item.router-link-active {
-  background: var(--primary-color);
-  color: var(--text-primary);
-}
-
-/* Profil Bölümü */
-.profile-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 1rem;
-}
-
-/* Ana İçerik Alanı */
+/* Ana içerik alanı */
 .main-content {
-  position: relative;
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
@@ -368,103 +640,27 @@ export default {
 .content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
-  color: var(--text-primary);
+  animation: fadeIn 0.3s ease;
 }
 
-.content-wrapper h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  font-weight: 600;
-}
-
-.content-wrapper p {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-}
-
-/* Responsive Tasarım */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 80px;
-    padding: 1rem 0.5rem;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-
-  .nav-item span {
-    display: none;
-  }
-
-  .nav-icon {
-    margin-right: 0;
-  }
-
-  .logo-circle {
-    width: 40px;
-    height: 40px;
-  }
-
-  .logo-inner {
-    width: 30px;
-    height: 30px;
-  }
-
-  .logo-letter {
-    font-size: 16px;
-  }
-
-  .logo-ring {
-    width: 40px;
-    height: 40px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Router geçiş animasyonları */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* Active nav item stili */
-.nav-item.active {
-  background: var(--primary-color);
-  color: var(--text-primary);
-}
-
-/* Nav item hover efekti */
-.nav-item {
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.nav-item::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--primary-light);
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.3s ease;
-}
-
-.nav-item:hover::after {
-  transform: scaleX(1);
-  transform-origin: left;
-}
-
-/* Yeni içerik stilleri */
+/* Form stilleri */
 .create-request-form {
   background: var(--surface-color);
   padding: 2rem;
   border-radius: 12px;
   max-width: 600px;
+  box-shadow: var(--shadow-md);
 }
 
 .form-group {
@@ -475,30 +671,194 @@ export default {
   display: block;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
-.form-group input,
-.form-group textarea {
+.custom-select {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+}
+
+.selected-option {
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: var(--surface-color-light);
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform 0.3s ease;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.select-arrow.open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.options-container {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  background: var(--surface-color-light);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+  animation: slideDown 0.2s ease;
+}
+
+.search-input {
+  width: calc(100% - 2rem);
+  margin: 1rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+}
+
+.options-list {
+  padding: 0.5rem 0;
+}
+
+.option {
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.form-input,
+.form-textarea {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   background: var(--surface-color-light);
   color: var(--text-primary);
+  font-family: inherit;
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
 }
 
 .submit-btn {
+  position: relative;
+  width: 100%;
   background: var(--primary-color);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 1rem;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-weight: 500;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-loader {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  margin-left: 0.5rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scrollbar stilleri */
+.options-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.options-container::-webkit-scrollbar-track {
+  background: var(--surface-color);
+  border-radius: 4px;
+}
+
+.options-container::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 4px;
+}
+
+.options-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+/* Responsive tasarım */
+@media (max-width: 768px) {
+  .home-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .nav-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .nav-item {
+    white-space: nowrap;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
 }
 
 /* Keşfet grid */
@@ -669,5 +1029,21 @@ export default {
   background: var(--surface-color);
   padding: 1rem;
   border-radius: 8px;
+}
+
+/* Tarih input stilini ekleyelim */
+input[type="date"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: var(--surface-color-light);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 </style>

@@ -1,5 +1,7 @@
 import sys
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
+from pydantic import BaseModel
+from typing import Optional
 
 from .filePaths import myPath
 
@@ -13,20 +15,41 @@ from study_requests import (
     update_study_request,
     delete_study_request,
     list_user_requests
-
 )
 
 router = APIRouter()
 
+class StudyRequestCreate(BaseModel):
+    user_id: int
+    category: str
+    duration: str
+    study_date: str
+    topic: str
+    note: str
+
 @router.post("/create")
-async def create_request_endpoint(user_id: int, category: str, duration: str, 
-                                study_date: str, topic: str, note: str):
+async def create_request_endpoint(request: StudyRequestCreate = Body(...)):
     try:
-        add_study_request(user_id, category, duration, study_date, topic, note)
+        duration_map = {
+            "1-2": 2,
+            "2-5": 5,
+            "5-6": 6
+        }
+        duration_int = duration_map.get(request.duration, 2)
+
+        add_study_request(
+            request.user_id,
+            request.category,
+            duration_int,
+            request.study_date,
+            request.topic,
+            request.note
+        )
         return {"message": "Study request created successfully"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        print(f"Error creating study request: {str(e)}")
         raise HTTPException(status_code=500, detail="Çalışma isteği oluşturulamadı.")
 
 @router.get("/{request_id}")

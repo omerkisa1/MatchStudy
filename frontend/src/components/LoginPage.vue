@@ -6,7 +6,7 @@
     </div>
 
     <!-- Ana login kartı -->
-    <div class="login-card">
+    <div class="login-card" :class="{ 'success': loginSuccess }">
       <div class="card-content">
         <!-- Logo animasyonu -->
         <div class="logo-container">
@@ -64,24 +64,23 @@
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
               </div>
-              <input 
-                :type="showPassword ? 'text' : 'password'" 
-                id="password" 
-                v-model="password" 
-                required
-                @focus="setActiveField('password')"
-                @blur="setActiveField(null)"
-                autocomplete="current-password"
-              />
-              <div @click="toggleShowPassword" class="password-toggle">
-                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
+              <div class="password-input">
+                <input 
+                  :type="showPassword ? 'text' : 'password'" 
+                  id="password" 
+                  v-model="password" 
+                  required
+                  @focus="setActiveField('password')"
+                  @blur="setActiveField(null)"
+                  autocomplete="current-password"
+                />
+                <button 
+                  type="button"
+                  class="toggle-password"
+                  @click="toggleShowPassword"
+                >
+                  {{ showPassword ? '🙈' : '👁️' }}
+                </button>
               </div>
               <div class="input-line"></div>
             </div>
@@ -101,7 +100,7 @@
 
           <!-- Giriş butonları -->
           <div class="action-buttons">
-            <button type="submit" class="primary-button" :disabled="isLoading">
+            <button type="submit" class="primary-button" :disabled="!isFormValid || isLoading">
               <span class="button-text" v-if="!isLoading">Giriş Yap</span>
               <div class="loader" v-else>
                 <span></span>
@@ -164,16 +163,20 @@
 <script>
 import axios from "axios";
 import { ref, reactive, computed, onMounted } from "vue";
+import { useUserStore } from '../stores/userStore';
+import { useRouter } from 'vue-router';
 
 export default {
   name: "EnhancedLoginPage",
   setup() {
+    const router = useRouter();
+    const userStore = useUserStore();
     const email = ref("");
     const password = ref("");
+    const rememberMe = ref(false);
     const errorMessage = ref("");
     const activeField = ref(null);
     const showPassword = ref(false);
-    const rememberMe = ref(false);
     const isLoading = ref(false);
     const loginSuccess = ref(false);
     
@@ -194,9 +197,12 @@ export default {
       }
       
       // Eğer localStorage'da kayıtlı email varsa
-      const rememberedEmail = localStorage.getItem("rememberedEmail");
-      if (rememberedEmail) {
-        email.value = rememberedEmail;
+      const savedEmail = localStorage.getItem('email');
+      const savedPassword = localStorage.getItem('password');
+      
+      if (savedEmail && savedPassword) {
+        email.value = savedEmail;
+        password.value = savedPassword;
         rememberMe.value = true;
       }
     });
@@ -209,69 +215,66 @@ export default {
       showPassword.value = !showPassword.value;
     };
 
+    // Email validasyonu için yardımcı fonksiyon
+    const validateEmail = (email) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
+    // Form validasyonu
+    const isFormValid = computed(() => {
+      return validateEmail(email.value) && password.value.length >= 6;
+    });
+
     const handleLogin = async () => {
+      if (!isFormValid.value) {
+        if (!validateEmail(email.value)) {
+          errorMessage.value = "Lütfen geçerli bir e-posta adresi girin";
+        } else if (password.value.length < 6) {
+          errorMessage.value = "Şifre en az 6 karakter olmalıdır";
+        }
+        return;
+      }
+
       errorMessage.value = "";
       isLoading.value = true;
-      
-      // Email kontrol
-      if (!validateEmail(email.value)) {
-        errorMessage.value = "Lütfen geçerli bir e-posta adresi girin";
-        isLoading.value = false;
-        return;
-      }
-      
-      // Şifre uzunluk kontrolü
-      if (password.value.length < 6) {
-        errorMessage.value = "Şifre en az 6 karakter olmalıdır";
-        isLoading.value = false;
-        return;
-      }
-      
+
       try {
-        // API çağrısı
-        const response = await axios.post("http://127.0.0.1:8000/users/login", {
-          email: email.value,
-          password: password.value
-        });
+        // Yeni API endpoint'i ile kullanıcı bilgilerini al
+        const response = await fetch(`http://127.0.0.1:8000/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`);
+        const data = await response.json();
         
-        // Başarılı giriş
-        const token = response.data.token || "";
-        localStorage.setItem("token", token);
-        
-        if (rememberMe.value) {
-          localStorage.setItem("rememberedEmail", email.value);
-        } else {
-          localStorage.removeItem("rememberedEmail");
-        }
-        
-        // Başarılı animasyonu göster
-        setTimeout(() => {
+        if (response.ok && data.user_id) {
+          // Kullanıcı bilgilerini store'a kaydet
+          userStore.login({
+            id: data.user_id,
+            email: email.value,
+            name: email.value.split('@')[0] // Geçici olarak email'den kullanıcı adı oluştur
+          });
+          
+          // Remember me seçeneği işaretliyse bilgileri localStorage'a kaydet
+          if (rememberMe.value) {
+            localStorage.setItem('email', email.value);
+            localStorage.setItem('password', password.value);
+          } else {
+            localStorage.removeItem('email');
+            localStorage.removeItem('password');
+          }
+
+          // Başarılı animasyonu göster
           loginSuccess.value = true;
           
           // Animasyon tamamlandıktan sonra yönlendirme
           setTimeout(() => {
-            window.location.href = "/home";
+            router.push('/home');
           }, 1500);
-        }, 1000);
-        
-      } catch (err) {
-        console.error(err);
-        isLoading.value = false;
-        
-        // Hata mesajını tanımla
-        if (err.response) {
-          if (err.response.status === 401) {
-            errorMessage.value = "E-posta veya şifre hatalı";
-          } else if (err.response.status === 404) {
-            errorMessage.value = "Bu e-posta adresi kayıtlı değil";
-          } else {
-            errorMessage.value = "Giriş yapılırken bir hata oluştu";
-          }
-        } else if (err.request) {
-          errorMessage.value = "Sunucuya bağlanılamıyor, lütfen daha sonra tekrar deneyin";
         } else {
-          errorMessage.value = "Beklenmeyen bir hata oluştu";
+          throw new Error(data.message || 'Kullanıcı bulunamadı');
         }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.value = 'Giriş yapılırken bir hata oluştu. Lütfen bilgilerinizi kontrol edin.';
+      } finally {
+        isLoading.value = false;
       }
     };
     
@@ -295,11 +298,6 @@ export default {
       window.location.href = "/signup";
     };
     
-    const validateEmail = (email) => {
-      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return re.test(email);
-    };
-    
     return {
       email,
       password,
@@ -312,6 +310,7 @@ export default {
       particleStyles,
       setActiveField,
       toggleShowPassword,
+      isFormValid,
       handleLogin,
       socialLogin,
       goToSignup

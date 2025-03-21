@@ -95,3 +95,22 @@ def login_user(email: str, password: str) -> bool:
     finally:
         cursor.close()
         connection.close()
+
+def get_user_id(email: str, password: str):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return None
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT id FROM users WHERE email = %s AND password = %s"
+        cursor.execute(query, (email, password))
+        user = cursor.fetchone()
+        return user["id"] if user else None
+    except Exception as e:
+        print(f" Kullanıcı getirilemedi: {e}")
+        return None
+    finally:
+        cursor.close()
+        connection.close()
+    
