@@ -210,16 +210,18 @@ export default {
 
     // Form validasyonu
     const isFormValid = computed(() => {
-      return validateEmail(email.value) && password.value.length >= 6;
+      return email.value.length > 0 && password.value.length > 0;
     });
 
     const handleLogin = async () => {
-      if (!isFormValid.value) {
-        if (!validateEmail(email.value)) {
-          errorMessage.value = "Lütfen geçerli bir e-posta adresi girin";
-        } else if (password.value.length < 6) {
-          errorMessage.value = "Şifre en az 6 karakter olmalıdır";
-        }
+      // Email ve şifre validasyonları
+      if (!validateEmail(email.value)) {
+        errorMessage.value = "Lütfen geçerli bir e-posta adresi girin";
+        return;
+      }
+      
+      if (password.value.length < 6) {
+        errorMessage.value = "Şifre en az 6 karakter olmalıdır";
         return;
       }
 

@@ -12,7 +12,7 @@
             <div class="logo-ring"></div>
           </div>
         </div>
-
+  
         <!-- Ana Menü -->
         <div class="nav-menu">
           <a @click="changeContent('create-request')" :class="['nav-item', { active: currentContent === 'create-request' }]">
@@ -77,14 +77,14 @@
           <span>Profilim</span>
         </a>
       </div>
-    </nav>
+      </nav>
 
     <!-- Ana İçerik Alanı -->
     <main class="main-content">
       <transition name="fade" mode="out-in">
         <div v-if="currentContent === 'home'" class="content-wrapper">
           <h1>Hoş Geldiniz</h1>
-          <p>Birlikte öğrenmek için eşleşmelerini yönet, çalışma isteklerini oluştur ve profilini tamamla.</p>
+        <p>Birlikte öğrenmek için eşleşmelerini yönet, çalışma isteklerini oluştur ve profilini tamamla.</p>
         </div>
 
         <div v-else-if="currentContent === 'create-request'" class="content-wrapper">
@@ -96,7 +96,7 @@
                 <div class="selected-option" @click="toggleDropdown('category')">
                   {{ selectedCategory || 'Ders Seçiniz' }}
                   <div class="select-arrow" :class="{ 'open': dropdowns.category }">▼</div>
-                </div>
+        </div>
                 <div class="options-container" v-if="dropdowns.category">
                   <input type="text" 
                          v-model="categorySearch" 
@@ -950,34 +950,142 @@ export default {
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 2rem;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+  padding: 0.875rem 1.25rem;
+  border-radius: 12px;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.3s ease;
   cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
 }
 
 .nav-item:hover {
-  background: rgba(126, 87, 194, 0.1);
   color: var(--text-primary);
+  background: rgba(126, 87, 194, 0.08);
 }
 
 .nav-item.active {
-  background: var(--primary-color);
   color: white;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  box-shadow: 0 4px 12px rgba(126, 87, 194, 0.25);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
 }
 
 .nav-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   margin-right: 12px;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.nav-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2px;
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover .nav-icon svg {
+  transform: scale(1.1);
+}
+
+.nav-item span {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* Sidebar ayırıcı */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(to right, 
+    rgba(255, 255, 255, 0.05), 
+    rgba(255, 255, 255, 0.1), 
+    rgba(255, 255, 255, 0.05));
+  margin: 1.5rem 0;
+}
+
+/* Sidebar üst kısmı */
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-container {
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+
+.logo-circle {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(126, 87, 194, 0.25);
+}
+
+.logo-circle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  z-index: 0;
+}
+
+.logo-letter {
+  position: relative;
+  z-index: 1;
+  color: white;
+  font-size: 22px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Profil bölümü için özel stiller */
+.profile-section {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-section .nav-item {
+  background: rgba(126, 87, 194, 0.08);
+  border: 1px solid rgba(126, 87, 194, 0.15);
+}
+
+.profile-section .nav-item:hover {
+  background: rgba(126, 87, 194, 0.12);
+  border-color: rgba(126, 87, 194, 0.2);
+  transform: translateY(-1px);
 }
 
 /* Ana içerik alanı */
@@ -1446,15 +1554,9 @@ export default {
   line-height: 1.6;
 }
 
-.profile-section {
-  background: var(--surface-color-light);
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.profile-section h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
+.profile-section span {
+  font-weight: 500;
+  font-size: 14px;
 }
 
 .study-history {
@@ -1656,5 +1758,98 @@ export default {
   .profile-stats {
     grid-template-columns: 1fr;
   }
+}
+
+/* Profil Butonu Stilleri */
+.profile-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(126, 87, 194, 0.1);
+  border: 1px solid rgba(126, 87, 194, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.profile-button:hover {
+  background: rgba(126, 87, 194, 0.15);
+  border-color: rgba(126, 87, 194, 0.3);
+  transform: translateY(-1px);
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.profile-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.profile-role {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  font-size: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.edit-profile-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-profile-button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.edit-profile-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Navbar stilleri */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--surface-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 </style>
