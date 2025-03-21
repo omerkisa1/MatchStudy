@@ -292,27 +292,143 @@
         </div>
 
         <div v-else-if="currentContent === 'profile'" class="content-wrapper">
-          <h1>Profilim</h1>
           <div class="profile-container">
+            <!-- Profil Başlığı ve Düzenleme -->
             <div class="profile-header">
-              <div class="profile-avatar"></div>
+              <div class="profile-avatar-section">
+                <div class="profile-avatar">
+                  <img v-if="userProfile.avatar" :src="userProfile.avatar" alt="Profil Fotoğrafı" />
+                  <span v-else>{{ userProfile.name?.[0]?.toUpperCase() || 'U' }}</span>
+                </div>
+                <button class="edit-avatar-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Fotoğraf Yükle
+                </button>
+              </div>
               <div class="profile-info">
-                <h2>Kullanıcı Adı</h2>
-                <p>Üniversite / Bölüm</p>
+                <div class="profile-name-section">
+                  <h2>{{ userProfile.name || 'İsimsiz Kullanıcı' }}</h2>
+                  <button class="edit-profile-btn" @click="isEditingProfile = true" v-if="!isEditingProfile">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Profili Düzenle
+                  </button>
+                </div>
+                <p class="profile-education">{{ userProfile.university }} / {{ userProfile.department }}</p>
+                <p class="profile-bio">{{ userProfile.bio || 'Henüz bir biyografi eklenmemiş.' }}</p>
               </div>
             </div>
+
+            <!-- Profil Düzenleme Formu -->
+            <div v-if="isEditingProfile" class="profile-edit-form">
+              <h3>Profil Bilgilerini Düzenle</h3>
+              <div class="form-group">
+                <label>İsim Soyisim</label>
+                <input type="text" v-model="editProfile.name" class="form-input" placeholder="İsminizi girin" />
+              </div>
+              <div class="form-group">
+                <label>Üniversite</label>
+                <input type="text" v-model="editProfile.university" class="form-input" placeholder="Üniversitenizi girin" />
+              </div>
+              <div class="form-group">
+                <label>Bölüm</label>
+                <input type="text" v-model="editProfile.department" class="form-input" placeholder="Bölümünüzü girin" />
+              </div>
+              <div class="form-group">
+                <label>Biyografi</label>
+                <textarea v-model="editProfile.bio" class="form-textarea" placeholder="Kendinizden bahsedin..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>İletişim E-posta</label>
+                <input type="email" v-model="editProfile.email" class="form-input" placeholder="E-posta adresiniz" />
+              </div>
+              <div class="form-actions">
+                <button class="cancel-btn" @click="cancelProfileEdit">İptal</button>
+                <button class="save-btn" @click="saveProfileChanges">Değişiklikleri Kaydet</button>
+              </div>
+            </div>
+
+            <!-- İstatistikler -->
             <div class="profile-stats">
               <div class="stat-item">
-                <span class="stat-value">12</span>
+                <span class="stat-value">{{ userProfile.completedStudies || 0 }}</span>
                 <span class="stat-label">Tamamlanan Çalışma</span>
               </div>
               <div class="stat-item">
-                <span class="stat-value">4.8</span>
+                <span class="stat-value">{{ userProfile.rating || '0.0' }}</span>
                 <span class="stat-label">Ortalama Puan</span>
               </div>
               <div class="stat-item">
-                <span class="stat-value">8</span>
+                <span class="stat-value">{{ userProfile.activeGroups || 0 }}</span>
                 <span class="stat-label">Aktif Grup</span>
+              </div>
+            </div>
+
+            <!-- Çalışma Geçmişi -->
+            <div class="profile-section">
+              <h3>Çalışma Geçmişi</h3>
+              <div class="study-history">
+                <div v-for="request in userStudyRequests" :key="request.id" class="history-card">
+                  <div class="history-card-header">
+                    <h4>{{ request.topic }}</h4>
+                    <span class="tag">{{ request.category }}</span>
+                  </div>
+                  <p>{{ request.note }}</p>
+                  <div class="history-card-footer">
+                    <span class="date">{{ formatDate(request.study_date) }}</span>
+                    <span class="status" :class="request.status">{{ request.status }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- İlgi Alanları -->
+            <div class="profile-section">
+              <h3>İlgi Alanları</h3>
+              <div class="interests-container">
+                <div v-for="(interest, index) in userProfile.interests" :key="index" class="interest-tag">
+                  {{ interest }}
+                </div>
+                <button class="add-interest-btn" @click="showInterestModal = true" v-if="!isEditingProfile">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  İlgi Alanı Ekle
+                </button>
+              </div>
+            </div>
+
+            <!-- Hesap Ayarları -->
+            <div class="profile-section">
+              <h3>Hesap Ayarları</h3>
+              <div class="settings-container">
+                <div class="setting-item">
+                  <div class="setting-info">
+                    <h4>Şifre Değiştir</h4>
+                    <p>Hesap güvenliğiniz için şifrenizi düzenli olarak değiştirin</p>
+                  </div>
+                  <button class="setting-btn" @click="showPasswordModal = true">Değiştir</button>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-info">
+                    <h4>Bildirim Ayarları</h4>
+                    <p>E-posta ve uygulama bildirimlerini yönetin</p>
+                  </div>
+                  <button class="setting-btn" @click="showNotificationSettings = true">Düzenle</button>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-info">
+                    <h4>Hesabı Sil</h4>
+                    <p>Hesabınızı kalıcı olarak silin</p>
+                  </div>
+                  <button class="delete-account-btn" @click="confirmDeleteAccount">Hesabı Sil</button>
+                </div>
               </div>
             </div>
           </div>
@@ -350,6 +466,27 @@ export default {
     const selectedFilterCategory = ref(null);
     const selectedFilterDuration = ref(null);
     const selectedFilterDate = ref(null);
+
+    // Profil state'leri ve metodları
+    const userProfile = ref({
+      name: userStore.name,
+      email: userStore.email,
+      university: '',
+      department: '',
+      bio: '',
+      avatar: null,
+      completedStudies: 0,
+      rating: '0.0',
+      activeGroups: 0,
+      interests: []
+    });
+
+    const isEditingProfile = ref(false);
+    const editProfile = ref({ ...userProfile.value });
+    const showInterestModal = ref(false);
+    const showPasswordModal = ref(false);
+    const showNotificationSettings = ref(false);
+    const userStudyRequests = ref([]);
 
     // Check user authentication
     onMounted(async () => {
@@ -641,6 +778,49 @@ export default {
       window.removeEventListener('click', closeDropdowns);
     });
 
+    // Profil düzenleme metodları
+    const cancelProfileEdit = () => {
+      isEditingProfile.value = false;
+      editProfile.value = { ...userProfile.value };
+    };
+
+    const saveProfileChanges = async () => {
+      try {
+        // API çağrısı yapılacak
+        userProfile.value = { ...editProfile.value };
+        isEditingProfile.value = false;
+        alert('Profil başarıyla güncellendi!');
+      } catch (error) {
+        alert('Profil güncellenirken bir hata oluştu.');
+      }
+    };
+
+    const confirmDeleteAccount = () => {
+      if (confirm('Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+        // Hesap silme API çağrısı yapılacak
+        alert('Hesap silme işlemi başlatıldı.');
+      }
+    };
+
+    // Kullanıcının çalışma isteklerini getir
+    const fetchUserStudyRequests = async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}`);
+        if (!response.ok) throw new Error('İstekler getirilemedi');
+        const data = await response.json();
+        userStudyRequests.value = data.requests;
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    // Profil sayfası açıldığında çalışma isteklerini getir
+    watch(() => currentContent.value, (newContent) => {
+      if (newContent === 'profile') {
+        fetchUserStudyRequests();
+      }
+    });
+
     return {
       currentContent,
       userStore,
@@ -674,7 +854,17 @@ export default {
       selectedFilterDate,
       filteredStudyRequests,
       selectFilterCategory,
-      selectFilterDuration
+      selectFilterDuration,
+      userProfile,
+      isEditingProfile,
+      editProfile,
+      showInterestModal,
+      showPasswordModal,
+      showNotificationSettings,
+      userStudyRequests,
+      cancelProfileEdit,
+      saveProfileChanges,
+      confirmDeleteAccount
     };
   }
 };
@@ -1149,147 +1339,321 @@ export default {
   background: var(--surface-color);
   border-radius: 12px;
   padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .profile-header {
   display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 2rem;
+  gap: 1rem;
 }
 
 .profile-avatar {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   background: var(--primary-color);
-  margin-right: 2rem;
-}
-
-.profile-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  text-align: center;
-}
-
-.stat-item {
-  background: var(--surface-color-light);
-  padding: 1.5rem;
-  border-radius: 8px;
-}
-
-.stat-value {
-  display: block;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-.stat-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-/* Timeline */
-.history-timeline {
-  position: relative;
-  padding-left: 2rem;
-}
-
-.timeline-item {
-  position: relative;
-  padding-bottom: 2rem;
-}
-
-.timeline-item::before {
-  content: '';
-  position: absolute;
-  left: -2rem;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: var(--primary-color);
-}
-
-.timeline-item::after {
-  content: '';
-  position: absolute;
-  left: -2.35rem;
-  top: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--primary-color);
-}
-
-.timeline-date {
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.timeline-content {
-  background: var(--surface-color);
-  padding: 1rem;
-  border-radius: 8px;
-}
-
-/* Tarih input stilini ekleyelim */
-input[type="date"] {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: var(--surface-color-light);
-  color: var(--text-primary);
-  font-family: inherit;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  cursor: pointer;
-}
-
-/* Filtre stilleri */
-.filters-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-  background: var(--surface-color);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-}
-
-.filter-group {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: white;
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-avatar-btn {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
-}
-
-.filter-group label {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.clear-date-btn {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.clear-date-btn:hover {
+.edit-avatar-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Responsive filtreler */
+.edit-avatar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-name-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.profile-name-section h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.edit-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-profile-btn:hover {
+  background: var(--primary-dark);
+}
+
+.edit-profile-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-education {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.profile-bio {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.profile-section {
+  background: var(--surface-color-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.profile-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+}
+
+.study-history {
+  display: grid;
+  gap: 1rem;
+}
+
+.history-card {
+  background: var(--surface-color);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.history-card-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.history-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+}
+
+.status.completed {
+  background: #4CAF50;
+  color: white;
+}
+
+.status.pending {
+  background: #FFC107;
+  color: black;
+}
+
+.status.cancelled {
+  background: #F44336;
+  color: white;
+}
+
+.interests-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.interest-tag {
+  background: var(--primary-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+}
+
+.add-interest-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 20px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-interest-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.add-interest-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--surface-color);
+  border-radius: 8px;
+}
+
+.setting-info h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.setting-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.setting-btn {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.setting-btn:hover {
+  background: var(--primary-dark);
+}
+
+.delete-account-btn {
+  padding: 0.5rem 1rem;
+  background: #F44336;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-account-btn:hover {
+  background: #D32F2F;
+}
+
+.profile-edit-form {
+  background: var(--surface-color-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.cancel-btn {
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.save-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  background: var(--primary-dark);
+}
+
 @media (max-width: 768px) {
-  .filters-container {
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-name-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .profile-stats {
     grid-template-columns: 1fr;
   }
 }
