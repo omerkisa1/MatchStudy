@@ -32,57 +32,45 @@
           </div>
 
           <!-- Email input grubu -->
-          <div class="input-group" :class="{ 'focused': activeField === 'email', 'filled': email.length > 0 }">
-            <label for="email">E-posta</label>
-            <div class="input-container">
-              <div class="input-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-              </div>
+          <div class="form-group">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
               <input 
                 type="email" 
-                id="email" 
                 v-model="email" 
-                required
-                @focus="setActiveField('email')"
-                @blur="setActiveField(null)"
-                autocomplete="email"
-              />
-              <div class="input-line"></div>
+                placeholder="E-posta adresinizi girin"
+                class="form-input" />
             </div>
           </div>
 
           <!-- Şifre input grubu -->
-          <div class="input-group" :class="{ 'focused': activeField === 'password', 'filled': password.length > 0 }">
-            <label for="password">Şifre</label>
-            <div class="input-container">
-              <div class="input-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          <div class="form-group">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input 
+                :type="showPassword ? 'text' : 'password'" 
+                v-model="password" 
+                placeholder="Şifrenizi girin"
+                class="form-input" />
+              <button 
+                type="button"
+                class="password-toggle"
+                @click="togglePassword">
+                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
                 </svg>
-              </div>
-              <div class="password-input">
-                <input 
-                  :type="showPassword ? 'text' : 'password'" 
-                  id="password" 
-                  v-model="password" 
-                  required
-                  @focus="setActiveField('password')"
-                  @blur="setActiveField(null)"
-                  autocomplete="current-password"
-                />
-                <button 
-                  type="button"
-                  class="toggle-password"
-                  @click="toggleShowPassword"
-                >
-                  {{ showPassword ? '🙈' : '👁️' }}
-                </button>
-              </div>
-              <div class="input-line"></div>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -211,7 +199,7 @@ export default {
       activeField.value = field;
     };
 
-    const toggleShowPassword = () => {
+    const togglePassword = () => {
       showPassword.value = !showPassword.value;
     };
 
@@ -309,7 +297,7 @@ export default {
       loginSuccess,
       particleStyles,
       setActiveField,
-      toggleShowPassword,
+      togglePassword,
       isFormValid,
       handleLogin,
       socialLogin,
@@ -655,80 +643,62 @@ body {
 }
 
 /* Input grupları */
-.input-group {
+.form-group {
   margin-bottom: 16px;
   position: relative;
 }
 
-.input-group label {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin-bottom: 8px;
-  transition: color var(--transition-fast);
-}
-
-.input-container {
+.input-icon {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.input-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--text-disabled);
-  transition: color var(--transition-fast);
-}
-
 .input-icon svg {
+  position: absolute;
+  left: 1rem;
   width: 20px;
   height: 20px;
+  color: var(--text-secondary);
 }
 
-.input-group input {
+.input-icon .form-input {
+  padding-left: 3rem;
   width: 100%;
-  padding: 12px 40px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
   background: var(--surface-color-light);
-  border: none;
-  border-radius: var(--border-radius-sm);
   color: var(--text-primary);
-  font-size: 16px;
-  transition: all var(--transition-fast);
+  font-family: inherit;
+  transition: border-color 0.2s ease;
 }
 
-.input-line {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--primary-color);
-  transform: scaleX(0);
-  transition: transform var(--transition-fast);
-  transform-origin: left;
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
-.input-group.focused .input-line {
-  transform: scaleX(1);
-}
-
-.input-group.focused label,
-.input-group.filled label {
-  color: var(--primary-color);
-}
-
-.input-group.focused .input-icon,
-.input-group.filled .input-icon {
-  color: var(--primary-color);
+.form-input::placeholder {
+  color: var(--text-secondary);
 }
 
 .password-toggle {
   position: absolute;
-  right: 12px;
+  right: 1rem;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  color: var(--text-disabled);
-  transition: color var(--transition-fast);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
 }
 
 .password-toggle:hover {
@@ -736,6 +706,7 @@ body {
 }
 
 .password-toggle svg {
+  position: static;
   width: 20px;
   height: 20px;
 }
