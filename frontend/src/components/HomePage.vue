@@ -166,29 +166,82 @@
             </button>
 
             <!-- Debug bilgileri -->
-            <div class="debug-info" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-secondary);">
-              <p>Category: {{ selectedCategory ? '✓' : '✗' }}</p>
-              <p>Day: {{ selectedDay ? '✓' : '✗' }}</p>
-              <p>Duration: {{ selectedDuration ? '✓' : '✗' }}</p>
-              <p>Topic: {{ topic.trim() ? '✓' : '✗' }}</p>
-              <p>Note: {{ note.trim() ? '✓' : '✗' }}</p>
-              <p>User ID: {{ userStore.id ? '✓' : '✗' }} ({{ userStore.id }})</p>
-            </div>
           </div>
         </div>
 
         <div v-else-if="currentContent === 'discover'" class="content-wrapper">
           <h1>Keşfet</h1>
-          <div class="discover-grid">
-            <div class="study-card" v-for="i in 6" :key="i">
-              <div class="card-header">
-                <h3>Matematik Çalışma Grubu</h3>
-                <span class="tag">Matematik</span>
+          
+          <!-- Filtreleme Bölümü -->
+          <div class="filters-container">
+            <div class="filter-group">
+              <label>Ders Kategorisi</label>
+              <div class="custom-select" data-dropdown="filterCategory">
+                <div class="selected-option" @click="toggleDropdown('filterCategory')">
+                  {{ selectedFilterCategory || 'Tüm Kategoriler' }}
+                  <div class="select-arrow" :class="{ 'open': dropdowns.filterCategory }">▼</div>
+                </div>
+                <div class="options-container" v-if="dropdowns.filterCategory">
+                  <div class="options-list">
+                    <div class="option" @click.stop="selectFilterCategory(null)">Tüm Kategoriler</div>
+                    <div v-for="category in categories" 
+                         :key="category"
+                         class="option"
+                         @click.stop="selectFilterCategory(category)">
+                      {{ category }}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p>Calculus II konularında birlikte çalışmak için grup arkadaşları arıyorum.</p>
+            </div>
+
+            <div class="filter-group">
+              <label>Çalışma Süresi</label>
+              <div class="custom-select" data-dropdown="filterDuration">
+                <div class="selected-option" @click="toggleDropdown('filterDuration')">
+                  {{ selectedFilterDuration?.label || 'Tüm Süreler' }}
+                  <div class="select-arrow" :class="{ 'open': dropdowns.filterDuration }">▼</div>
+                </div>
+                <div class="options-container" v-if="dropdowns.filterDuration">
+                  <div class="options-list">
+                    <div class="option" @click.stop="selectFilterDuration(null)">Tüm Süreler</div>
+                    <div v-for="duration in durations" 
+                         :key="duration.value"
+                         class="option"
+                         @click.stop="selectFilterDuration(duration)">
+                      {{ duration.label }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <label>Çalışma Tarihi</label>
+              <input type="date" 
+                     v-model="selectedFilterDate"
+                     class="form-input"
+                     :min="getCurrentDate()" />
+              <button class="clear-date-btn" @click="selectedFilterDate = null" v-if="selectedFilterDate">
+                Tarihi Temizle
+              </button>
+            </div>
+          </div>
+
+          <!-- Çalışma İstekleri Grid -->
+          <div class="discover-grid">
+            <div class="study-card" v-for="request in filteredStudyRequests" :key="request.id">
+              <div class="card-header">
+                <h3>{{ request.topic }}</h3>
+                <span class="tag">{{ request.category }}</span>
+              </div>
+              <p>{{ request.note }}</p>
               <div class="card-footer">
-                <span class="date">24 Mart 2024</span>
-                <button class="join-btn">Katıl</button>
+                <div class="card-info">
+                  <span class="date">{{ formatDate(request.study_date) }}</span>
+                  <span class="duration">{{ formatDuration(request.duration) }} saat</span>
+                </div>
+                <button class="join-btn" @click="joinStudyRequest(request.id)">Katıl</button>
               </div>
             </div>
           </div>
@@ -270,7 +323,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useRouter } from 'vue-router';
 
@@ -289,6 +342,14 @@ export default {
     const note = ref('');
     const isLoading = ref(false);
     const categorySearch = ref('');
+
+    const studyRequests = ref([]);
+    const isLoadingRequests = ref(false);
+
+    // Filtre state'leri
+    const selectedFilterCategory = ref(null);
+    const selectedFilterDuration = ref(null);
+    const selectedFilterDate = ref(null);
 
     // Check user authentication
     onMounted(async () => {
@@ -397,6 +458,40 @@ export default {
       }
     };
 
+    // Çalışma isteklerini getir
+    const fetchStudyRequests = async () => {
+      isLoadingRequests.value = true;
+      try {
+        const response = await fetch('http://127.0.0.1:8000/study_requests/all');
+        if (!response.ok) {
+          throw new Error('Çalışma istekleri getirilemedi');
+        }
+        const data = await response.json();
+        studyRequests.value = data.requests;
+      } catch (error) {
+        console.error('Error fetching study requests:', error);
+      } finally {
+        isLoadingRequests.value = false;
+      }
+    };
+
+    // Tarih formatla
+    const formatDate = (dateString) => {
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString('tr-TR', options);
+    };
+
+    // Süre formatla
+    const formatDuration = (duration) => {
+      return duration;
+    };
+
+    // Çalışma isteğine katıl
+    const joinStudyRequest = async (requestId) => {
+      // TODO: Implement join functionality
+      alert('Bu özellik yakında eklenecek!');
+    };
+
     // Content change function
     const changeContent = (content) => {
       currentContent.value = content;
@@ -406,7 +501,9 @@ export default {
     const dropdowns = ref({
       category: false,
       day: false,
-      duration: false
+      duration: false,
+      filterCategory: false,
+      filterDuration: false
     });
 
     // Categories
@@ -483,6 +580,58 @@ export default {
       dropdowns.value.duration = false;
     };
 
+    // Filtrelenmiş çalışma istekleri
+    const filteredStudyRequests = computed(() => {
+      return studyRequests.value.filter(request => {
+        let matchCategory = true;
+        let matchDuration = true;
+        let matchDate = true;
+
+        // Kategori filtresi
+        if (selectedFilterCategory.value) {
+          matchCategory = request.category === selectedFilterCategory.value;
+        }
+
+        // Süre filtresi
+        if (selectedFilterDuration.value) {
+          matchDuration = request.duration === parseInt(selectedFilterDuration.value.value.split('-')[1]);
+        }
+
+        // Tarih filtresi
+        if (selectedFilterDate.value) {
+          const requestDate = new Date(request.study_date).toISOString().split('T')[0];
+          matchDate = requestDate === selectedFilterDate.value;
+        }
+
+        return matchCategory && matchDuration && matchDate;
+      });
+    });
+
+    // Filtre seçim fonksiyonları
+    const selectFilterCategory = (category) => {
+      selectedFilterCategory.value = category;
+      dropdowns.value.filterCategory = false;
+    };
+
+    const selectFilterDuration = (duration) => {
+      selectedFilterDuration.value = duration;
+      dropdowns.value.filterDuration = false;
+    };
+
+    // Keşfet sayfası açıldığında istekleri getir
+    watch(() => currentContent.value, (newContent) => {
+      if (newContent === 'discover') {
+        fetchStudyRequests();
+      }
+    });
+
+    // Component mount olduğunda ve currentContent discover ise istekleri getir
+    onMounted(() => {
+      if (currentContent.value === 'discover') {
+        fetchStudyRequests();
+      }
+    });
+
     // Lifecycle hooks
     onMounted(() => {
       window.addEventListener('click', closeDropdowns);
@@ -514,7 +663,18 @@ export default {
       isFormValid,
       createStudyRequest,
       getCurrentDate,
-      getMaxDate
+      getMaxDate,
+      studyRequests,
+      isLoadingRequests,
+      formatDate,
+      formatDuration,
+      joinStudyRequest,
+      selectedFilterCategory,
+      selectedFilterDuration,
+      selectedFilterDate,
+      filteredStudyRequests,
+      selectFilterCategory,
+      selectFilterDuration
     };
   }
 };
@@ -635,12 +795,15 @@ export default {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  height: 100vh;
+  max-height: 100vh;
 }
 
 .content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
   animation: fadeIn 0.3s ease;
+  padding-bottom: 2rem; /* İçeriğin en altında biraz boşluk bırakmak için */
 }
 
 @keyframes fadeIn {
@@ -839,11 +1002,19 @@ export default {
 @media (max-width: 768px) {
   .home-container {
     flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
   }
 
   .sidebar {
     width: 100%;
     padding: 1rem;
+    flex-shrink: 0;
+  }
+
+  .main-content {
+    height: calc(100vh - 80px); /* Sidebar'ın yüksekliğini çıkarıyoruz */
+    max-height: none;
   }
 
   .nav-menu {
@@ -855,10 +1026,6 @@ export default {
   .nav-item {
     white-space: nowrap;
   }
-
-  .main-content {
-    padding: 1rem;
-  }
 }
 
 /* Keşfet grid */
@@ -867,12 +1034,19 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
   margin-top: 2rem;
+  min-height: 0; /* Grid içeriğinin düzgün scroll etmesi için */
 }
 
 .study-card {
   background: var(--surface-color);
   border-radius: 12px;
   padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.study-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .card-header {
@@ -882,28 +1056,56 @@ export default {
   margin-bottom: 1rem;
 }
 
+.card-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 .tag {
   background: var(--primary-color);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.date, .duration {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .join-btn {
   background: var(--primary-color);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 6px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.join-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 /* Mesajlar */
@@ -1045,5 +1247,50 @@ input[type="date"] {
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
+}
+
+/* Filtre stilleri */
+.filters-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  background: var(--surface-color);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.clear-date-btn {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-date-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive filtreler */
+@media (max-width: 768px) {
+  .filters-container {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

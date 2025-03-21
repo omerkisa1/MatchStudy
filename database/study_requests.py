@@ -69,6 +69,7 @@ def get_all_study_requests():
         query = "SELECT * FROM study_requests"
         cursor.execute(query)
         requests = cursor.fetchall()
+        print(requests)
         return requests
     except Exception as e:
         print(f" Tüm çalışma istekleri getirilemedi: {e}")
@@ -135,3 +136,5 @@ def list_user_requests(user_id):
     finally:
         cursor.close()
         connection.close()
+
+#get_all_study_requests()

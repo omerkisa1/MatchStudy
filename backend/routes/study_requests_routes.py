@@ -27,6 +27,15 @@ class StudyRequestCreate(BaseModel):
     topic: str
     note: str
 
+# Tüm istekleri listele - Bu route'u en üste alıyoruz
+@router.get("/all")  # /list yerine /all kullanıyoruz
+async def list_requests_endpoint():
+    try:
+        requests = get_all_study_requests()
+        return {"message": "Requests found", "requests": requests}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="İstekler getirilemedi.")
+
 @router.post("/create")
 async def create_request_endpoint(request: StudyRequestCreate = Body(...)):
     try:
@@ -81,14 +90,6 @@ async def delete_request_endpoint(request_id: int):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail="İstek silinemedi.")
-
-@router.get("/list")
-async def list_requests_endpoint():
-    try:
-        requests = get_all_study_requests()
-        return {"message": "Requests found", "requests": requests}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="İstekler getirilemedi.")
 
 @router.get("/user/{user_id}")
 async def list_user_requests_endpoint(user_id: int):
