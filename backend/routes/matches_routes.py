@@ -1,11 +1,7 @@
 import sys
 from fastapi import APIRouter, HTTPException
 
-from .filePaths import myPath
-
-sys.path.append(myPath)
-
-from matches import (
+from database.matches import (
     add_match,
     get_match_by_id,
     get_matches_by_requester_id,

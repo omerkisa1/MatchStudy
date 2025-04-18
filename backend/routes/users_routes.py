@@ -1,12 +1,7 @@
 import sys
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
-from .filePaths import myPath
-
-sys.path.append(myPath)
-
-from users import (
+from database.users import (
     add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id
 )
 router = APIRouter()

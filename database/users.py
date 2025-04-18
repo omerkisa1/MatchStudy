@@ -114,3 +114,4 @@ def get_user_id(email: str, password: str):
         cursor.close()
         connection.close()
     
+login_user("test@example.com", "123")

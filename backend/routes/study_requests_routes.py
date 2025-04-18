@@ -3,11 +3,7 @@ from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from typing import Optional
 
-from .filePaths import myPath
-
-sys.path.append(myPath)
-
-from study_requests import (
+from database.study_requests import (
     add_study_request,
     get_study_request_by_id,
     get_study_requests_by_user,

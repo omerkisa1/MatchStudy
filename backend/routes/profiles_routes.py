@@ -1,11 +1,7 @@
 import sys
 from fastapi import APIRouter, HTTPException
 
-from .filePaths import myPath
-
-sys.path.append(myPath)
-
-from profiles import (
+from database.profiles import (
     add_profile, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
 )
 
