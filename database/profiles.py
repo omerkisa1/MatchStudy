@@ -1,4 +1,4 @@
-from config import DB_CONFIG
+from database.config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
 def add_profile(user_id, name, surname, age, education_level, institution):
