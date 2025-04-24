@@ -2,26 +2,31 @@ from database.config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
 
-def add_match(request_id, requester_id, responder_id, status):
-    connection = mysql.connector.connect(**DB_CONFIG)
-    if not connection:
-        return
+def add_match(requester_id, responder_id, request_id):
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
 
-    try:
-        cursor = connection.cursor()
-        query = """
-            INSERT INTO matches (request_id, requester_id, responder_id, status, matched_at)
-            VALUES (%s, %s, %s, %s, NOW())
-        """
-        cursor.execute(query, (request_id, requester_id, responder_id, status))
-        connection.commit()
-        print(f"Eşleşme {request_id} başarıyla eklendi.")
-    except Exception as e:
-        connection.rollback()
-        print(f"Eşleşme eklenirken hata oluştu: {e}")
-    finally:
-        cursor.close()
-        connection.close()
+    cursor.execute("""
+        SELECT * FROM matches 
+        WHERE requester_id = %s AND responder_id = %s AND request_id = %s
+    """, (requester_id, responder_id, request_id))
+    existing = cursor.fetchone()
+
+    if existing:
+        if existing["status"] == "pending":
+            raise ValueError("Zaten istek gönderilmiş.")
+        elif existing["status"] == "accepted":
+            raise ValueError("Zaten eşleştiniz.")
+        elif existing["status"] == "rejected":
+            pass
+
+    cursor.execute("""
+        INSERT INTO matches (request_id, requester_id, responder_id, status)
+        VALUES (%s, %s, %s, %s)
+    """, (request_id, requester_id, responder_id, "pending"))
+    
+    conn.commit()
+    conn.close()
 
 def get_match_by_id(match_id):
     connection = mysql.connector.connect(**DB_CONFIG)

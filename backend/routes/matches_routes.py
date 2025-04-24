@@ -21,6 +21,7 @@ async def create_match_endpoint(user1_id: int, user2_id: int, request_id: int):
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        print(f"Match oluşturulamadı: {e}", file=sys.stderr)
         raise HTTPException(status_code=500, detail="Eşleşme oluşturulamadı.")
 
 @router.get("/{match_id}")

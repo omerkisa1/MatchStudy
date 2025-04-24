@@ -241,7 +241,15 @@
                   <span class="date">{{ formatDate(request.study_date) }}</span>
                   <span class="duration">{{ formatDuration(request.duration) }} saat</span>
                 </div>
-                <button class="join-btn" @click="joinStudyRequest(request.id)">Katıl</button>
+                <button
+                  class="join-btn"
+                  :disabled="request.matchStatus === 'pending' || request.matchStatus === 'accepted'"
+                  @click="joinStudyRequest(request)">
+                  <template v-if="request.matchStatus === 'pending'">İstek Gönderildi</template>
+                  <template v-else-if="request.matchStatus === 'accepted'">Kabul Edildi</template>
+                  <template v-else-if="request.matchStatus === 'rejected'">Tekrar Gönder</template>
+                  <template v-else>İstek Gönder</template>
+                </button>
               </div>
             </div>
           </div>
@@ -623,11 +631,34 @@ export default {
       return duration;
     };
 
-    // Çalışma isteğine katıl
-    const joinStudyRequest = async (requestId) => {
-      // TODO: Implement join functionality
-      alert('Bu özellik yakında eklenecek!');
-    };
+    const joinStudyRequest = async (request) => {
+  if (userStore.id === request.user_id) {
+    alert("Kendi isteğinize başvuru yapamazsınız.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/matches/create?user1_id=${userStore.id}&user2_id=${request.user_id}&request_id=${request.request_id}`, {
+      method: 'POST'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'İstek gönderilemedi.');
+    }
+
+    alert('İstek başarıyla gönderildi.');
+    fetchStudyRequests(); // Güncelle
+  } catch (error) {
+    console.error(error);
+    alert(error.message || 'Bir hata oluştu.');
+  }
+};
+
+
+
+
 
     // Content change function
     const changeContent = (content) => {
