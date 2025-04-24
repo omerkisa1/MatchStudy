@@ -1,2 +1,5 @@
-pip install pymysql pandas
-pip install mysql-connector-python
+fastapi[all]
+uvicorn[standard]
+pymysql
+pandas
+mysql-connector-python
