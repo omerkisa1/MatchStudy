@@ -281,9 +281,20 @@
   >
     <div class="notification-icon"></div>
     <div class="notification-content">
-      <p>Yeni bir eşleşme isteği aldınız.</p>
-      <span class="notification-time">{{ formatDate(notification.matched_at) }}</span>
-    </div>
+  <p>
+    <strong>{{ notification.requester_name }}</strong> adlı kullanıcı 
+    <strong>{{ notification.category }}</strong> dersi için 
+    <strong>"{{ notification.topic }}"</strong> başlıklı bir istek gönderdi.
+  </p>
+  <p class="notification-note">
+    {{ notification.note }}
+  </p>
+  <p class="notification-details">
+    Tarih: {{ formatDate(notification.study_date) }} – Süre: {{ notification.duration }} saat
+  </p>
+  <span class="notification-time">{{ formatDate(notification.matched_at) }}</span>
+</div>
+
     <div class="notification-spacer"></div>
     <!-- Sadece pending olanlara tik/X -->
     <div v-if="notification.status === 'pending'" class="notification-actions">

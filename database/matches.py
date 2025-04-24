@@ -122,10 +122,29 @@ def list_macthes():
 def get_matches_for_responder(user_id):
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
-    query = "SELECT * FROM matches WHERE responder_id = %s AND status = 'pending'"
+    query = """
+        SELECT 
+            m.match_id,
+            m.status,
+            m.matched_at,
+            sr.category,
+            sr.duration,
+            sr.study_date,
+            sr.topic,
+            sr.note,
+            p.name,
+            p.surname,
+            p.education_level,
+            p.institution
+        FROM matches m
+        JOIN study_requests sr ON m.request_id = sr.request_id
+        JOIN profiles p ON m.requester_id = p.user_id
+        WHERE m.responder_id = %s AND m.status = 'pending'
+    """
     cursor.execute(query, (user_id,))
     results = cursor.fetchall()
-    print("Bildirimler:", results) 
     cursor.close()
     conn.close()
     return results
+
+
