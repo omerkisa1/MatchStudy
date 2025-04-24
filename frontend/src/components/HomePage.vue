@@ -755,6 +755,7 @@ export default {
         let matchDuration = true;
         let matchDate = true;
 
+        const notOwnRequest = request.user_id !== userStore.id;
         // Kategori filtresi
         if (selectedFilterCategory.value) {
           matchCategory = request.category === selectedFilterCategory.value;
@@ -771,7 +772,7 @@ export default {
           matchDate = requestDate === selectedFilterDate.value;
         }
 
-        return matchCategory && matchDuration && matchDate;
+        return matchCategory && matchDuration && matchDate && notOwnRequest;
       });
     });
 
