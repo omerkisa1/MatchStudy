@@ -8,7 +8,8 @@ from database.matches import (
     get_matches_by_responder_id,
     update_match_status,
     delete_match,
-    list_macthes
+    list_macthes,
+    get_matches_for_responder
 )
 
 router = APIRouter()
@@ -69,3 +70,12 @@ async def list_user_matches_endpoint(user_id: int):
         return {"message": "User matches found", "matches": matches}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Kullanıcı eşleşmeleri getirilemedi.") 
+    
+
+@router.get("/notifications/{user_id}")
+async def get_match_notifications(user_id: int):
+    try:
+        matches = get_matches_for_responder(user_id)
+        return {"notifications": matches}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Bildirimler getirilemedi.")

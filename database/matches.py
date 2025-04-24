@@ -118,3 +118,14 @@ def list_macthes():
     except Exception as e:
         print(f"Dbden veri gelmedi. {e}")
         return None
+    
+def get_matches_for_responder(user_id):
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    query = "SELECT * FROM matches WHERE responder_id = %s AND status = 'pending'"
+    cursor.execute(query, (user_id,))
+    results = cursor.fetchall()
+    print("Bildirimler:", results) 
+    cursor.close()
+    conn.close()
+    return results

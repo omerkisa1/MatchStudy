@@ -274,14 +274,25 @@
         <div v-else-if="currentContent === 'notifications'" class="content-wrapper">
           <h1>Bildirimler</h1>
           <div class="notifications-list">
-            <div class="notification-item" v-for="i in 4" :key="i">
-              <div class="notification-icon"></div>
-              <div class="notification-content">
-                <p>Yeni bir eşleşme isteği aldınız.</p>
-                <span class="notification-time">2 saat önce</span>
-              </div>
-            </div>
-          </div>
+  <div 
+    v-for="notification in notifications" 
+    :key="notification.match_id" 
+    class="notification-item"
+  >
+    <div class="notification-icon"></div>
+    <div class="notification-content">
+      <p>Yeni bir eşleşme isteği aldınız.</p>
+      <span class="notification-time">{{ formatDate(notification.matched_at) }}</span>
+    </div>
+    <div class="notification-spacer"></div>
+    <!-- Sadece pending olanlara tik/X -->
+    <div v-if="notification.status === 'pending'" class="notification-actions">
+      <button class="accept-btn" @click="handleResponse(notification.match_id, 'accepted')">✔</button>
+      <button class="reject-btn" @click="handleResponse(notification.match_id, 'rejected')">✖</button>
+    </div>
+  </div>
+</div>
+
         </div>
 
         <div v-else-if="currentContent === 'history'" class="content-wrapper">
@@ -475,6 +486,8 @@ export default {
     const selectedFilterDuration = ref(null);
     const selectedFilterDate = ref(null);
 
+    const notifications = ref([]);
+
     // Profil state'leri ve metodları
     const userProfile = ref({
       name: userStore.name,
@@ -548,6 +561,38 @@ export default {
 
       return Object.values(validation).every(v => v === true);
     });
+
+      const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/matches/notifications/${userStore.id}`);
+      if (!response.ok) throw new Error('Bildirimler getirilemedi');
+      const data = await response.json();
+      notifications.value = data.notifications;
+    } catch (error) {
+      console.error('Bildirimler alınamadı:', error);
+    }
+};
+
+watch(() => currentContent.value, (newContent) => {
+  if (newContent === 'notifications') {
+    fetchNotifications();
+  }
+});
+
+const handleResponse = async (matchId, status) => {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/matches/update/${matchId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Güncelleme başarısız');
+    fetchNotifications(); // Yeniden yükle
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
 
     const createStudyRequest = async () => {
       if (!isFormValid.value) {
@@ -896,7 +941,8 @@ export default {
       userStudyRequests,
       cancelProfileEdit,
       saveProfileChanges,
-      confirmDeleteAccount
+      confirmDeleteAccount,
+      notifications
     };
   }
 };
@@ -1474,6 +1520,11 @@ export default {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.notification-spacer {
+  flex: 1; 
+}
+
+
 /* Profil */
 .profile-container {
   background: var(--surface-color);
@@ -1884,4 +1935,39 @@ export default {
   align-items: center;
   gap: 16px;
 }
+.accept-btn,
+.reject-btn {
+  all: unset;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.accept-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #388E3C;
+  transform: scale(1.05);
+}
+
+.reject-btn {
+  background-color: #F44336;
+  color: white;
+}
+
+.reject-btn:hover {
+  background-color: #D32F2F;
+  transform: scale(1.05);
+}
+
 </style>
