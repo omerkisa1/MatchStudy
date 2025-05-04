@@ -9,7 +9,8 @@ from database.matches import (
     update_match_status,
     delete_match,
     list_macthes,
-    get_matches_for_responder
+    get_matches_for_responder,
+    get_old_matches_for_responder
 )
 
 router = APIRouter()
@@ -79,3 +80,11 @@ async def get_match_notifications(user_id: int):
         return {"notifications": matches}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Bildirimler getirilemedi.")
+
+@router.get("/history/{user_id}")
+async def get_old_match_notifications(user_id: int):
+    try:
+        matches = get_old_matches_for_responder(user_id)
+        return {"history": matches}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Geçmiş eşleşmeler getirilemedi.")

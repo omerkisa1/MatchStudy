@@ -148,3 +148,26 @@ def get_matches_for_responder(user_id):
     return results
 
 
+def get_old_matches_for_responder(user_id):
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    query = """
+        SELECT 
+            m.match_id,
+            m.status,
+            m.updated_at,
+            sr.topic,
+            p.name,
+            p.surname
+        FROM matches m
+        JOIN study_requests sr ON m.request_id = sr.request_id
+        JOIN profiles p ON m.requester_id = p.user_id
+        WHERE m.responder_id = %s AND m.status IN ('accepted', 'rejected')
+        ORDER BY m.updated_at DESC
+        LIMIT 10
+    """
+    cursor.execute(query, (user_id,))
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return result

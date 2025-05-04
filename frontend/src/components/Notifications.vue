@@ -42,16 +42,28 @@
             <span class="notification-time">{{ formatTime(notification.matched_at) }}</span>
           </div>
           <p class="notification-message">
-            Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
+          Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
+          Konu: {{ notification.topic }}<br/>
+
+          <div v-if="currentFilter === 'latest'">
+            Durum:
+            <span :style="{ color: notification.status === 'accepted' ? '#4CAF50' : '#F44336' }">
+              {{ notification.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi' }}
+            </span>
+          </div>
+
+          <div v-else>
             Eğitim Seviyesi: {{ notification.education_level }}<br/>
             Kurum: {{ notification.institution }}<br/>
             Süre: {{ notification.duration }}<br/>
             Not: {{ notification.note }}
-          </p>
-          <div class="notification-actions">
-            <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
-            <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
           </div>
+          </p>
+
+          <div class="notification-actions" v-if="notification.status === 'pending'">
+          <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
+          <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
+        </div>
         </div>
       </div>
     </div>
@@ -76,11 +88,13 @@ export default {
     const userStore = useUserStore();
     const notifications = ref([]);
     const currentFilter = ref('all');
+    const recentActivities = ref([]);
 
     const filters = [
       { label: 'Tümü', value: 'all' },
       { label: 'Okunmamış', value: 'unread' },
-      { label: 'Çalışma İstekleri', value: 'study' }
+      { label: 'Çalışma İstekleri', value: 'study' },
+      { label: 'Son Aktiviteler', value: 'latest' }
     ];
 
     const fetchNotifications = async () => {
@@ -91,6 +105,18 @@ export default {
         console.error('Bildirimler alınamadı:', error);
       }
     };
+
+    const fetchRecentActivities = async () => {
+  try {
+    const response = await axios.get(`http://localhost:8000/matches/history/${userStore.id}`);
+    recentActivities.value = response.data.history.map(n => ({ ...n, read: true })); 
+  } catch (error) {
+    console.error("Son aktiviteler alınamadı:", error);
+  }
+};
+const unreadNotifications = computed(() => {
+  return notifications.value.filter(n => !n.read).length;
+});
 
     const formatTime = (timestamp) => {
       const now = new Date();
@@ -118,18 +144,23 @@ export default {
     };
 
     const filteredNotifications = computed(() => {
-      return notifications.value.filter(n => {
-        if (currentFilter.value === 'all') return true;
-        if (currentFilter.value === 'unread') return !n.read;
-        if (currentFilter.value === 'study') return true;
-        return false;
-      });
-    });
+  if (currentFilter.value === 'latest') return recentActivities.value;
 
-    const unreadNotifications = computed(() => notifications.value.filter(n => !n.read).length);
+  return notifications.value.filter(n => {
+    if (currentFilter.value === 'all') return n.status === 'pending';
+    if (currentFilter.value === 'unread') return !n.read && n.status === 'pending';
+    if (currentFilter.value === 'study') return n.type === 'study' && n.status === 'pending';
+    return false;
+  });
+});
+
+
+
+    
 
     onMounted(() => {
       fetchNotifications();
+      fetchRecentActivities();
     });
 
     return {
