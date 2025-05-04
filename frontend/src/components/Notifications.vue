@@ -39,7 +39,14 @@
         <div class="notification-content">
           <div class="notification-header">
             <span class="notification-title">{{ notification.topic }} konusu için eşleşme isteği</span>
-            <span class="notification-time">{{ formatTime(notification.matched_at) }}</span>
+            <p class="notification-time">
+            <span v-if="notification.status === 'pending'">
+              {{ formatTime(notification.matched_at) }} gönderildi
+            </span>
+            <span v-else>
+              {{ formatTime(notification.updated_at) }} {{ notification.status === 'accepted' ? 'kabul edildi' : 'reddedildi' }}
+            </span>
+          </p>
           </div>
           <p class="notification-message">
           Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
@@ -118,17 +125,21 @@ const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read).length;
 });
 
-    const formatTime = (timestamp) => {
-      const now = new Date();
-      const diff = now - new Date(timestamp);
-      const minutes = Math.floor(diff / 60000);
-      const hours = Math.floor(minutes / 60);
-      const days = Math.floor(hours / 24);
-      if (days > 0) return `${days} gün önce`;
-      if (hours > 0) return `${hours} saat önce`;
-      if (minutes > 0) return `${minutes} dakika önce`;
-      return 'Az önce';
-    };
+const formatTime = (timestamp) => {
+  const now = new Date();
+  const time = new Date(timestamp);
+  const diffMs = now - time;
+
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) return "Az önce";
+  if (minutes < 60) return `${minutes} dakika önce`;
+  if (hours < 24) return `${hours} saat önce`;
+  return `${days} gün önce`;
+};
+
 
     const markAllAsRead = () => {
       notifications.value = notifications.value.map(n => ({ ...n, read: true }));
