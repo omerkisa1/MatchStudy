@@ -149,13 +149,12 @@ export const useMatchesStore = defineStore('matches', {
     
     /**
      * Get match status for a specific study request
-     * @returns {Function} - Function that returns match status for a request
+     * @param {Number} requestId - ID of the request to check
+     * @returns {String|null} - Match status or null
      */
-    getMatchStatusForRequest() {
-      return (requestId) => {
-        const match = this.matches.find(m => m.request_id === requestId)
-        return match ? match.status : null
-      }
+    getMatchStatusForRequest(requestId) {
+      const match = this.matches.find(m => m.request_id === requestId)
+      return match ? match.status : null
     }
   }
 }) 

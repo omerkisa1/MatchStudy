@@ -186,7 +186,8 @@ export default {
 
     // Get match status for a request
     const getMatchStatus = (requestId) => {
-      return matchesStore.getMatchStatusForRequest()(requestId);
+      if (!requestId) return null;
+      return matchesStore.matches.find(m => m.request_id === requestId)?.status || null;
     };
 
     // Join study request function - now using the matchesStore
@@ -210,14 +211,18 @@ export default {
 
     // Fetch data on component mount
     onMounted(async () => {
-      // Add event listener
-      window.addEventListener('click', closeDropdowns);
-      
-      // Fetch data from stores
-      await Promise.all([
-        studyRequestsStore.fetchAllRequests(),
-        matchesStore.fetchMatches()
-      ]);
+      try {
+        // Add event listener
+        window.addEventListener('click', closeDropdowns);
+        
+        // Fetch data from stores
+        await Promise.all([
+          studyRequestsStore.fetchAllRequests(),
+          matchesStore.fetchMatches()
+        ]);
+      } catch (error) {
+        console.error('Error initializing discover page:', error);
+      }
     });
 
     onUnmounted(() => {

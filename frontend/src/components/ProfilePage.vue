@@ -1,11 +1,18 @@
 <template>
   <div class="content-wrapper">
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loader"></div>
+    </div>
+    
+    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="success" class="success-message">{{ success }}</div>
+    
     <div class="profile-container">
       <div class="profile-header">
         <div class="profile-avatar-section">
           <div class="profile-avatar">
-            <span v-if="!userProfile.avatar">{{ userInitial }}</span>
-            <img v-else :src="userProfile.avatar" alt="Profil Fotoğrafı" />
+            <span v-if="!profile.avatar">{{ userInitial }}</span>
+            <img v-else :src="profile.avatar" alt="Profil Fotoğrafı" />
           </div>
           <button class="edit-avatar-btn" @click="triggerFileInput">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -22,18 +29,21 @@
             accept="image/*"
             @change="handleAvatarChange"
           />
+          <div v-if="isUploading" class="upload-progress">
+            Yükleniyor... {{ uploadProgress }}%
+          </div>
         </div>
 
         <div class="profile-info">
           <div class="profile-name-section">
             <div>
-              <h2>{{ userProfile.name || 'İsimsiz Kullanıcı' }}</h2>
+              <h2>{{ profile.name || 'İsimsiz Kullanıcı' }}</h2>
               <p class="profile-education">
-                {{ userProfile.university || 'Üniversite' }} - 
-                {{ userProfile.department || 'Bölüm' }}
+                {{ profile.university || 'Üniversite' }} - 
+                {{ profile.department || 'Bölüm' }}
               </p>
             </div>
-            <button class="edit-profile-btn" @click="isEditingProfile = true" v-if="!isEditingProfile">
+            <button class="edit-profile-btn" @click="startEditing" v-if="!isEditing">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -42,20 +52,20 @@
             </button>
           </div>
 
-          <div v-if="!isEditingProfile">
-            <p class="profile-bio">{{ userProfile.bio || 'Henüz bir biyografi eklenmemiş.' }}</p>
+          <div v-if="!isEditing">
+            <p class="profile-bio">{{ profile.bio || 'Henüz bir biyografi eklenmemiş.' }}</p>
             
             <div class="profile-stats">
               <div class="stat-item">
-                <span class="stat-value">{{ userProfile.completedStudies }}</span>
+                <span class="stat-value">{{ profile.completedStudies }}</span>
                 <span class="stat-label">Tamamlanan Çalışma</span>
               </div>
               <div class="stat-item">
-                <span class="stat-value">{{ userProfile.rating }}</span>
+                <span class="stat-value">{{ profile.rating }}</span>
                 <span class="stat-label">Ortalama Puan</span>
               </div>
               <div class="stat-item">
-                <span class="stat-value">{{ userProfile.activeGroups }}</span>
+                <span class="stat-value">{{ profile.activeGroups }}</span>
                 <span class="stat-label">Aktif Grup</span>
               </div>
             </div>
@@ -63,10 +73,11 @@
             <div class="interests-section">
               <h3>İlgi Alanları</h3>
               <div class="interests-container">
-                <span v-for="interest in userProfile.interests" 
+                <span v-for="interest in profile.interests" 
                       :key="interest" 
                       class="interest-tag">
                   {{ interest }}
+                  <button class="remove-interest" @click="removeInterest(interest)">&times;</button>
                 </span>
                 <button class="add-interest-btn" @click="showInterestModal = true">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -82,23 +93,23 @@
           <div v-else class="profile-edit-form">
             <div class="form-group">
               <label>İsim</label>
-              <input type="text" v-model="editProfile.name" class="form-input" />
+              <input type="text" v-model="profileForm.name" class="form-input" />
             </div>
             <div class="form-group">
               <label>Üniversite</label>
-              <input type="text" v-model="editProfile.university" class="form-input" />
+              <input type="text" v-model="profileForm.university" class="form-input" />
             </div>
             <div class="form-group">
               <label>Bölüm</label>
-              <input type="text" v-model="editProfile.department" class="form-input" />
+              <input type="text" v-model="profileForm.department" class="form-input" />
             </div>
             <div class="form-group">
               <label>Biyografi</label>
-              <textarea v-model="editProfile.bio" class="form-textarea"></textarea>
+              <textarea v-model="profileForm.bio" class="form-textarea"></textarea>
             </div>
             <div class="form-actions">
-              <button class="cancel-btn" @click="cancelProfileEdit">İptal</button>
-              <button class="save-btn" @click="saveProfileChanges">Kaydet</button>
+              <button class="cancel-btn" @click="cancelEditing">İptal</button>
+              <button class="save-btn" @click="saveProfile">Kaydet</button>
             </div>
           </div>
         </div>
@@ -106,8 +117,8 @@
 
       <div class="study-history">
         <h3>Çalışma Geçmişi</h3>
-        <div v-if="userStudyRequests.length > 0">
-          <div v-for="request in userStudyRequests" 
+        <div v-if="userRequests.length > 0">
+          <div v-for="request in userRequests" 
                 :key="request.request_id" 
                 class="history-card">
             <div class="history-card-header">
@@ -158,9 +169,75 @@
             <h4>Hesabı Sil</h4>
             <p>Hesabınızı kalıcı olarak silin</p>
           </div>
-          <button class="delete-account-btn" @click="confirmDeleteAccount">
-            Hesabı Sil
-          </button>
+          <div class="delete-account-section">
+            <input
+              v-if="showDeleteConfirm"
+              type="text"
+              v-model="confirmDeleteText"
+              placeholder="Onaylamak için 'DELETE' yazın"
+              class="delete-confirm-input"
+            />
+            <button 
+              class="delete-account-btn" 
+              @click="showDeleteConfirm ? confirmDeleteAccount() : showDeleteConfirm = true">
+              {{ showDeleteConfirm ? 'Onayla' : 'Hesabı Sil' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Interest Modal -->
+    <div v-if="showInterestModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>İlgi Alanı Ekle</h3>
+          <button class="close-btn" @click="showInterestModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input 
+            type="text" 
+            v-model="newInterest" 
+            class="form-input" 
+            placeholder="İlgi alanınızı girin..."
+            @keyup.enter="handleAddInterest"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showInterestModal = false">İptal</button>
+          <button class="save-btn" @click="handleAddInterest">Ekle</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Password Modal -->
+    <div v-if="showPasswordModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Şifre Değiştir</h3>
+          <button class="close-btn" @click="showPasswordModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Mevcut Şifre</label>
+            <input type="password" v-model="currentPassword" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Yeni Şifre</label>
+            <input type="password" v-model="newPassword" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Yeni Şifre (Tekrar)</label>
+            <input type="password" v-model="confirmPassword" class="form-input" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showPasswordModal = false">İptal</button>
+          <button class="save-btn" @click="handlePasswordChange({
+            currentPassword,
+            newPassword,
+            confirmPassword
+          })">Değiştir</button>
         </div>
       </div>
     </div>
@@ -168,37 +245,83 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useProfile } from '../composables/useProfile';
+import { useStudyRequests } from '../composables/useStudyRequests';
 
 export default {
   name: "ProfilePage",
-  props: {
-    userProfile: {
-      type: Object,
-      required: true
-    },
-    userStudyRequests: {
-      type: Array,
-      default: () => []
-    }
-  },
-  emits: ['profileUpdated', 'avatarUpdated', 'passwordChangeRequested', 'deleteAccountRequested'],
-  setup(props, { emit }) {
-    const fileInput = ref(null);
-    const isEditingProfile = ref(false);
+  setup() {
+    // Use composables
+    const { 
+      isLoading, 
+      error, 
+      success, 
+      isEditing, 
+      profileForm, 
+      fileInput, 
+      isUploading,
+      uploadProgress,
+      startEditing, 
+      cancelEditing, 
+      saveProfile, 
+      triggerFileInput, 
+      handleAvatarChange, 
+      addInterest, 
+      removeInterest, 
+      changePassword, 
+      deleteAccount, 
+      userInitial, 
+      profile 
+    } = useProfile();
+
+    const { userRequests, formatDate } = useStudyRequests();
+
+    // New interest input
+    const newInterest = ref('');
     const showInterestModal = ref(false);
     const showPasswordModal = ref(false);
     const showNotificationSettings = ref(false);
-    const editProfile = ref({ ...props.userProfile });
+    const confirmDeleteText = ref('');
+    const showDeleteConfirm = ref(false);
+    
+    // Password change form
+    const currentPassword = ref('');
+    const newPassword = ref('');
+    const confirmPassword = ref('');
 
-    const userInitial = computed(() => {
-      return props.userProfile.name ? props.userProfile.name.charAt(0).toUpperCase() : 'K';
-    });
+    // Handle interest add
+    const handleAddInterest = async () => {
+      if (!newInterest.value.trim()) return;
+      
+      const result = await addInterest(newInterest.value);
+      if (result?.success) {
+        newInterest.value = '';
+        showInterestModal.value = false;
+      }
+    };
 
-    // Format date
-    const formatDate = (dateString) => {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      return new Date(dateString).toLocaleDateString('tr-TR', options);
+    // Handle password change
+    const handlePasswordChange = async (passwordData) => {
+      const result = await changePassword(passwordData);
+      if (result?.success) {
+        showPasswordModal.value = false;
+        // Reset the form
+        currentPassword.value = '';
+        newPassword.value = '';
+        confirmPassword.value = '';
+      }
+    };
+
+    // Handle confirm delete
+    const confirmDeleteAccount = async () => {
+      if (confirm('Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+        const result = await deleteAccount(confirmDeleteText.value);
+        if (result?.success) {
+          // In a real app, this would navigate to the login page
+          window.location.href = '/login';
+        }
+      }
     };
 
     // Format duration
@@ -206,64 +329,41 @@ export default {
       return duration;
     };
 
-    const triggerFileInput = () => {
-      fileInput.value.click();
-    };
-
-    const handleAvatarChange = async (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        try {
-          // Dosya yükleme simülasyonu - gerçek uygulamada API'ye yüklenecek
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            emit('avatarUpdated', e.target.result);
-          };
-          reader.readAsDataURL(file);
-          alert('Profil fotoğrafı başarıyla yüklendi!');
-        } catch (error) {
-          alert('Profil fotoğrafı yüklenirken bir hata oluştu.');
-        }
-      }
-    };
-
-    const cancelProfileEdit = () => {
-      isEditingProfile.value = false;
-      editProfile.value = { ...props.userProfile };
-    };
-
-    const saveProfileChanges = async () => {
-      try {
-        // API'ye profil güncelleme isteği gönderilecek
-        emit('profileUpdated', { ...editProfile.value });
-        isEditingProfile.value = false;
-        alert('Profil başarıyla güncellendi!');
-      } catch (error) {
-        alert('Profil güncellenirken bir hata oluştu.');
-      }
-    };
-
-    const confirmDeleteAccount = () => {
-      if (confirm('Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
-        emit('deleteAccountRequested');
-      }
-    };
-
     return {
+      // From composables
+      isLoading,
+      error,
+      success,
+      isEditing,
+      profileForm,
       fileInput,
-      isEditingProfile,
-      editProfile,
+      isUploading,
+      uploadProgress,
+      startEditing,
+      cancelEditing,
+      saveProfile,
+      triggerFileInput,
+      handleAvatarChange,
+      userInitial,
+      profile,
+      userRequests,
+      formatDate,
+      
+      // Local state and methods
+      newInterest,
       showInterestModal,
       showPasswordModal,
       showNotificationSettings,
-      userInitial,
-      formatDate,
-      formatDuration,
-      triggerFileInput,
-      handleAvatarChange,
-      cancelProfileEdit,
-      saveProfileChanges,
-      confirmDeleteAccount
+      confirmDeleteText,
+      showDeleteConfirm,
+      currentPassword,
+      newPassword,
+      confirmPassword,
+      handleAddInterest,
+      removeInterest,
+      handlePasswordChange,
+      confirmDeleteAccount,
+      formatDuration
     };
   }
 }
@@ -700,5 +800,138 @@ export default {
     gap: 1rem;
     text-align: center;
   }
+}
+
+/* New styles for the composable approach */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loader {
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  border-top: 3px solid var(--primary-color);
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+.error-message, .success-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  background: rgba(244, 67, 54, 0.1);
+  color: #F44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.success-message {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4CAF50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.upload-progress {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--surface-color);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delete-account-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.delete-confirm-input {
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-radius: 4px;
+}
+
+.remove-interest {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.remove-interest:hover {
+  opacity: 1;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style> 

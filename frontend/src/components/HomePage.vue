@@ -9,10 +9,6 @@
         <!-- Home Dashboard -->
         <HomeDashboard 
           v-if="currentContent === 'home'" 
-          :userProfile="userProfile"
-          :userStudyRequests="userStudyRequests"
-          :pendingMatches="pendingMatches"
-          :notifications="notifications"
           :navigateTo="navigateTo"
         />
 
@@ -26,9 +22,6 @@
         <!-- Discover Page -->
         <DiscoverPage 
           v-else-if="currentContent === 'discover'" 
-          :userId="userStore.id"
-          :studyRequests="studyRequests"
-          @requestUpdated="fetchStudyRequests"
         />
 
         <!-- Messages Page -->
@@ -43,12 +36,6 @@
         <!-- Profile Page -->
         <ProfilePage 
           v-else-if="currentContent === 'profile'" 
-          :userProfile="userProfile"
-          :userStudyRequests="userStudyRequests"
-          @profileUpdated="handleProfileUpdated"
-          @avatarUpdated="handleAvatarUpdated"
-          @passwordChangeRequested="handlePasswordChangeRequested"
-          @deleteAccountRequested="handleDeleteAccountRequested"
         />
       </transition>
     </main>
