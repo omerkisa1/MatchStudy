@@ -1,0 +1,55 @@
+-- 1. DATABASE OLUŞTUR
+DROP DATABASE IF EXISTS match_study;
+CREATE DATABASE match_study;
+USE match_study;
+
+-- 2. USERS
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 3. PROFILES
+CREATE TABLE profiles (
+    profile_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    surname VARCHAR(50) NOT NULL,
+    age INT,
+    education_level VARCHAR(50), -- enum yerine
+    institution VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 4. STUDY_REQUESTS
+CREATE TABLE study_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    duration VARCHAR(20) DEFAULT '1-2 saat',
+    study_date DATE NOT NULL,
+    topic VARCHAR(255),
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 5. MATCHES
+CREATE TABLE matches (
+    match_id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL,
+    requester_id INT NOT NULL,
+    responder_id INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    matched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES study_requests(request_id) ON DELETE CASCADE,
+    FOREIGN KEY (requester_id) REFERENCES users(id),
+    FOREIGN KEY (responder_id) REFERENCES users(id)
+);
