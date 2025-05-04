@@ -1,4 +1,3 @@
-<!-- Bildirimler Sayfası -->
 <template>
   <div class="notifications-container">
     <div class="notifications-header">
@@ -27,42 +26,31 @@
     <div class="notifications-list" v-if="filteredNotifications.length > 0">
       <div 
         v-for="notification in filteredNotifications" 
-        :key="notification.id"
+        :key="notification.match_id"
         :class="['notification-item', { unread: !notification.read }]"
       >
-        <div class="notification-icon" :class="notification.type">
-          <!-- Çalışma İsteği İkonu -->
-          <svg v-if="notification.type === 'study'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="notification-icon study">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 20h9"/>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
           </svg>
-          <!-- Mesaj İkonu -->
-          <svg v-else-if="notification.type === 'message'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <!-- Sistem İkonu -->
-          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
         </div>
-        
+
         <div class="notification-content">
           <div class="notification-header">
-            <span class="notification-title">{{ notification.title }}</span>
-            <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
+            <span class="notification-title">{{ notification.topic }} konusu için eşleşme isteği</span>
+            <span class="notification-time">{{ formatTime(notification.matched_at) }}</span>
           </div>
-          <p class="notification-message">{{ notification.message }}</p>
-          <div class="notification-actions" v-if="notification.actions">
-            <button 
-              v-for="action in notification.actions" 
-              :key="action.label"
-              :class="['action-btn', action.type]"
-              @click="handleAction(action, notification)"
-            >
-              {{ action.label }}
-            </button>
+          <p class="notification-message">
+            Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
+            Eğitim Seviyesi: {{ notification.education_level }}<br/>
+            Kurum: {{ notification.institution }}<br/>
+            Süre: {{ notification.duration }}<br/>
+            Not: {{ notification.note }}
+          </p>
+          <div class="notification-actions">
+            <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
+            <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
           </div>
         </div>
       </div>
@@ -78,54 +66,31 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import axios from 'axios';
+import { useUserStore } from '@/stores/userStore';
 
 export default {
   name: 'Notifications',
   setup() {
-    const notifications = ref([
-      {
-        id: 1,
-        type: 'study',
-        title: 'Yeni Çalışma İsteği',
-        message: 'Türev ve İntegral konusunda yeni bir çalışma isteği aldınız.',
-        timestamp: new Date(),
-        read: false,
-        actions: [
-          { label: 'Kabul Et', type: 'accept' },
-          { label: 'Reddet', type: 'reject' }
-        ]
-      },
-      {
-        id: 2,
-        type: 'message',
-        title: 'Yeni Mesaj',
-        message: 'Ali size yeni bir mesaj gönderdi.',
-        timestamp: new Date(Date.now() - 3600000),
-        read: true
-      }
-    ]);
+    const userStore = useUserStore();
+    const notifications = ref([]);
+    const currentFilter = ref('all');
 
     const filters = [
       { label: 'Tümü', value: 'all' },
       { label: 'Okunmamış', value: 'unread' },
-      { label: 'Çalışma İstekleri', value: 'study' },
-      { label: 'Mesajlar', value: 'message' }
+      { label: 'Çalışma İstekleri', value: 'study' }
     ];
 
-    const currentFilter = ref('all');
-
-    const filteredNotifications = computed(() => {
-      return notifications.value.filter(notification => {
-        if (currentFilter.value === 'all') return true;
-        if (currentFilter.value === 'unread') return !notification.read;
-        return notification.type === currentFilter.value;
-      });
-    });
-
-    const unreadNotifications = computed(() => {
-      return notifications.value.filter(n => !n.read).length;
-    });
+    const fetchNotifications = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8000/matches/notifications/${userStore.id}`);
+        notifications.value = response.data.notifications.map(n => ({ ...n, read: false }));
+      } catch (error) {
+        console.error('Bildirimler alınamadı:', error);
+      }
+    };
 
     const formatTime = (timestamp) => {
       const now = new Date();
@@ -133,7 +98,6 @@ export default {
       const minutes = Math.floor(diff / 60000);
       const hours = Math.floor(minutes / 60);
       const days = Math.floor(hours / 24);
-
       if (days > 0) return `${days} gün önce`;
       if (hours > 0) return `${hours} saat önce`;
       if (minutes > 0) return `${minutes} dakika önce`;
@@ -144,27 +108,39 @@ export default {
       notifications.value = notifications.value.map(n => ({ ...n, read: true }));
     };
 
-    const handleAction = (action, notification) => {
-      if (action.type === 'accept') {
-        // Çalışma isteğini kabul et
-        console.log('Çalışma isteği kabul edildi:', notification.id);
-      } else if (action.type === 'reject') {
-        // Çalışma isteğini reddet
-        console.log('Çalışma isteği reddedildi:', notification.id);
+    const respondToMatch = async (matchId, status) => {
+      try {
+        await axios.put(`http://localhost:8000/matches/update/${matchId}?status=${status}`);
+        notifications.value = notifications.value.map(n => n.match_id === matchId ? { ...n, read: true } : n);
+      } catch (error) {
+        console.error('Durum güncellenemedi:', error);
       }
-      // Bildirimi okundu olarak işaretle
-      notification.read = true;
     };
+
+    const filteredNotifications = computed(() => {
+      return notifications.value.filter(n => {
+        if (currentFilter.value === 'all') return true;
+        if (currentFilter.value === 'unread') return !n.read;
+        if (currentFilter.value === 'study') return true;
+        return false;
+      });
+    });
+
+    const unreadNotifications = computed(() => notifications.value.filter(n => !n.read).length);
+
+    onMounted(() => {
+      fetchNotifications();
+    });
 
     return {
       notifications,
-      filters,
       currentFilter,
+      filters,
       filteredNotifications,
       unreadNotifications,
       formatTime,
       markAllAsRead,
-      handleAction
+      respondToMatch
     };
   }
 };

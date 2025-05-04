@@ -7,3 +7,6 @@
 
 2- diyelim fastapi-uvicorn başlatmak istiyorsun local sunucuda endpointleri test edeceksin.
     uvicorn backend.main:app --reload yazıcaksın.
+
+
+---npm install pinia---

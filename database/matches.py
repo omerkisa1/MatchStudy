@@ -77,7 +77,7 @@ def update_match_status(match_id, status):
         return
     try:
         cursor = connection.cursor()
-        query = "UPDATE matches SET status = %s WHERE id = %s"
+        query = "UPDATE matches SET status = %s WHERE match_id = %s"
         cursor.execute(query, (status, match_id))
         connection.commit()
         print(f"Eşleşme {match_id} başarıyla güncellendi.")

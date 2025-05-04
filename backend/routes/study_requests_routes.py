@@ -94,3 +94,4 @@ async def list_user_requests_endpoint(user_id: int):
         return {"message": "User requests found", "requests": requests}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Kullanıcı istekleri getirilemedi.") 
+    
