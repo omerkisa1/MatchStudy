@@ -1,7 +1,7 @@
 <template>
   <div class="content-wrapper">
     <div class="dashboard-welcome">
-      <h1>Hoş Geldiniz, {{ userProfile.name || 'Öğrenci' }}</h1>
+      <h1>Hoş Geldiniz, {{ userStore.displayName }}</h1>
       <p class="welcome-subtitle">Birlikte öğrenmeye başlamak için bir seçenek seçin</p>
     </div>
     
@@ -46,16 +46,21 @@
     
     <!-- Quick Stats -->
     <QuickStats 
-      :openRequestsCount="userStudyRequests.length"
-      :pendingMatchesCount="pendingMatches"
-      :notificationCount="notifications.length"
+      :openRequestsCount="studyRequestsStore.openRequests.length"
+      :pendingMatchesCount="matchesStore.pendingMatchesCount"
+      :notificationCount="notificationsStore.unreadCount"
     />
   </div>
 </template>
 
 <script>
+import { onMounted } from 'vue';
 import DashboardCard from './DashboardCard.vue';
 import QuickStats from './QuickStats.vue';
+import { useUserStore } from '../stores/userStore';
+import { useStudyRequestsStore } from '../stores/studyRequestsStore';
+import { useMatchesStore } from '../stores/matchesStore';
+import { useNotificationsStore } from '../stores/notificationsStore';
 
 export default {
   name: "HomeDashboard",
@@ -64,26 +69,37 @@ export default {
     QuickStats
   },
   props: {
-    userProfile: {
-      type: Object,
-      required: true
-    },
-    userStudyRequests: {
-      type: Array,
-      default: () => []
-    },
-    pendingMatches: {
-      type: Number,
-      default: 0
-    },
-    notifications: {
-      type: Array,
-      default: () => []
-    },
     navigateTo: {
       type: Function,
       required: true
     }
+  },
+  setup() {
+    // Use stores instead of props
+    const userStore = useUserStore();
+    const studyRequestsStore = useStudyRequestsStore();
+    const matchesStore = useMatchesStore();
+    const notificationsStore = useNotificationsStore();
+
+    // Fetch data on component mount
+    onMounted(async () => {
+      // Ensure user profile is loaded
+      await userStore.fetchUserProfile();
+      
+      // Load data needed for stats
+      await Promise.all([
+        studyRequestsStore.fetchUserRequests(),
+        matchesStore.fetchMatches(),
+        notificationsStore.fetchNotifications()
+      ]);
+    });
+
+    return {
+      userStore,
+      studyRequestsStore,
+      matchesStore,
+      notificationsStore
+    };
   }
 }
 </script>

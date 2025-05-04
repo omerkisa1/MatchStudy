@@ -73,11 +73,11 @@
           </div>
           <button
             class="join-btn"
-            :disabled="request.matchStatus === 'pending' || request.matchStatus === 'accepted'"
+            :disabled="getMatchStatus(request.request_id) === 'pending' || getMatchStatus(request.request_id) === 'accepted'"
             @click="joinStudyRequest(request)">
-            <template v-if="request.matchStatus === 'pending'">İstek Gönderildi</template>
-            <template v-else-if="request.matchStatus === 'accepted'">Kabul Edildi</template>
-            <template v-else-if="request.matchStatus === 'rejected'">Tekrar Gönder</template>
+            <template v-if="getMatchStatus(request.request_id) === 'pending'">İstek Gönderildi</template>
+            <template v-else-if="getMatchStatus(request.request_id) === 'accepted'">Kabul Edildi</template>
+            <template v-else-if="getMatchStatus(request.request_id) === 'rejected'">Tekrar Gönder</template>
             <template v-else>İstek Gönder</template>
           </button>
         </div>
@@ -87,33 +87,29 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useUserStore } from '../stores/userStore';
+import { useStudyRequestsStore } from '../stores/studyRequestsStore';
+import { useMatchesStore } from '../stores/matchesStore';
 
 export default {
   name: "DiscoverPage",
-  props: {
-    userId: {
-      type: Number,
-      required: true
-    },
-    studyRequests: {
-      type: Array,
-      default: () => []
-    }
-  },
-  emits: ['requestUpdated'],
-  setup(props, { emit }) {
-    // Filtre state'leri
-    const selectedFilterCategory = ref(null);
-    const selectedFilterDuration = ref(null);
-    const selectedFilterDate = ref(null);
-    const isLoadingRequests = ref(false);
+  setup() {
+    // Stores
+    const userStore = useUserStore();
+    const studyRequestsStore = useStudyRequestsStore();
+    const matchesStore = useMatchesStore();
 
-    // Dropdowns state
+    // UI state
     const dropdowns = ref({
       filterCategory: false,
       filterDuration: false
     });
+
+    // Filter state - now directly linked to store
+    const selectedFilterCategory = ref(null);
+    const selectedFilterDuration = ref(null);
+    const selectedFilterDate = ref(null);
 
     // Categories
     const categories = [
@@ -154,84 +150,74 @@ export default {
       return today.toISOString().split('T')[0];
     };
 
-    // Tarih formatla
+    // Format date
     const formatDate = (dateString) => {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString('tr-TR', options);
     };
 
-    // Süre formatla
+    // Format duration
     const formatDuration = (duration) => {
       return duration;
     };
 
-    // Filtre seçim fonksiyonları
+    // Filter selection functions - now updating the store
     const selectFilterCategory = (category) => {
       selectedFilterCategory.value = category;
+      studyRequestsStore.setFilters({ category });
       dropdowns.value.filterCategory = false;
     };
 
     const selectFilterDuration = (duration) => {
       selectedFilterDuration.value = duration;
+      studyRequestsStore.setFilters({ duration });
       dropdowns.value.filterDuration = false;
     };
 
-    // Filtrelenmiş çalışma istekleri
-    const filteredStudyRequests = computed(() => {
-      return props.studyRequests.filter(request => {
-        let matchCategory = true;
-        let matchDuration = true;
-        let matchDate = true;
-
-        const notOwnRequest = request.user_id !== props.userId;
-        // Kategori filtresi
-        if (selectedFilterCategory.value) {
-          matchCategory = request.category === selectedFilterCategory.value;
-        }
-
-        // Süre filtresi
-        if (selectedFilterDuration.value) {
-          matchDuration = request.duration === parseInt(selectedFilterDuration.value.value.split('-')[1]);
-        }
-
-        // Tarih filtresi
-        if (selectedFilterDate.value) {
-          const requestDate = new Date(request.study_date).toISOString().split('T')[0];
-          matchDate = requestDate === selectedFilterDate.value;
-        }
-
-        return matchCategory && matchDuration && matchDate && notOwnRequest;
-      });
+    // Watch for date filter changes
+    watch(selectedFilterDate, (newDate) => {
+      studyRequestsStore.setFilters({ date: newDate });
     });
 
+    // Get filtered study requests from the store
+    const filteredStudyRequests = computed(() => {
+      return studyRequestsStore.filteredRequests;
+    });
+
+    // Get match status for a request
+    const getMatchStatus = (requestId) => {
+      return matchesStore.getMatchStatusForRequest()(requestId);
+    };
+
+    // Join study request function - now using the matchesStore
     const joinStudyRequest = async (request) => {
-      if (props.userId === request.user_id) {
+      if (userStore.id === request.user_id) {
         alert("Kendi isteğinize başvuru yapamazsınız.");
         return;
       }
 
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/matches/create?user1_id=${props.userId}&user2_id=${request.user_id}&request_id=${request.request_id}`, {
-          method: 'POST'
-        });
+      const result = await matchesStore.createMatch({
+        user2_id: request.user_id,
+        request_id: request.request_id
+      });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.detail || 'İstek gönderilemedi.');
-        }
-
+      if (result.success) {
         alert('İstek başarıyla gönderildi.');
-        emit('requestUpdated');
-      } catch (error) {
-        console.error(error);
-        alert(error.message || 'Bir hata oluştu.');
+      } else {
+        alert(result.error || 'Bir hata oluştu.');
       }
     };
 
-    // Lifecycle hooks
-    onMounted(() => {
+    // Fetch data on component mount
+    onMounted(async () => {
+      // Add event listener
       window.addEventListener('click', closeDropdowns);
+      
+      // Fetch data from stores
+      await Promise.all([
+        studyRequestsStore.fetchAllRequests(),
+        matchesStore.fetchMatches()
+      ]);
     });
 
     onUnmounted(() => {
@@ -239,24 +225,33 @@ export default {
     });
 
     return {
+      // Stores
+      userStore,
+      studyRequestsStore,
+      
+      // UI state
+      dropdowns,
       selectedFilterCategory,
       selectedFilterDuration,
       selectedFilterDate,
-      isLoadingRequests,
-      dropdowns,
       categories,
       durations,
+      
+      // Computed
       filteredStudyRequests,
+      
+      // Methods
       toggleDropdown,
       selectFilterCategory,
       selectFilterDuration,
       formatDate,
       formatDuration,
       joinStudyRequest,
-      getCurrentDate
+      getCurrentDate,
+      getMatchStatus
     };
   }
-}
+};
 </script>
 
 <style scoped>
