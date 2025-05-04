@@ -72,21 +72,11 @@
 
             <div class="interests-section">
               <h3>İlgi Alanları</h3>
-              <div class="interests-container">
-                <span v-for="interest in profile.interests" 
-                      :key="interest" 
-                      class="interest-tag">
-                  {{ interest }}
-                  <button class="remove-interest" @click="removeInterest(interest)">&times;</button>
-                </span>
-                <button class="add-interest-btn" @click="showInterestModal = true">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  İlgi Alanı Ekle
-                </button>
-              </div>
+              <InterestTags 
+                :interests="profile.interests" 
+                @remove-interest="removeInterest" 
+                @add-interest="showInterestModal = true" 
+              />
             </div>
           </div>
 
@@ -248,9 +238,13 @@
 import { ref, onMounted } from 'vue';
 import { useProfile } from '../composables/useProfile';
 import { useStudyRequests } from '../composables/useStudyRequests';
+import InterestTags from './InterestTags.vue';
 
 export default {
   name: "ProfilePage",
+  components: {
+    InterestTags
+  },
   setup() {
     // Use composables
     const { 
