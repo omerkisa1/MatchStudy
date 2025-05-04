@@ -15,7 +15,17 @@
   
         <!-- Ana Menü -->
         <div class="nav-menu">
-          <a @click="changeContent('create-request')" :class="['nav-item', { active: currentContent === 'create-request' }]">
+          <a @click="navigateTo('home')" :class="['nav-item', { active: currentContent === 'home' }]">
+            <div class="nav-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <span>Ana Sayfa</span>
+          </a>
+
+          <a @click="navigateTo('create-request')" :class="['nav-item', { active: currentContent === 'create-request' }]">
             <div class="nav-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 5v14M5 12h14"/>
@@ -24,7 +34,7 @@
             <span>Ders İsteği Oluştur</span>
           </a>
 
-          <a @click="changeContent('discover')" :class="['nav-item', { active: currentContent === 'discover' }]">
+          <a @click="navigateTo('discover')" :class="['nav-item', { active: currentContent === 'discover' }]">
             <div class="nav-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
@@ -34,7 +44,7 @@
             <span>Keşfet</span>
           </a>
 
-          <a @click="changeContent('messages')" :class="['nav-item', { active: currentContent === 'messages' }]">
+          <a @click="navigateTo('messages')" :class="['nav-item', { active: currentContent === 'messages' }]">
             <div class="nav-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -43,7 +53,7 @@
             <span>Mesajlar</span>
           </a>
 
-          <a @click="changeContent('notifications')" :class="['nav-item', { active: currentContent === 'notifications' }]">
+          <a @click="navigateTo('notifications')" :class="['nav-item', { active: currentContent === 'notifications' }]">
             <div class="nav-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -53,7 +63,7 @@
             <span>Bildirimler</span>
           </a>
 
-          <a @click="changeContent('history')" :class="['nav-item', { active: currentContent === 'history' }]">
+          <a @click="navigateTo('history')" :class="['nav-item', { active: currentContent === 'history' }]">
             <div class="nav-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -67,7 +77,7 @@
 
       <!-- Profil Bölümü (En Alt) -->
       <div class="profile-section">
-        <a @click="changeContent('profile')" :class="['nav-item', { active: currentContent === 'profile' }]">
+        <a @click="navigateTo('profile')" :class="['nav-item', { active: currentContent === 'profile' }]">
           <div class="nav-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -83,8 +93,63 @@
     <main class="main-content">
       <transition name="fade" mode="out-in">
         <div v-if="currentContent === 'home'" class="content-wrapper">
-          <h1>Hoş Geldiniz</h1>
-        <p>Birlikte öğrenmek için eşleşmelerini yönet, çalışma isteklerini oluştur ve profilini tamamla.</p>
+          <div class="dashboard-welcome">
+            <h1>Hoş Geldiniz, {{ userProfile.name || 'Öğrenci' }}</h1>
+            <p class="welcome-subtitle">Birlikte öğrenmeye başlamak için bir seçenek seçin</p>
+          </div>
+          
+          <div class="dashboard-grid">
+            <div class="dashboard-card" @click="navigateTo('create-request')">
+              <div class="card-icon">✏️</div>
+              <h2>Ders İsteği Oluştur</h2>
+              <p>Öğrenmek istediğiniz konularda eşleşmeler bulmak için ders isteği oluşturun.</p>
+              <div class="card-overlay">
+                <span class="card-cta">Şimdi Başla →</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card" @click="navigateTo('discover')">
+              <div class="card-icon">🔍</div>
+              <h2>Keşfet</h2>
+              <p>Diğer öğrencilerin ders isteklerini keşfedin ve ilgi duyduğunuz konulara katılın.</p>
+              <div class="card-overlay">
+                <span class="card-cta">Keşfet →</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card" @click="navigateTo('profile')">
+              <div class="card-icon">👤</div>
+              <h2>Profil</h2>
+              <p>Profilinizi özelleştirin, ilgi alanlarınızı belirtin ve eşleşme şansınızı artırın.</p>
+              <div class="card-overlay">
+                <span class="card-cta">Profili Düzenle →</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card" @click="navigateTo('notifications')">
+              <div class="card-icon">🔔</div>
+              <h2>Bildirimler</h2>
+              <p>Yeni eşleşmeler ve ders isteği güncellemeleri hakkında bildirimlerinizi görüntüleyin.</p>
+              <div class="card-overlay">
+                <span class="card-cta">Bildirimleri Gör →</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="quick-stats">
+            <div class="stat">
+              <span class="stat-value">{{ userStudyRequests.length }}</span>
+              <span class="stat-label">Açık İstekler</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">{{ pendingMatches }}</span>
+              <span class="stat-label">Bekleyen Eşleşmeler</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">{{ notifications.length }}</span>
+              <span class="stat-label">Yeni Bildirim</span>
+            </div>
+          </div>
         </div>
 
         <div v-else-if="currentContent === 'create-request'" class="content-wrapper">
@@ -519,6 +584,21 @@ export default {
     const showNotificationSettings = ref(false);
     const userStudyRequests = ref([]);
 
+    // New navigation function
+    const navigateTo = (content) => {
+      currentContent.value = content;
+      // Optionally update URL without page reload
+      window.history.pushState(null, '', `#${content}`);
+    };
+
+    // Computed property for pending matches
+    const pendingMatches = computed(() => {
+      // Count how many study requests have pending matches
+      return studyRequests.value.filter(request => 
+        request.matchStatus === 'pending'
+      ).length;
+    });
+
     // Check user authentication
     onMounted(async () => {
       // localStorage'dan kullanıcı bilgilerini al
@@ -539,6 +619,12 @@ export default {
       // Store'da kullanıcı bilgileri yoksa ve localStorage'da da yoksa login'e yönlendir
       if (!userStore.isAuthenticated && !userId) {
         router.push('/login');
+      }
+
+      // Check URL hash for direct navigation
+      const hash = window.location.hash.replace('#', '');
+      if (hash && ['create-request', 'discover', 'messages', 'notifications', 'history', 'profile'].includes(hash)) {
+        currentContent.value = hash;
       }
     });
 
@@ -985,7 +1071,9 @@ const handleResponse = async (matchId, status) => {
       userInitial,
       triggerFileInput,
       handleAvatarChange,
-      fileInput
+      fileInput,
+      pendingMatches,
+      navigateTo
     };
   }
 };
@@ -2093,6 +2181,176 @@ const handleResponse = async (matchId, status) => {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+
+/* Dashboard Grid styles */
+.dashboard-welcome {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.dashboard-welcome h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, var(--primary-light), var(--accent-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.welcome-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.dashboard-card {
+  position: relative;
+  background: rgba(45, 35, 75, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.dashboard-card:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: inline-block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.dashboard-card h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.dashboard-card p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+.card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 2rem;
+  background: linear-gradient(to top, rgba(30, 22, 54, 0.9), transparent);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dashboard-card:hover .card-overlay {
+  transform: translateY(0);
+}
+
+.card-cta {
+  color: var(--accent-color);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Quick Stats styles */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  background: rgba(45, 35, 75, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-light);
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-welcome h1 {
+    font-size: 2rem;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .quick-stats {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stat {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .stat:last-child {
+    border-bottom: none;
+  }
 }
 
 </style>
