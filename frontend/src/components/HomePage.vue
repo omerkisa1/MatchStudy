@@ -272,38 +272,7 @@
         </div>
 
         <div v-else-if="currentContent === 'notifications'" class="content-wrapper">
-          <h1>Bildirimler</h1>
-          <div class="notifications-list">
-  <div 
-    v-for="notification in notifications" 
-    :key="notification.match_id" 
-    class="notification-item"
-  >
-    <div class="notification-icon"></div>
-    <div class="notification-content">
-  <p>
-    <strong>{{ notification.requester_name }}</strong> adlı kullanıcı 
-    <strong>{{ notification.category }}</strong> dersi için 
-    <strong>"{{ notification.topic }}"</strong> başlıklı bir istek gönderdi.
-  </p>
-  <p class="notification-note">
-    {{ notification.note }}
-  </p>
-  <p class="notification-details">
-    Tarih: {{ formatDate(notification.study_date) }} – Süre: {{ notification.duration }} saat
-  </p>
-  <span class="notification-time">{{ formatDate(notification.matched_at) }}</span>
-</div>
-
-    <div class="notification-spacer"></div>
-    <!-- Sadece pending olanlara tik/X -->
-    <div v-if="notification.status === 'pending'" class="notification-actions">
-      <button class="accept-btn" @click="handleResponse(notification.match_id, 'accepted')">✔</button>
-      <button class="reject-btn" @click="handleResponse(notification.match_id, 'rejected')">✖</button>
-    </div>
-  </div>
-</div>
-
+          <Notifications />
         </div>
 
         <div v-else-if="currentContent === 'history'" class="content-wrapper">
@@ -320,6 +289,173 @@
             </div>
           </div>
         </div>
+
+        <div v-else-if="currentContent === 'profile'" class="content-wrapper">
+          <div class="profile-container">
+            <div class="profile-header">
+              <div class="profile-avatar-section">
+                <div class="profile-avatar">
+                  <span v-if="!userProfile.avatar">{{ userInitial }}</span>
+                  <img v-else :src="userProfile.avatar" alt="Profil Fotoğrafı" />
+                </div>
+                <button class="edit-avatar-btn" @click="triggerFileInput">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Fotoğraf Yükle
+                </button>
+                <input 
+                  type="file" 
+                  ref="fileInput" 
+                  style="display: none" 
+                  accept="image/*"
+                  @change="handleAvatarChange"
+                />
+              </div>
+
+              <div class="profile-info">
+                <div class="profile-name-section">
+                  <div>
+                    <h2>{{ userProfile.name || 'İsimsiz Kullanıcı' }}</h2>
+                    <p class="profile-education">
+                      {{ userProfile.university || 'Üniversite' }} - 
+                      {{ userProfile.department || 'Bölüm' }}
+                    </p>
+                  </div>
+                  <button class="edit-profile-btn" @click="isEditingProfile = true" v-if="!isEditingProfile">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Profili Düzenle
+                  </button>
+                </div>
+
+                <div v-if="!isEditingProfile">
+                  <p class="profile-bio">{{ userProfile.bio || 'Henüz bir biyografi eklenmemiş.' }}</p>
+                  
+                  <div class="profile-stats">
+                    <div class="stat-item">
+                      <span class="stat-value">{{ userProfile.completedStudies }}</span>
+                      <span class="stat-label">Tamamlanan Çalışma</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-value">{{ userProfile.rating }}</span>
+                      <span class="stat-label">Ortalama Puan</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-value">{{ userProfile.activeGroups }}</span>
+                      <span class="stat-label">Aktif Grup</span>
+                    </div>
+                  </div>
+
+                  <div class="interests-section">
+                    <h3>İlgi Alanları</h3>
+                    <div class="interests-container">
+                      <span v-for="interest in userProfile.interests" 
+                            :key="interest" 
+                            class="interest-tag">
+                        {{ interest }}
+                      </span>
+                      <button class="add-interest-btn" @click="showInterestModal = true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        İlgi Alanı Ekle
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="profile-edit-form">
+                  <div class="form-group">
+                    <label>İsim</label>
+                    <input type="text" v-model="editProfile.name" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Üniversite</label>
+                    <input type="text" v-model="editProfile.university" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Bölüm</label>
+                    <input type="text" v-model="editProfile.department" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Biyografi</label>
+                    <textarea v-model="editProfile.bio" class="form-textarea"></textarea>
+                  </div>
+                  <div class="form-actions">
+                    <button class="cancel-btn" @click="cancelProfileEdit">İptal</button>
+                    <button class="save-btn" @click="saveProfileChanges">Kaydet</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="study-history">
+              <h3>Çalışma Geçmişi</h3>
+              <div v-if="userStudyRequests.length > 0">
+                <div v-for="request in userStudyRequests" 
+                     :key="request.request_id" 
+                     class="history-card">
+                  <div class="history-card-header">
+                    <h4>{{ request.topic }}</h4>
+                    <span class="tag">{{ request.category }}</span>
+                  </div>
+                  <p>{{ request.note }}</p>
+                  <div class="history-card-footer">
+                    <div>
+                      <span class="date">{{ formatDate(request.study_date) }}</span>
+                      <span class="duration">{{ formatDuration(request.duration) }} saat</span>
+                    </div>
+                    <span :class="['status', (request.status || 'pending').toLowerCase()]">
+                      {{ request.status || 'Beklemede' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="empty-state">
+                Henüz bir çalışma geçmişiniz bulunmuyor.
+              </div>
+            </div>
+
+            <div class="settings-container">
+              <h3>Hesap Ayarları</h3>
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h4>Şifre Değiştir</h4>
+                  <p>Hesap güvenliğiniz için şifrenizi düzenli olarak değiştirin</p>
+                </div>
+                <button class="setting-btn" @click="showPasswordModal = true">
+                  Şifre Değiştir
+                </button>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h4>Bildirim Ayarları</h4>
+                  <p>E-posta ve uygulama bildirimlerini yönetin</p>
+                </div>
+                <button class="setting-btn" @click="showNotificationSettings = true">
+                  Ayarları Düzenle
+                </button>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h4>Hesabı Sil</h4>
+                  <p>Hesabınızı kalıcı olarak silin</p>
+                </div>
+                <button class="delete-account-btn" @click="confirmDeleteAccount">
+                  Hesabı Sil
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </transition>
     </main>
   </div>
@@ -330,13 +466,18 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useRouter } from 'vue-router';
 import ProfileSection from '@/components/ProfileSection.vue';
+import Notifications from './Notifications.vue';
 
 export default {
   name: "HomePage",
+  components: {
+    Notifications
+  },
   setup() {
     const router = useRouter();
     const currentContent = ref('home');
     const userStore = useUserStore();
+    const fileInput = ref(null);
 
     // Form state
     const selectedCategory = ref(null);
@@ -357,18 +498,18 @@ export default {
 
     const notifications = ref([]);
 
-    // Profil state'leri ve metodları
+    // Profil state'leri
     const userProfile = ref({
-      name: userStore.name,
-      email: userStore.email,
-      university: '',
-      department: '',
-      bio: '',
+      name: userStore.name || 'İsimsiz Kullanıcı',
+      email: userStore.email || '',
+      university: 'Üniversite',
+      department: 'Bölüm',
+      bio: 'Henüz bir biyografi eklenmemiş.',
       avatar: null,
       completedStudies: 0,
       rating: '0.0',
       activeGroups: 0,
-      interests: []
+      interests: ['Matematik', 'Fizik', 'Programlama']
     });
 
     const isEditingProfile = ref(false);
@@ -732,7 +873,6 @@ const handleResponse = async (matchId, status) => {
 
     const saveProfileChanges = async () => {
       try {
-        // API çağrısı yapılacak
         userProfile.value = { ...editProfile.value };
         isEditingProfile.value = false;
         alert('Profil başarıyla güncellendi!');
@@ -743,7 +883,6 @@ const handleResponse = async (matchId, status) => {
 
     const confirmDeleteAccount = () => {
       if (confirm('Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
-        // Hesap silme API çağrısı yapılacak
         alert('Hesap silme işlemi başlatıldı.');
       }
     };
@@ -754,9 +893,14 @@ const handleResponse = async (matchId, status) => {
         const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}`);
         if (!response.ok) throw new Error('İstekler getirilemedi');
         const data = await response.json();
-        userStudyRequests.value = data.requests;
+        // Her istek için varsayılan status değeri ekle
+        userStudyRequests.value = (data.requests || []).map(request => ({
+          ...request,
+          status: request.status || 'pending' // Eğer status yoksa 'pending' olarak ayarla
+        }));
       } catch (error) {
         console.error('Error:', error);
+        userStudyRequests.value = [];
       }
     };
 
@@ -766,6 +910,32 @@ const handleResponse = async (matchId, status) => {
         fetchUserStudyRequests();
       }
     });
+
+    // Profil düzenleme metodları
+    const userInitial = computed(() => {
+      return userProfile.value.name ? userProfile.value.name.charAt(0).toUpperCase() : 'K';
+    });
+
+    const triggerFileInput = () => {
+      fileInput.value.click();
+    };
+
+    const handleAvatarChange = async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        try {
+          // Dosya yükleme simülasyonu
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            userProfile.value.avatar = e.target.result;
+          };
+          reader.readAsDataURL(file);
+          alert('Profil fotoğrafı başarıyla yüklendi!');
+        } catch (error) {
+          alert('Profil fotoğrafı yüklenirken bir hata oluştu.');
+        }
+      }
+    };
 
     return {
       currentContent,
@@ -811,7 +981,11 @@ const handleResponse = async (matchId, status) => {
       cancelProfileEdit,
       saveProfileChanges,
       confirmDeleteAccount,
-      notifications
+      notifications,
+      userInitial,
+      triggerFileInput,
+      handleAvatarChange,
+      fileInput
     };
   }
 };
@@ -1547,16 +1721,18 @@ const handleResponse = async (matchId, status) => {
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.875rem;
-}
-
-.status.completed {
-  background: #4CAF50;
-  color: white;
+  background: #FFC107; /* Varsayılan arka plan */
+  color: black; /* Varsayılan metin rengi */
 }
 
 .status.pending {
   background: #FFC107;
   color: black;
+}
+
+.status.completed {
+  background: #4CAF50;
+  color: white;
 }
 
 .status.cancelled {
@@ -1837,6 +2013,86 @@ const handleResponse = async (matchId, status) => {
 .reject-btn:hover {
   background-color: #D32F2F;
   transform: scale(1.05);
+}
+
+/* Profil sayfası için ek stiller */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 2rem 0;
+  background: var(--surface-color-light);
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  background: var(--surface-color-light);
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+/* İlgi alanları için ek stiller */
+.interests-section {
+  margin-top: 2rem;
+}
+
+.interests-section h3 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.interests-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.interest-tag {
+  background: rgba(126, 87, 194, 0.15);
+  color: var(--primary-color);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  border: 1px solid rgba(126, 87, 194, 0.3);
+}
+
+/* Profil düzenleme formu için ek stiller */
+.profile-edit-form {
+  background: var(--surface-color-light);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 
 </style>
