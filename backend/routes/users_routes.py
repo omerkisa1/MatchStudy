@@ -67,6 +67,8 @@ async def delete_user_by_id_enpoint(user_id: int):
 async def get_user_id_endpoint(email: str, password: str):
     try:
         user_id = get_user_id(email, password)
+        if user_id is None:
+            return {"message": "User not found", "status": 404}
         return {"message": "User found", "user_id": user_id, "status": 200}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
