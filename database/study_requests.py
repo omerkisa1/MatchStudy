@@ -137,4 +137,26 @@ def list_user_requests(user_id):
         cursor.close()
         connection.close()
 
+def get_past_study_requests_by_user(user_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return []
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT * FROM study_requests 
+            WHERE user_id = %s AND DATE(study_date) < CURDATE()
+            ORDER BY study_date DESC
+        """
+        cursor.execute(query, (user_id,))
+        requests = cursor.fetchall()
+        return requests
+    except Exception as e:
+        print(f"Geçmiş çalışma istekleri getirilemedi: {e}")
+        return []
+    finally:
+        cursor.close()
+        connection.close()
+
 #get_all_study_requests()

@@ -79,6 +79,41 @@ export function useStudyRequests() {
   }
   
   /**
+   * Fetch the current user's past study requests (study_date < today)
+   */
+  const fetchPastRequests = async () => {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      await studyRequestsStore.fetchPastRequests()
+    } catch (err) {
+      error.value = 'Geçmiş çalışma istekleriniz yüklenirken bir hata oluştu.'
+      console.error(err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  /**
+   * Alternative: Filter user requests to only show past ones
+   * Useful if you want to do the filtering on the frontend
+   */
+  const getPastRequests = computed(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Normalize today to start of day
+    
+    return studyRequestsStore.userRequests.filter(request => {
+      // Convert study_date string to Date object and normalize to YYYY-MM-DD
+      const requestDate = new Date(request.study_date)
+      requestDate.setHours(0, 0, 0, 0) // Normalize to start of day
+      
+      // Return only past requests
+      return requestDate < today
+    })
+  })
+  
+  /**
    * Create a new study request
    * @returns {Object} Result with success status
    */
@@ -278,6 +313,7 @@ export function useStudyRequests() {
     // Actions
     fetchAllRequests,
     fetchUserRequests,
+    fetchPastRequests,
     createRequest,
     joinRequest,
     applyFilters,
@@ -289,6 +325,7 @@ export function useStudyRequests() {
     filteredRequests,
     userRequests,
     openRequests,
+    getPastRequests,
     
     // Helpers
     formatDate,

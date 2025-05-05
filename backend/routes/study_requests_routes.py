@@ -10,7 +10,8 @@ from database.study_requests import (
     get_all_study_requests,
     update_study_request,
     delete_study_request,
-    list_user_requests
+    list_user_requests,
+    get_past_study_requests_by_user
 )
 
 router = APIRouter()
@@ -93,5 +94,14 @@ async def list_user_requests_endpoint(user_id: int):
         requests = list_user_requests(user_id)
         return {"message": "User requests found", "requests": requests}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Kullanıcı istekleri getirilemedi.") 
+        raise HTTPException(status_code=500, detail="Kullanıcı istekleri getirilemedi.")
+
+@router.get("/user/{user_id}/history")
+def get_user_past_requests(user_id: int):
+    """Get all past study requests for a user (study_date < today)"""
+    try:
+        requests = get_past_study_requests_by_user(user_id)
+        return {"requests": requests}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 
     

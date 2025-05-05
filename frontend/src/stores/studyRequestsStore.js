@@ -11,6 +11,8 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
     allRequests: [],
     // User's own study requests
     userRequests: [],
+    // User's past study requests
+    pastRequests: [],
     // Loading states
     isLoading: false,
     // Filter states
@@ -63,6 +65,29 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
       } catch (error) {
         console.error('Error fetching user study requests:', error)
         this.userRequests = []
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * Fetch user's past study requests from API (where study_date < today)
+     */
+    async fetchPastRequests() {
+      const userStore = useUserStore()
+      if (!userStore.id) return
+      
+      this.isLoading = true
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}/history`)
+        if (!response.ok) {
+          throw new Error('Geçmiş istekler getirilemedi')
+        }
+        const data = await response.json()
+        this.pastRequests = data.requests || []
+      } catch (error) {
+        console.error('Error fetching past study requests:', error)
+        this.pastRequests = []
       } finally {
         this.isLoading = false
       }
