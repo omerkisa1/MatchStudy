@@ -34,7 +34,7 @@ def get_match_by_id(match_id):
         return
     try:
         cursor = connection.cursor()
-        query = "SELECT * FROM matches WHERE id = %s"
+        query = "SELECT * FROM matches WHERE match_id = %s"
         cursor.execute(query, (match_id,))
         request = cursor.fetchall()
         return request
