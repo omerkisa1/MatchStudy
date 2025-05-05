@@ -62,6 +62,7 @@ export function useProfile() {
   const error = ref(null)
   const success = ref(null)
   const isEditing = ref(false)
+  const interests = ref([])
   
   // Create a configured axios instance
   const api = axios.create({
@@ -253,42 +254,38 @@ export function useProfile() {
     error.value = null
   
     try {
-      // Önce zaten varsa gösterme
-      if (userStore.profile.interests.includes(interest)) {
+      // Eğer interest zaten varsa tekrar gönderme
+      if (interests.value.includes(interest)) {
         error.value = 'This interest is already added.'
-        isLoading.value = false
         return { success: false, message: 'Interest already exists' }
       }
   
-      // API üzerinden backend'e gönder
       const response = await api.post('/user_interests/add', {
         user_id: userStore.id,
         interest: interest.trim()
-      });
+      })
   
-      const result = response.data;
+      const result = response.data
   
       if (result.message === "Interest added successfully") {
-        // Store'u da güncelle
-        const updatedInterests = [...userStore.profile.interests, interest.trim()];
-        await userStore.updateProfile({ interests: updatedInterests });
-        success.value = 'Interest added successfully!';
-        return { success: true };
+        await fetchInterests() // ✅ Ekledikten sonra listeyi güncelle
+        success.value = 'Interest added successfully!'
+        return { success: true }
       } else {
-        error.value = result.detail || 'Failed to add interest';
-        return { success: false, message: error.value };
+        error.value = result.detail || 'Failed to add interest'
+        return { success: false, message: error.value }
       }
     } catch (err) {
-      error.value = err.response?.data?.detail || 'Failed to add interest';
-      return { 
-        success: false, 
+      error.value = err.response?.data?.detail || 'Failed to add interest'
+      return {
+        success: false,
         message: error.value,
         errors: [err.message]
-      };
+      }
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
-  };
+  }
   
   
   /**
@@ -301,19 +298,12 @@ export function useProfile() {
     error.value = null
     
     try {
-      // Filter out the interest to remove
-      const updatedInterests = userStore.profile.interests.filter(i => i !== interest)
-      
-      // Update interests via API
-      const response = await api.put(`/profiles/update/${userStore.id}`, {
-        interests: updatedInterests
-      })
+      const response = await api.delete(`/user_interests/${userStore.id}/${interest}`)
       
       const result = response.data
       
       if (result.success) {
-        // Update local store
-        await userStore.updateProfile({ interests: updatedInterests })
+        await fetchInterests() // Refresh interests after removal
         success.value = 'Interest removed successfully!'
       } else {
         error.value = result.message || 'Failed to remove interest'
@@ -463,12 +453,27 @@ export function useProfile() {
     }
   }
   
+  const fetchInterests = async () => {
+    try {
+      const response = await api.get(`/user_interests/list/${userStore.id}`)
+      if (response.data.success) {
+        interests.value = response.data.interests
+      } else {
+        error.value = response.data.message || "Failed to fetch interests"
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || "Failed to fetch interests"
+    }
+  }
+  
+
   /**
    * Initialize the profile data
    */
   const initialize = async () => {
     if (userStore.isAuthenticated) {
       await fetchProfile()
+      await fetchInterests()
       initForm()
     }
   }
@@ -496,6 +501,7 @@ export function useProfile() {
     fileInput,
     profile,
     userInitial,
+    interests,
     
     // Methods
     initialize,
@@ -508,6 +514,7 @@ export function useProfile() {
     addInterest,
     removeInterest,
     changePassword,
-    deleteAccount
+    deleteAccount,
+    fetchInterests
   }
 } 

@@ -25,7 +25,7 @@ async def delete_user_interest(request: InterestRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{user_id}")
+@router.get("/list/{user_id}")
 async def get_user_interests(user_id: int):
     try:
         interests = get_interests_by_user(user_id)

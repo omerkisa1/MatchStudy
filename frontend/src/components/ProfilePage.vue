@@ -59,11 +59,24 @@
 
             <div class="interests-section">
               <h3>Interests</h3>
-              <InterestTags 
-                :interests="profile.interests" 
-                @remove-interest="removeInterest" 
-                @add-interest="showInterestModal = true" 
-              />
+              <div class="interests-container">
+                <div v-for="interest in interests" :key="interest" class="interest-tag">
+                  {{ interest }}
+                  <button class="remove-interest-btn" @click="handleRemoveInterest(interest)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+                <button class="add-interest-btn" @click="showInterestModal = true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Interest
+                </button>
+              </div>
             </div>
           </div>
 
@@ -230,6 +243,7 @@ export default {
       profileForm,
       profile,
       userInitial,
+      interests,
       
       // Methods
       initialize,
@@ -240,7 +254,8 @@ export default {
       addInterest,
       removeInterest,
       changePassword,
-      deleteAccount
+      deleteAccount,
+      fetchInterests
     } = useProfile();
     
     // Study requests
@@ -274,7 +289,19 @@ export default {
     
     // Handle interest submission from modal
     const handleAddInterest = async (interest) => {
-      await addInterest(interest);
+      const result = await addInterest(interest);
+      if (result.success) {
+        await fetchInterests();
+        showInterestModal.value = false;
+      }
+    };
+    
+    // Handle interest removal
+    const handleRemoveInterest = async (interest) => {
+      const result = await removeInterest(interest);
+      if (result.success) {
+        await fetchInterests();
+      }
     };
     
     // Handle password change from modal
@@ -304,6 +331,7 @@ export default {
       profileForm,
       profile,
       userInitial,
+      interests,
       
       // Study requests
       userRequests,
@@ -323,7 +351,7 @@ export default {
       cancelEditing,
       saveProfile,
       handleAvatarChange,
-      removeInterest,
+      handleRemoveInterest,
       handleAddInterest,
       handlePasswordChange,
       confirmDeleteAccount
@@ -496,6 +524,67 @@ export default {
   margin-bottom: 0.75rem;
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.interests-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.interest-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(126, 87, 194, 0.2);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  border: 1px solid rgba(126, 87, 194, 0.3);
+  transition: all 0.2s;
+}
+
+.interest-tag:hover {
+  background: rgba(126, 87, 194, 0.3);
+  transform: translateY(-2px);
+}
+
+.remove-interest-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.remove-interest-btn:hover {
+  opacity: 1;
+  color: #ff8a8a;
+}
+
+.add-interest-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(126, 87, 194, 0.2);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  border: 1px dashed rgba(126, 87, 194, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-interest-btn:hover {
+  background: rgba(126, 87, 194, 0.3);
+  transform: translateY(-2px);
 }
 
 .profile-edit-form {
