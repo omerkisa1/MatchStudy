@@ -1,8 +1,57 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
+import axios from 'axios'
+
+/**
+ * @typedef {Object} ProfileData
+ * @property {number} profile_id - Profile ID 
+ * @property {number} user_id - User ID
+ * @property {string} name - User's first name
+ * @property {string} surname - User's last name
+ * @property {number|null} age - User's age
+ * @property {string|null} education_level - User's education level (Bachelor, Master, etc)
+ * @property {string|null} institution - User's educational institution
+ * @property {string} created_at - When the profile was created
+ * @property {string|null} updated_at - When the profile was last updated
+ * @property {string|null} avatar - Avatar image URL
+ * @property {string[]} interests - List of user interests
+ * @property {number} completedStudies - Number of completed study sessions
+ * @property {string} rating - User rating
+ * @property {number} activeGroups - Number of active study groups
+ */
+
+/**
+ * @typedef {Object} ProfileUpdateRequest
+ * @property {string} [name] - User's first name
+ * @property {string} [surname] - User's last name
+ * @property {number|null} [age] - User's age
+ * @property {string|null} [education_level] - User's education level
+ * @property {string|null} [institution] - User's educational institution
+ * @property {string|null} [bio] - User's biography
+ * @property {string[]} [interests] - List of user interests
+ */
+
+/**
+ * @typedef {Object} PasswordChangeRequest
+ * @property {string} currentPassword - Current password
+ * @property {string} newPassword - New password
+ * @property {string} confirmPassword - Confirmation of new password
+ */
+
+/**
+ * @typedef {Object} ApiResponse
+ * @property {boolean} success - Whether the request was successful
+ * @property {string} message - Response message
+ * @property {*} [data] - Response data if any
+ * @property {string[]} [errors] - List of errors if any
+ */
+
+// API base URL
+const API_URL = 'http://localhost:8000'
 
 /**
  * Composable for managing user profile - handles profile data, editing, and uploads
+ * @returns {Object} Profile management methods and state
  */
 export function useProfile() {
   // Get store
@@ -14,11 +63,33 @@ export function useProfile() {
   const success = ref(null)
   const isEditing = ref(false)
   
+  // Create a configured axios instance
+  const api = axios.create({
+    baseURL: API_URL,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  
+  /**
+   * Add authorization header to requests if user is authenticated
+   */
+  api.interceptors.request.use(config => {
+    const token = localStorage.getItem('authToken')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  })
+  
   // Form state
+  /** @type {import('vue').UnwrapRef<ProfileUpdateRequest>} */
   const profileForm = reactive({
     name: '',
-    university: '',
-    department: '',
+    surname: '',
+    age: null,
+    education_level: '',
+    institution: '',
     bio: ''
   })
   
@@ -32,8 +103,10 @@ export function useProfile() {
    */
   const initForm = () => {
     profileForm.name = userStore.name || ''
-    profileForm.university = userStore.profile.university || ''
-    profileForm.department = userStore.profile.department || ''
+    profileForm.surname = userStore.profile.surname || ''
+    profileForm.age = userStore.profile.age || null
+    profileForm.education_level = userStore.profile.education_level || ''
+    profileForm.institution = userStore.profile.institution || ''
     profileForm.bio = userStore.profile.bio || ''
   }
   
@@ -55,7 +128,7 @@ export function useProfile() {
   
   /**
    * Save profile changes
-   * @returns {Object} Result with success status
+   * @returns {Promise<ApiResponse>} Result with success status
    */
   const saveProfile = async () => {
     isLoading.value = true
@@ -63,25 +136,35 @@ export function useProfile() {
     success.value = null
     
     try {
-      const result = await userStore.updateProfile({
-        name: profileForm.name,
-        university: profileForm.university,
-        department: profileForm.department,
-        bio: profileForm.bio
-      })
+      const response = await api.put(`/profiles/update/${userStore.id}`, profileForm)
+      const result = response.data
       
       if (result.success) {
-        success.value = 'Profil başarıyla güncellendi!'
+        // Update local store with new profile data
+        await userStore.updateProfile({
+          name: profileForm.name,
+          surname: profileForm.surname,
+          age: profileForm.age,
+          education_level: profileForm.education_level,
+          institution: profileForm.institution,
+          bio: profileForm.bio
+        })
+        
+        success.value = 'Profile updated successfully!'
         isEditing.value = false
       } else {
-        error.value = result.error || 'Profil güncellenirken bir hata oluştu.'
+        error.value = result.message || 'An error occurred while updating profile'
       }
       
       return result
     } catch (err) {
-      error.value = 'Profil güncellenirken bir hata oluştu.'
+      error.value = err.response?.data?.message || 'Failed to update profile'
       console.error(err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        message: 'Failed to update profile',
+        errors: [err.message] 
+      }
     } finally {
       isLoading.value = false
     }
@@ -106,12 +189,12 @@ export function useProfile() {
     
     // Validate file type and size
     if (!file.type.startsWith('image/')) {
-      error.value = 'Lütfen bir resim dosyası seçin.'
+      error.value = 'Please select an image file.'
       return
     }
     
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      error.value = 'Dosya boyutu 5MB\'dan küçük olmalıdır.'
+      error.value = 'File size must be less than 5MB.'
       return
     }
     
@@ -120,51 +203,51 @@ export function useProfile() {
     error.value = null
     
     try {
-      // In a real app, you would upload to a server
-      // For now, we'll just use FileReader to get a data URL
-      const reader = new FileReader()
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('avatar', file)
       
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+      const response = await api.post(`/profiles/${userStore.id}/avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          uploadProgress.value = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 0)
+          )
         }
+      })
+      
+      const result = response.data
+      
+      if (result.success) {
+        // Update local avatar with returned URL or create a local preview
+        const avatarUrl = result.data?.avatar_url || URL.createObjectURL(file)
+        await userStore.updateAvatar(avatarUrl)
+        success.value = 'Profile picture updated successfully!'
+      } else {
+        error.value = result.message || 'Failed to update profile picture'
       }
       
-      reader.onload = async (e) => {
-        const result = await userStore.updateAvatar(e.target.result)
-        
-        if (result.success) {
-          success.value = 'Profil fotoğrafı başarıyla güncellendi!'
-        } else {
-          error.value = result.error || 'Profil fotoğrafı güncellenirken bir hata oluştu.'
-        }
-        
-        isUploading.value = false
-        uploadProgress.value = 0
-      }
-      
-      reader.onerror = () => {
-        error.value = 'Dosya okunurken bir hata oluştu.'
-        isUploading.value = false
-      }
-      
-      reader.readAsDataURL(file)
     } catch (err) {
-      error.value = 'Profil fotoğrafı güncellenirken bir hata oluştu.'
-      isUploading.value = false
+      error.value = err.response?.data?.message || 'Failed to update profile picture'
       console.error(err)
+    } finally {
+      isUploading.value = false
+      uploadProgress.value = 0
+      
+      // Clear the input value so the same file can be selected again
+      if (fileInput.value) fileInput.value.value = ''
     }
-    
-    // Clear the input value so the same file can be selected again
-    if (fileInput.value) fileInput.value.value = ''
   }
   
   /**
    * Add a new interest to the user's profile
-   * @param {String} interest - Interest to add
+   * @param {string} interest - Interest to add
+   * @returns {Promise<ApiResponse>} Result with success status
    */
   const addInterest = async (interest) => {
-    if (!interest.trim()) return
+    if (!interest.trim()) return { success: false, message: 'Interest cannot be empty' }
     
     isLoading.value = true
     error.value = null
@@ -175,29 +258,38 @@ export function useProfile() {
       
       // Check if interest already exists
       if (updatedInterests.includes(interest)) {
-        error.value = 'Bu ilgi alanı zaten eklenmiş.'
+        error.value = 'This interest is already added.'
         isLoading.value = false
-        return { success: false }
+        return { success: false, message: 'Interest already exists' }
       }
       
       // Add the new interest
       updatedInterests.push(interest)
       
-      const result = await userStore.updateProfile({
+      // Update interests via API
+      const response = await api.put(`/profiles/update/${userStore.id}`, {
         interests: updatedInterests
       })
       
+      const result = response.data
+      
       if (result.success) {
-        success.value = 'İlgi alanı başarıyla eklendi!'
+        // Update local store
+        await userStore.updateProfile({ interests: updatedInterests })
+        success.value = 'Interest added successfully!'
       } else {
-        error.value = result.error || 'İlgi alanı eklenirken bir hata oluştu.'
+        error.value = result.message || 'Failed to add interest'
       }
       
       return result
     } catch (err) {
-      error.value = 'İlgi alanı eklenirken bir hata oluştu.'
+      error.value = err.response?.data?.message || 'Failed to add interest'
       console.error(err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        message: 'Failed to add interest',
+        errors: [err.message] 
+      }
     } finally {
       isLoading.value = false
     }
@@ -205,7 +297,8 @@ export function useProfile() {
   
   /**
    * Remove an interest from the user's profile
-   * @param {String} interest - Interest to remove
+   * @param {string} interest - Interest to remove
+   * @returns {Promise<ApiResponse>} Result with success status
    */
   const removeInterest = async (interest) => {
     isLoading.value = true
@@ -215,21 +308,30 @@ export function useProfile() {
       // Filter out the interest to remove
       const updatedInterests = userStore.profile.interests.filter(i => i !== interest)
       
-      const result = await userStore.updateProfile({
+      // Update interests via API
+      const response = await api.put(`/profiles/update/${userStore.id}`, {
         interests: updatedInterests
       })
       
+      const result = response.data
+      
       if (result.success) {
-        success.value = 'İlgi alanı başarıyla kaldırıldı!'
+        // Update local store
+        await userStore.updateProfile({ interests: updatedInterests })
+        success.value = 'Interest removed successfully!'
       } else {
-        error.value = result.error || 'İlgi alanı kaldırılırken bir hata oluştu.'
+        error.value = result.message || 'Failed to remove interest'
       }
       
       return result
     } catch (err) {
-      error.value = 'İlgi alanı kaldırılırken bir hata oluştu.'
+      error.value = err.response?.data?.message || 'Failed to remove interest'
       console.error(err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        message: 'Failed to remove interest',
+        errors: [err.message] 
+      }
     } finally {
       isLoading.value = false
     }
@@ -237,120 +339,154 @@ export function useProfile() {
   
   /**
    * Request a password change
-   * @param {Object} passwordData - Object with current and new password
+   * @param {PasswordChangeRequest} passwordData - Object with current and new password
+   * @returns {Promise<ApiResponse>} Result with success status
    */
   const changePassword = async (passwordData) => {
     isLoading.value = true
     error.value = null
     success.value = null
     
+    // Validate password data
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      error.value = 'New passwords do not match'
+      isLoading.value = false
+      return {
+        success: false,
+        message: 'New passwords do not match'
+      }
+    }
+    
+    if (passwordData.newPassword.length < 8) {
+      error.value = 'New password must be at least 8 characters long'
+      isLoading.value = false
+      return {
+        success: false,
+        message: 'New password must be at least 8 characters long'
+      }
+    }
+    
     try {
-      // In a real app, you would call an API here
-      // For now, just show a success message
+      const response = await api.post(`/users/${userStore.id}/change-password`, {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      })
       
-      console.log('Password change requested for user:', userStore.id)
-      // await api.changePassword(passwordData)
+      const result = response.data
       
-      success.value = 'Şifreniz başarıyla değiştirildi!'
-      return { success: true }
+      if (result.success) {
+        success.value = 'Password changed successfully!'
+      } else {
+        error.value = result.message || 'Failed to change password'
+      }
+      
+      return result
     } catch (err) {
-      error.value = 'Şifre değiştirilirken bir hata oluştu.'
+      error.value = err.response?.data?.message || 'Failed to change password'
       console.error(err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        message: 'Failed to change password',
+        errors: [err.message] 
+      }
     } finally {
       isLoading.value = false
     }
   }
   
   /**
-   * Request account deletion
-   * @param {String} confirmationText - Confirmation text for deletion
+   * Delete user account
+   * @param {string} confirmationText - Text to confirm deletion ("DELETE")
+   * @returns {Promise<ApiResponse>} Result with success status
    */
   const deleteAccount = async (confirmationText) => {
     if (confirmationText !== 'DELETE') {
-      error.value = 'Hesap silme işlemini onaylamak için DELETE yazın.'
-      return { success: false }
+      return {
+        success: false,
+        message: 'Incorrect confirmation text'
+      }
     }
     
     isLoading.value = true
     error.value = null
     
     try {
-      // In a real app, you would call an API here
-      // For now, just log out the user
+      const response = await api.delete(`/users/${userStore.id}`)
+      const result = response.data
       
-      console.log('Account deletion requested for user:', userStore.id)
-      // await api.deleteAccount(userStore.id)
+      if (result.success) {
+        // Log the user out and clear data
+        userStore.logout()
+        success.value = 'Account deleted successfully!'
+      } else {
+        error.value = result.message || 'Failed to delete account'
+      }
       
-      userStore.logout()
-      return { success: true }
+      return result
     } catch (err) {
-      error.value = 'Hesap silinirken bir hata oluştu.'
+      error.value = err.response?.data?.message || 'Failed to delete account'
       console.error(err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        message: 'Failed to delete account',
+        errors: [err.message] 
+      }
     } finally {
       isLoading.value = false
     }
   }
   
-  // Computed properties
-  
   /**
-   * Get user's initials for avatar fallback
+   * Fetch user profile data from API
+   * @returns {Promise<ProfileData|null>} User profile data
    */
-  const userInitial = computed(() => {
-    return userStore.name ? userStore.name.charAt(0).toUpperCase() : 'K'
-  })
-  
-  /**
-   * Get full user profile data
-   */
-  const profile = computed(() => userStore.fullProfile)
-  
-  /**
-   * Get user profile completion percentage
-   */
-  const profileCompletionPercentage = computed(() => {
-    const profile = userStore.profile
-    let total = 0
-    let completed = 0
+  const fetchProfile = async () => {
+    if (!userStore.id) return null
     
-    // Count fields that can be completed
-    total += 5 // name, email, university, department, bio
-    
-    // Count fields that are completed
-    if (userStore.name) completed++
-    if (userStore.email) completed++
-    if (profile.university) completed++
-    if (profile.department) completed++
-    if (profile.bio) completed++
-    
-    // Calculate percentage
-    return Math.round((completed / total) * 100)
-  })
-  
-  /**
-   * Initialize profile data if needed
-   */
-  const initialize = async () => {
     isLoading.value = true
+    error.value = null
     
     try {
-      await userStore.fetchUserProfile()
-      initForm()
+      const response = await api.get(`/profiles/${userStore.id}`)
+      const result = response.data
+      
+      if (result.success && result.data) {
+        // Update store with profile data
+        await userStore.updateProfile(result.data)
+        return result.data
+      } else {
+        error.value = result.message || 'Failed to fetch profile'
+        return null
+      }
     } catch (err) {
-      console.error('Error initializing profile:', err)
+      error.value = err.response?.data?.message || 'Failed to fetch profile'
+      console.error(err)
+      return null
     } finally {
       isLoading.value = false
     }
   }
   
-  // Initialize on mount
-  onMounted(() => {
-    if (userStore.id) {
-      initialize()
+  /**
+   * Initialize the profile data
+   */
+  const initialize = async () => {
+    if (userStore.isAuthenticated) {
+      await fetchProfile()
+      initForm()
     }
+  }
+  
+  // Initialize on mount if not explicitly called
+  onMounted(initialize)
+  
+  // Computed properties
+  const userInitial = computed(() => {
+    const name = userStore.name || ''
+    return name.charAt(0).toUpperCase()
   })
+  
+  const profile = computed(() => userStore.fullProfile)
   
   return {
     // State
@@ -358,13 +494,16 @@ export function useProfile() {
     error,
     success,
     isEditing,
-    profileForm,
-    fileInput,
     isUploading,
     uploadProgress,
+    profileForm,
+    fileInput,
+    profile,
+    userInitial,
     
-    // Actions
+    // Methods
     initialize,
+    fetchProfile,
     startEditing,
     cancelEditing,
     saveProfile,
@@ -373,11 +512,6 @@ export function useProfile() {
     addInterest,
     removeInterest,
     changePassword,
-    deleteAccount,
-    
-    // Computed values
-    userInitial,
-    profile,
-    profileCompletionPercentage
+    deleteAccount
   }
 } 

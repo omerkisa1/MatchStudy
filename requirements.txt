@@ -3,3 +3,6 @@ uvicorn[standard]
 pymysql
 pandas
 mysql-connector-python
+pytest
+httpx
+pytest-mock

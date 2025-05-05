@@ -1,57 +1,73 @@
 import sys
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Body
+from typing import List
 
 from database.profiles import (
     add_profile, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
 )
+from models.base import StandardResponse
+from models.profile import ProfileCreate, ProfileUpdate, ProfileResponse
 
 router = APIRouter()
 
-@router.post("/create")
-async def add_profile_endpoint(user_id: int, name: str, university: str, department: str, interests: list[str]):
+@router.post("/create", response_model=StandardResponse)
+async def add_profile_endpoint(profile: ProfileCreate):
     try:
-        add_profile(user_id, name, university, department, interests)
-        return {"message": "Profile created successfully"}
+        add_profile(
+            profile.user_id, 
+            profile.name, 
+            profile.surname, 
+            profile.age, 
+            profile.education_level, 
+            profile.institution
+        )
+        return StandardResponse.success_response("Profile created successfully")
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        return StandardResponse.error_response("Validation error", [str(ve)])
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Profil oluşturulamadı.")
+        raise HTTPException(status_code=500, detail="Failed to create profile")
 
-@router.get("/{profile_id}")
-async def get_profile_endpoint(profile_id: int):
+@router.get("/{user_id}", response_model=StandardResponse)
+async def get_profile_endpoint(user_id: int):
     try:
-        profile = get_profile_by_user_id(profile_id)
+        profile = get_profile_by_user_id(user_id)
         if profile:
-            return {"message": "Profile found", "profile": profile}
-        raise HTTPException(status_code=404, detail="Profil bulunamadı.")
+            return StandardResponse.success_response("Profile found", profile)
+        return StandardResponse.error_response("Profile not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Profil getirilemedi.")
+        raise HTTPException(status_code=500, detail="Failed to retrieve profile")
 
-@router.put("/update/{profile_id}")
-async def update_profile_endpoint(profile_id: int, name: str = None, university: str = None, 
-                                department: str = None, interests: list[str] = None):
+@router.put("/update/{user_id}", response_model=StandardResponse)
+async def update_profile_endpoint(user_id: int, profile_update: ProfileUpdate):
     try:
-        update_profile(profile_id, name, university, department, interests)
-        return {"message": "Profile updated successfully"}
+        update_profile(
+            user_id,
+            profile_update.name,
+            profile_update.surname,
+            profile_update.age,
+            profile_update.education_level,
+            profile_update.institution
+        )
+        return StandardResponse.success_response("Profile updated successfully")
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        return StandardResponse.error_response("Validation error", [str(ve)])
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Profil güncellenemedi.")
+        raise HTTPException(status_code=500, detail="Failed to update profile")
 
-@router.delete("/delete/{profile_id}")
-async def delete_profile_endpoint(profile_id: int):
+@router.delete("/delete/{user_id}", response_model=StandardResponse)
+async def delete_profile_endpoint(user_id: int):
     try:
-        delete_profile_by_user_id(profile_id)
-        return {"message": "Profile deleted successfully"}
+        delete_profile_by_user_id(user_id)
+        return StandardResponse.success_response("Profile deleted successfully")
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        return StandardResponse.error_response("Validation error", [str(ve)])
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Profil silinemedi.")
+        raise HTTPException(status_code=500, detail="Failed to delete profile")
 
-@router.get("/list")
+@router.get("/list", response_model=StandardResponse)
 async def list_profiles_endpoint():
     try:
         profiles = list_profiles()
-        return {"message": "Profiles found", "profiles": profiles}
+        return StandardResponse.success_response("Profiles retrieved successfully", profiles)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Profiller getirilemedi.")
+        raise HTTPException(status_code=500, detail="Failed to retrieve profiles")
