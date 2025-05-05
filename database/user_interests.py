@@ -1,10 +1,11 @@
-from database.config import get_connection, logger
+from database.config import DB_CONFIG
 import traceback
+import mysql.connector
 
 def add_interest(user_id: int, interest: str):
-    connection = get_connection()
+    """Add a new interest for a user."""
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
-        logger.error("Failed DB connection in add_interest")
         raise ValueError("Database connection error")
 
     try:
@@ -15,19 +16,17 @@ def add_interest(user_id: int, interest: str):
         """
         cursor.execute(query, (user_id, interest))
         connection.commit()
-        logger.info(f"Interest '{interest}' added for user_id {user_id}")
     except Exception as e:
         connection.rollback()
-        logger.error(f"Error adding interest: {e}\n{traceback.format_exc()}")
-        raise ValueError("Failed to add interest")
+        raise ValueError(f"Failed to add interest: {e}")
     finally:
         cursor.close()
         connection.close()
 
 def delete_interest(user_id: int, interest: str):
-    connection = get_connection()
+    """Delete a specific interest of a user."""
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
-        logger.error("Failed DB connection in delete_interest")
         raise ValueError("Database connection error")
 
     try:
@@ -35,19 +34,17 @@ def delete_interest(user_id: int, interest: str):
         query = "DELETE FROM user_interests WHERE user_id = %s AND interest = %s"
         cursor.execute(query, (user_id, interest))
         connection.commit()
-        logger.info(f"Interest '{interest}' deleted for user_id {user_id}")
     except Exception as e:
         connection.rollback()
-        logger.error(f"Error deleting interest: {e}\n{traceback.format_exc()}")
-        raise ValueError("Failed to delete interest")
+        raise ValueError(f"Failed to delete interest: {e}")
     finally:
         cursor.close()
         connection.close()
 
 def get_interests_by_user(user_id: int):
-    connection = get_connection()
+    """Get all interests of a user as a list of strings."""
+    connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
-        logger.error("Failed DB connection in get_interests_by_user")
         return []
 
     try:
@@ -56,8 +53,7 @@ def get_interests_by_user(user_id: int):
         cursor.execute(query, (user_id,))
         result = cursor.fetchall()
         return [row['interest'] for row in result]
-    except Exception as e:
-        logger.error(f"Error fetching interests: {e}\n{traceback.format_exc()}")
+    except Exception:
         return []
     finally:
         cursor.close()

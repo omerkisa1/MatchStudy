@@ -1,28 +1,34 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from database.user_interests import add_interest, delete_interest, get_interests_by_user
 
 router = APIRouter()
 
-@router.post("/interests/add")
-async def add_interest_endpoint(user_id: int, interest: str):
-    try:
-        add_interest(user_id, interest)
-        return {"message": "Interest added successfully"}
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+class InterestRequest(BaseModel):
+    user_id: int
+    interest: str
 
-@router.delete("/interests/delete")
-async def delete_interest_endpoint(user_id: int, interest: str):
+@router.post("/add")
+async def add_user_interest(request: InterestRequest):
     try:
-        delete_interest(user_id, interest)
-        return {"message": "Interest deleted successfully"}
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        add_interest(request.user_id, request.interest)
+        return {"success": True, "message": "Interest added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/interests/list/{user_id}")
-async def list_interests_endpoint(user_id: int):
+@router.delete("/delete")
+async def delete_user_interest(request: InterestRequest):
+    try:
+        delete_interest(request.user_id, request.interest)
+        return {"success": True, "message": "Interest deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{user_id}")
+async def get_user_interests(user_id: int):
     try:
         interests = get_interests_by_user(user_id)
-        return {"user_id": user_id, "interests": interests}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to fetch interests")
+        return {"success": True, "interests": interests}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

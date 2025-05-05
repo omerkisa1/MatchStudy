@@ -248,52 +248,48 @@ export function useProfile() {
    */
   const addInterest = async (interest) => {
     if (!interest.trim()) return { success: false, message: 'Interest cannot be empty' }
-    
+  
     isLoading.value = true
     error.value = null
-    
+  
     try {
-      // Make a copy of the current interests
-      const updatedInterests = [...userStore.profile.interests]
-      
-      // Check if interest already exists
-      if (updatedInterests.includes(interest)) {
+      // Önce zaten varsa gösterme
+      if (userStore.profile.interests.includes(interest)) {
         error.value = 'This interest is already added.'
         isLoading.value = false
         return { success: false, message: 'Interest already exists' }
       }
-      
-      // Add the new interest
-      updatedInterests.push(interest)
-      
-      // Update interests via API
-      const response = await api.put(`/profiles/update/${userStore.id}`, {
-        interests: updatedInterests
-      })
-      
-      const result = response.data
-      
-      if (result.success) {
-        // Update local store
-        await userStore.updateProfile({ interests: updatedInterests })
-        success.value = 'Interest added successfully!'
+  
+      // API üzerinden backend'e gönder
+      const response = await api.post('/user_interests/add', {
+        user_id: userStore.id,
+        interest: interest.trim()
+      });
+  
+      const result = response.data;
+  
+      if (result.message === "Interest added successfully") {
+        // Store'u da güncelle
+        const updatedInterests = [...userStore.profile.interests, interest.trim()];
+        await userStore.updateProfile({ interests: updatedInterests });
+        success.value = 'Interest added successfully!';
+        return { success: true };
       } else {
-        error.value = result.message || 'Failed to add interest'
+        error.value = result.detail || 'Failed to add interest';
+        return { success: false, message: error.value };
       }
-      
-      return result
     } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to add interest'
-      console.error(err)
+      error.value = err.response?.data?.detail || 'Failed to add interest';
       return { 
         success: false, 
-        message: 'Failed to add interest',
-        errors: [err.message] 
-      }
+        message: error.value,
+        errors: [err.message]
+      };
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
+  
   
   /**
    * Remove an interest from the user's profile
