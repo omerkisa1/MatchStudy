@@ -53,3 +53,30 @@ CREATE TABLE matches (
     FOREIGN KEY (requester_id) REFERENCES users(id),
     FOREIGN KEY (responder_id) REFERENCES users(id)
 );
+
+
+
+CREATE TABLE friend_request_status (
+    status VARCHAR(10) PRIMARY KEY
+);
+
+INSERT INTO friend_request_status (status) VALUES 
+('pending'),
+('accepted'),
+('declined'),
+('blocked');
+
+
+CREATE TABLE friend_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_sender FOREIGN KEY (sender_id) REFERENCES users(id),
+    CONSTRAINT fk_receiver FOREIGN KEY (receiver_id) REFERENCES users(id),
+    CONSTRAINT fk_status FOREIGN KEY (status) REFERENCES friend_request_status(status),
+    UNIQUE (sender_id, receiver_id)
+);
