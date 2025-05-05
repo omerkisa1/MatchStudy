@@ -345,7 +345,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(30, 22, 54, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -353,8 +353,8 @@ export default {
 }
 
 .loader {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top: 4px solid var(--primary-color);
   border-radius: 50%;
   width: 50px;
   height: 50px;
@@ -369,30 +369,35 @@ export default {
 .error-message, .success-message {
   padding: 1rem;
   margin-bottom: 1rem;
-  border-radius: 4px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
 }
 
 .error-message {
-  background-color: #f8d7da;
-  color: #842029;
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #ff8a8a;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .success-message {
-  background-color: #d1e7dd;
-  color: #0f5132;
+  background-color: rgba(25, 135, 84, 0.15);
+  color: #a3ffcb;
+  border: 1px solid rgba(25, 135, 84, 0.3);
 }
 
 .profile-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--surface-color);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .profile-header {
   display: flex;
   padding: 2rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .profile-avatar-section {
@@ -413,16 +418,19 @@ export default {
 .profile-name-section h2 {
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .profile-education {
-  color: #6c757d;
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .profile-bio {
   margin-bottom: 1.5rem;
   line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .edit-profile-btn, .setting-btn {
@@ -430,15 +438,17 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .edit-profile-btn:hover, .setting-btn:hover {
-  background-color: #e9ecef;
+  background: var(--primary-dark);
+  transform: translateY(-2px);
 }
 
 .edit-profile-btn svg {
@@ -449,19 +459,20 @@ export default {
 .profile-stats {
   display: flex;
   margin-bottom: 1.5rem;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1rem 0;
+  gap: 1rem;
 }
 
 .stat-item {
   flex: 1;
   text-align: center;
-  padding: 0 1rem;
-}
-
-.stat-item:not(:last-child) {
-  border-right: 1px solid #eee;
+  padding: 1rem;
+  background: rgba(45, 35, 75, 0.3);
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .stat-value {
@@ -469,10 +480,11 @@ export default {
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 0.25rem;
+  color: var(--text-primary);
 }
 
 .stat-label {
-  color: #6c757d;
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
@@ -482,10 +494,17 @@ export default {
 
 .interests-section h3 {
   margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .profile-edit-form {
   margin-top: 1rem;
+  background: rgba(45, 35, 75, 0.3);
+  border-radius: 8px;
+  padding: 1.5rem;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .form-group {
@@ -496,14 +515,18 @@ export default {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .form-input, .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(30, 22, 54, 0.6);
+  color: var(--text-primary);
   font-size: 1rem;
+  font-family: inherit;
 }
 
 .form-textarea {
@@ -520,17 +543,23 @@ export default {
 
 .cancel-btn, .save-btn {
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .cancel-btn {
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .save-btn {
-  background-color: #4361ee;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   display: flex;
@@ -538,9 +567,15 @@ export default {
   gap: 0.5rem;
 }
 
+.save-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
 .save-btn:disabled {
-  background-color: #a0a0a0;
+  background-color: rgba(126, 87, 194, 0.5);
   cursor: not-allowed;
+  transform: none;
 }
 
 .loading-spinner {
@@ -555,42 +590,56 @@ export default {
 
 .study-history {
   padding: 2rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .study-history h3 {
   margin-top: 0;
   margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .history-card {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 1rem;
+  background: rgba(45, 35, 75, 0.3);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+  padding: 1.5rem;
   margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.history-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 
 .history-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .history-card-header h4 {
   margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .tag {
-  background-color: #e9ecef;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  background-color: var(--primary-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
   font-size: 0.75rem;
+  color: white;
 }
 
 .history-card p {
   margin-bottom: 1rem;
-  color: #6c757d;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .history-card-footer {
@@ -598,38 +647,46 @@ export default {
   justify-content: space-between;
   align-items: center;
   font-size: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .date, .duration {
   margin-right: 1rem;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 .status {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
   font-size: 0.75rem;
 }
 
 .status.pending {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffd866;
+  border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
 .status.completed {
-  background-color: #d1e7dd;
-  color: #0f5132;
+  background-color: rgba(25, 135, 84, 0.2);
+  color: #a3ffcb;
+  border: 1px solid rgba(25, 135, 84, 0.3);
 }
 
 .status.cancelled {
-  background-color: #f8d7da;
-  color: #842029;
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #ff8a8a;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #6c757d;
+  color: var(--text-secondary);
+  background: rgba(45, 35, 75, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
 }
 
 .settings-container {
@@ -639,23 +696,31 @@ export default {
 .settings-container h3 {
   margin-top: 0;
   margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid #eee;
+  padding: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(45, 35, 75, 0.2);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(5px);
 }
 
 .setting-info h4 {
   margin: 0 0 0.25rem 0;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .setting-info p {
   margin: 0;
-  color: #6c757d;
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
@@ -665,9 +730,12 @@ export default {
 }
 
 .delete-confirm-input {
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(30, 22, 54, 0.6);
+  color: var(--text-primary);
+  font-family: inherit;
 }
 
 .delete-account-btn {
@@ -675,8 +743,14 @@ export default {
   background-color: #dc3545;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-account-btn:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
 }
 
 /* Responsive adjustments */
@@ -702,15 +776,6 @@ export default {
   
   .profile-stats {
     flex-direction: column;
-  }
-  
-  .stat-item {
-    padding: 0.75rem 0;
-  }
-  
-  .stat-item:not(:last-child) {
-    border-right: none;
-    border-bottom: 1px solid #eee;
   }
   
   .setting-item {
