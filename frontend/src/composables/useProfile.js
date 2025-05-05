@@ -298,7 +298,10 @@ export function useProfile() {
     error.value = null
     
     try {
-      const response = await api.delete(`/user_interests/${userStore.id}/${interest}`)
+      const response = await api.post('/user_interests/delete', {
+        user_id: userStore.id,
+        interest: interest
+      })
       
       const result = response.data
       

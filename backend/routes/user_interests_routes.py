@@ -17,7 +17,7 @@ async def add_user_interest(request: InterestRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/delete")
+@router.post("/delete")
 async def delete_user_interest(request: InterestRequest):
     try:
         delete_interest(request.user_id, request.interest)
