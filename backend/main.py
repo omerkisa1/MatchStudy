@@ -28,7 +28,6 @@ app.include_router(matches_router, prefix="/matches", tags=["Matches"])
 app.include_router(user_interests_router, prefix="/user_interests", tags=["User Interests"])
 
 # Statik dosyalar için mount (opsiyonel)
-#app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/home")
 def home():
