@@ -26,7 +26,7 @@ def save_message(chat_id: str, sender_id: int, content: str):
 
 
 def get_messages_by_chat(chat_id: str):
-    connection = mysql.connector.connect(**DB_CONFIG)()
+    connection = mysql.connector.connect(**DB_CONFIG)
     try:
         cursor = connection.cursor(dictionary=True)
         query = """

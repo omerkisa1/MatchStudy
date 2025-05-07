@@ -1,24 +1,381 @@
 <template>
   <div class="content-wrapper">
     <h1>Mesajlar</h1>
-    <div class="messages-container">
+    <p v-if="uniqueMatchedUsers.length === 0" class="no-matches">
+      Henüz onaylanmış bir eşleşmeniz bulunmuyor. Onaylı eşleşmeler burada görünecektir.
+    </p>
+
+    <div v-else class="messages-container">
+      <!-- Eşleşme listesi -->
       <div class="message-list">
-        <div class="message-item" v-for="i in 5" :key="i">
+        <div
+          v-for="user in uniqueMatchedUsers"
+          :key="user.userId"
+          class="message-item"
+          :class="{ 'active': selectedUserId === user.userId }"
+          @click="selectUserAndLoadMessages(user)"
+        >
           <div class="message-avatar"></div>
           <div class="message-content">
-            <h4>Kullanıcı {{i}}</h4>
-            <p>Son mesaj içeriği burada görünecek...</p>
+            <h4>{{ user.displayName }}</h4>
+            <p>{{ user.lastMessage }}</p>
           </div>
-          <span class="message-time">14:30</span>
+          <div class="message-info">
+            <span v-if="user.unreadCount > 0" class="unread-badge">
+              {{ user.unreadCount }}
+            </span>
+            <span class="message-time">{{ user.lastMessageTime }}</span>
+          </div>
         </div>
+      </div>
+
+      <!-- Sohbet penceresi -->
+      <div v-if="selectedUserId" class="chat-window">
+        <div v-if="isLoadingChat" class="loading-chat">
+          <p>Mesajlar yükleniyor...</p>
+        </div>
+        <template v-else>
+          <div class="chat-header">
+            <h3>{{ selectedUserName }}</h3>
+          </div>
+          
+          <div class="messages" ref="messagesContainer">
+            <div v-if="messages.length === 0" class="no-messages">
+              <p>Henüz mesaj bulunmuyor. İlk mesajı göndermeye ne dersin?</p>
+            </div>
+            <div
+              v-else
+              v-for="(msg, i) in messages"
+              :key="i"
+              class="single-message"
+              :class="{ 'own-message': msg.sender_id === currentUser }"
+            >
+              <div class="message-content">{{ msg.content }}</div>
+              <div class="message-time">{{ formatMessageTime(msg.sent_at) }}</div>
+            </div>
+          </div>
+
+          <div class="chat-input">
+            <input 
+              v-model="newMessage" 
+              placeholder="Mesaj yaz..." 
+              @keyup.enter="sendMessage" 
+            />
+            <button @click="sendMessage" :disabled="!newMessage.trim()">
+              Gönder
+            </button>
+          </div>
+        </template>
+      </div>
+      
+      <div v-else-if="uniqueMatchedUsers.length > 0" class="chat-placeholder">
+        <p>Bir sohbet başlatmak için soldaki listeden bir kişi seçin</p>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: "MessagesPage"
+<script setup>
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useMatchesStore } from '@/stores/matchesStore'
+import { useUserStore } from '@/stores/userStore'
+import socket from '@/socket'
+
+const matchesStore = useMatchesStore()
+const userStore = useUserStore()
+
+const acceptedMatches = computed(() => matchesStore.acceptedMatches)
+const currentUser = computed(() => userStore.id)
+
+// Benzersiz kullanıcılar listesi
+const uniqueMatchedUsers = computed(() => {
+  const users = new Map(); // Benzersiz kullanıcıları tutmak için Map kullanıyoruz
+  
+  acceptedMatches.value.forEach(match => {
+    // Karşı taraf kullanıcı ID'sini belirle
+    const otherUserId = currentUser.value === match.requester_id 
+      ? match.responder_id 
+      : match.requester_id;
+    
+    // Bu kullanıcı zaten listeye eklenmiş mi kontrol et
+    if (!users.has(otherUserId)) {
+      users.set(otherUserId, {
+        userId: otherUserId,
+        displayName: `Kullanıcı ${otherUserId}`,
+        lastMessage: 'Son mesaj içeriği burada görünecek...',
+        lastMessageTime: '14:30',
+        unreadCount: unreadMessages.value[getMatchId(match)] || 0,
+        match: match // İlgili eşleşme nesnesini saklayalım
+      });
+    }
+  });
+  
+  return Array.from(users.values());
+});
+
+const selectedMatchId = computed(() => matchesStore.selectedMatchId)
+const selectedUserId = ref(null);
+const selectedUserName = computed(() => {
+  if (!selectedUserId.value) return '';
+  const user = uniqueMatchedUsers.value.find(u => u.userId === selectedUserId.value);
+  return user ? user.displayName : '';
+});
+
+const selectedChatId = ref(null)
+const messages = ref([])
+const newMessage = ref('')
+const isLoadingChat = ref(false)
+const messagesContainer = ref(null)
+
+// Track unread messages counts
+const unreadMessages = ref({}) // format: { matchId: count }
+
+// Yeni mesaj geldiğinde socket üzerinden ekle
+socket.on('new_message', (msg) => {
+  if (msg.chat_id === selectedChatId.value) {
+    messages.value.push(msg)
+    markMessagesAsRead(msg.chat_id)
+    scrollToBottom()
+  } else {
+    // Diğer sohbetlerden gelen mesajları okunmamış olarak işaretle
+    if (!unreadMessages.value[msg.chat_id]) {
+      unreadMessages.value[msg.chat_id] = 0
+    }
+    unreadMessages.value[msg.chat_id]++
+  }
+})
+
+// Eşleşmenin ID'sini al (match_id veya id)
+function getMatchId(match) {
+  // Backend'den gelen data match_id kullanırken, frontend'de id kullanılabilir
+  // Her iki durumu da kontrol edelim
+  return match.match_id || match.id;
+}
+
+// Okunmamış mesaj sayaçlarını getir
+async function fetchUnreadCounts() {
+  if (!currentUser.value) return
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/messages/unread/${currentUser.value}`)
+    const data = await res.json()
+    
+    if (data.success) {
+      // Chat ID'leri eşleşme ID'leriyle ilişkilendirmek için tüm sohbetleri dönüyoruz
+      // Gerçek uygulamada bu veritabanında daha iyi bir şekilde ilişkilendirilmelidir
+      const chatMatchMap = {}
+      for (const match of acceptedMatches.value) {
+        // requester_id ve responder_id kullanarak karşı tarafı belirle
+        const otherId = currentUser.value === match.requester_id ? match.responder_id : match.requester_id
+        const res = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${otherId}`)
+        const chatData = await res.json()
+        
+        if (chatData.success) {
+          chatMatchMap[chatData.chat_id] = getMatchId(match)
+        }
+      }
+      
+      // Okunmamış mesaj sayılarını her eşleşme için ayarla
+      for (const [chatId, count] of Object.entries(data.unread_counts)) {
+        if (chatMatchMap[chatId]) {
+          unreadMessages.value[chatMatchMap[chatId]] = count
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Okunmamış mesaj sayıları alınamadı:", err)
+  }
+}
+
+// Mesajları okundu olarak işaretle
+async function markMessagesAsRead(chatId) {
+  try {
+    await fetch('http://127.0.0.1:8000/messages/mark_read_by_chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        user_id: currentUser.value
+      })
+    })
+    
+    // Seçili eşleşmeye ait okunmamış mesajları sıfırla
+    if (selectedMatchId.value) {
+      unreadMessages.value[selectedMatchId.value] = 0
+    }
+  } catch (err) {
+    console.error("Mesajlar okundu olarak işaretlenemedi:", err)
+  }
+}
+
+// İlk açılışta eşleşmeleri ve okunmamış mesaj sayılarını getir
+onMounted(async () => {
+  console.log("Mesaj sayfası yükleniyor, kullanıcı ID:", currentUser.value);
+  
+  // Eşleşmeleri getir
+  await matchesStore.fetchMatches();
+  console.log("Tüm eşleşmeler:", matchesStore.matches);
+  console.log("Kabul edilmiş eşleşmeler:", acceptedMatches.value);
+  
+  // Eşleşme hiç yoksa veya accepted olanlar yoksa uyarı göster
+  if (matchesStore.matches.length === 0) {
+    console.warn("Hiç eşleşme bulunamadı!");
+  } else if (acceptedMatches.value.length === 0) {
+    console.warn("Accepted statusünde eşleşme bulunamadı!");
+    console.log("Eşleşmelerin statüleri:", matchesStore.matches.map(m => m.status));
+  }
+  
+  await fetchUnreadCounts();
+  
+  console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
+  
+  // URL'de bir match ID varsa otomatik olarak o sohbeti aç
+  const urlParams = new URLSearchParams(window.location.search)
+  const userId = urlParams.get('userId')
+  if (userId) {
+    const user = uniqueMatchedUsers.value.find(u => u.userId === parseInt(userId))
+    if (user) {
+      selectUserAndLoadMessages(user)
+    }
+  }
+  
+  // Socket bağlantısı kurulduğunda login olayını tetikle
+  socket.on('connect', () => {
+    if (currentUser.value) {
+      socket.emit('user_login', currentUser.value)
+    }
+  })
+})
+
+// Mesajlar değiştiğinde otomatik kaydır
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true })
+
+// İçerik konteynerini aşağı kaydır
+function scrollToBottom() {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
+
+// Kullanıcıya tıklanınca yapılacaklar - yeni metot
+async function selectUserAndLoadMessages(user) {
+  console.log("Kullanıcı seçildi:", user);
+  
+  // Seçilen kullanıcıyı ayarla
+  selectedUserId.value = user.userId;
+  isLoadingChat.value = true;
+  
+  try {
+    // Chat ID yoksa backend'den al veya oluştur
+    const res = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${user.userId}`)
+    const data = await res.json()
+    
+    if (data.success) {
+      // Varolan chat ID'yi kullan
+      selectedChatId.value = data.chat_id
+      await fetchMessages(data.chat_id)
+      
+      // Bu sohbetteki mesajları okundu olarak işaretle
+      await markMessagesAsRead(data.chat_id)
+    } else {
+      // Chat ID yoksa oluştur
+      await createNewChat(currentUser.value, user.userId)
+    }
+  } catch (err) {
+    console.error("Chat bilgisi alınamadı:", err)
+  } finally {
+    isLoadingChat.value = false
+  }
+}
+
+// Yeni bir chat oluştur
+async function createNewChat(user1Id, user2Id) {
+  console.log("Chat oluşturuluyor:", user1Id, user2Id);
+  try {
+    // Benzersiz bir chat ID oluştur
+    const chatId = `chat_${user1Id}_${user2Id}_${Date.now()}`
+    
+    // Backend'e chat oluşturma isteği gönder
+    const response = await fetch('http://127.0.0.1:8000/chat/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_1_id: user1Id,
+        user_2_id: user2Id,
+        chat_id: chatId
+      })
+    })
+    
+    const data = await response.json()
+    console.log("Chat oluşturma cevabı:", data);
+    
+    if (data.success) {
+      selectedChatId.value = chatId
+      messages.value = []
+    } else {
+      console.error("Chat oluşturulamadı:", data.message)
+    }
+  } catch (err) {
+    console.error("Chat oluşturma hatası:", err)
+  }
+}
+
+// Mesajları backend'den al
+async function fetchMessages(chatId) {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/messages/${chatId}`)
+    const data = await res.json()
+    
+    if (data.success) {
+      messages.value = data.messages || []
+      markMessagesAsRead(chatId)
+    } else {
+      messages.value = []
+    }
+  } catch (err) {
+    console.error("Mesajlar yüklenemedi:", err)
+    messages.value = []
+  }
+}
+
+// Mesaj gönder
+async function sendMessage() {
+  if (!newMessage.value.trim() || !selectedChatId.value || !selectedUserId.value) return
+
+  const msg = {
+    chat_id: selectedChatId.value,
+    sender_id: currentUser.value,
+    receiver_id: selectedUserId.value,
+    content: newMessage.value.trim(),
+    sent_at: new Date().toISOString()
+  }
+
+  // Socket üzerinden mesaj gönder (diğer kullanıcı çevrimiçiyse anında alır)
+  socket.emit("send_message", msg)
+  
+  // Kendi UI'mıza da ekleyelim
+  messages.value.push(msg)
+  
+  // Mesajı temizle
+  newMessage.value = ''
+  
+  // Otomatik kaydır
+  scrollToBottom()
+}
+
+// Mesaj zamanını formatlama
+function formatMessageTime(timestamp) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
@@ -26,37 +383,49 @@ export default {
 .content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
-  animation: fadeIn 0.3s ease;
-  padding-bottom: 2rem;
+  padding: 1rem 1rem 2rem;
 }
 
-h1 {
-  margin-bottom: 1.5rem;
+.no-matches {
+  text-align: center;
+  padding: 2rem;
+  background: var(--surface-color);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .messages-container {
-  background: var(--surface-color);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
+  display: flex;
+  gap: 1.5rem;
+  height: calc(100vh - 200px);
+  min-height: 500px;
 }
 
 .message-list {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  background: var(--surface-color);
+  border-radius: 12px;
+  overflow-y: auto;
+  max-width: 350px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .message-item {
-  display: flex;
-  align-items: center;
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  transition: background-color 0.2s ease;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s;
 }
 
 .message-item:hover {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+.message-item.active {
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  border-left: 3px solid var(--primary-color);
 }
 
 .message-avatar {
@@ -74,34 +443,176 @@ h1 {
 }
 
 .message-content h4 {
-  margin: 0 0 0.25rem 0;
-  font-weight: 600;
-  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+  font-weight: 500;
 }
 
 .message-content p {
   margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.message-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
 }
 
 .message-time {
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  margin-left: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+.unread-badge {
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 0.7rem;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chat-window {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-weight: 500;
+}
+
+.messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.no-messages {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.single-message {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  max-width: 70%;
+  align-self: flex-start;
+  position: relative;
+}
+
+.single-message .message-content {
+  word-break: break-word;
+}
+
+.single-message .message-time {
+  font-size: 0.7rem;
+  margin-top: 0.25rem;
+  text-align: right;
+}
+
+.own-message {
+  background: var(--primary-color);
+  align-self: flex-end;
+  color: white;
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+}
+
+.chat-input input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chat-input button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chat-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-chat {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-placeholder {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-color);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Responsive Tasarım */
+@media (max-width: 768px) {
+  .messages-container {
+    flex-direction: column;
+    height: auto;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .message-list {
+    max-width: 100%;
+    max-height: 300px;
+  }
+  
+  .chat-window, .chat-placeholder {
+    height: 500px;
   }
 }
-</style> 
+</style>

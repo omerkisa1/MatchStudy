@@ -11,7 +11,9 @@ export const useMatchesStore = defineStore('matches', {
     // Loading state
     isLoading: false,
     // Selected match for viewing details
-    selectedMatchId: null
+    selectedMatchId: null,
+    // Flag to determine if fetch was already performed
+    hasFetched: false
   }),
 
   actions: {
@@ -29,6 +31,11 @@ export const useMatchesStore = defineStore('matches', {
         
         const data = await response.json()
         this.matches = data.matches || []
+        
+        // Backend debugging
+        console.log('Fetched matches from backend:', this.matches)
+        
+        this.hasFetched = true
       } catch (error) {
         console.error('Error fetching matches:', error)
         this.matches = []
@@ -92,10 +99,13 @@ export const useMatchesStore = defineStore('matches', {
         }
 
         // Update the local match status
-        const matchIndex = this.matches.findIndex(m => m.id === matchId)
+        const matchIndex = this.matches.findIndex(m => this.getMatchId(m) === matchId)
         if (matchIndex !== -1) {
           this.matches[matchIndex].status = accept ? 'accepted' : 'rejected'
         }
+
+        // Daha doğru bir yaklaşım: güncel listeyi al
+        await this.fetchMatches();
 
         return { success: true }
       } catch (error) {
@@ -105,11 +115,37 @@ export const useMatchesStore = defineStore('matches', {
     },
 
     /**
-     * Set the selected match for viewing details
+     * Set the selected match for viewing details or messaging
      * @param {Number} matchId - ID of the match to select
      */
     selectMatch(matchId) {
       this.selectedMatchId = matchId
+    },
+    
+    /**
+     * Clear the selected match
+     */
+    clearSelectedMatch() {
+      this.selectedMatchId = null
+    },
+    
+    /**
+     * Ensure matches are fetched if not already done
+     */
+    async ensureMatchesLoaded() {
+      if (!this.hasFetched && !this.isLoading) {
+        await this.fetchMatches()
+      }
+      return this.matches
+    },
+
+    /**
+     * Get match ID consistently (handles both id and match_id fields)
+     * @param {Object} match - The match object
+     * @returns {Number} - The match ID
+     */
+    getMatchId(match) {
+      return match.match_id || match.id;
     }
   },
 
@@ -135,7 +171,16 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {Array} - List of accepted matches
      */
     acceptedMatches() {
-      return this.matches.filter(match => match.status === 'accepted')
+      // Debug: Tüm eşleşmelerin statülerini kontrol et
+      console.log("Tüm eşleşme statüleri:", this.matches.map(m => ({ id: this.getMatchId(m), status: m.status })));
+      
+      // Hem "accepted" hem de "ACCEPTED" olabilir, case-insensitive kontrol yapalım
+      const acceptedMatches = this.matches.filter(match => 
+        match.status && match.status.toLowerCase() === 'accepted'
+      );
+      
+      console.log("Kabul edilmiş eşleşmeler:", acceptedMatches);
+      return acceptedMatches;
     },
     
     /**
@@ -144,7 +189,11 @@ export const useMatchesStore = defineStore('matches', {
      */
     selectedMatch() {
       if (!this.selectedMatchId) return null
-      return this.matches.find(match => match.id === this.selectedMatchId) || null
+      
+      // Hem id hem de match_id kontrolü yapalım
+      return this.matches.find(match => 
+        this.getMatchId(match) === this.selectedMatchId
+      ) || null
     },
     
     /**
@@ -152,8 +201,8 @@ export const useMatchesStore = defineStore('matches', {
      * @param {Number} requestId - ID of the request to check
      * @returns {String|null} - Match status or null
      */
-    getMatchStatusForRequest(requestId) {
-      const match = this.matches.find(m => m.request_id === requestId)
+    getMatchStatusForRequest: (state) => (requestId) => {
+      const match = state.matches.find(m => m.request_id === requestId)
       return match ? match.status : null
     }
   }
