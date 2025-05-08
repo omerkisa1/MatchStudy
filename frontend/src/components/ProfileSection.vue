@@ -4,31 +4,33 @@
       <div class="profile-header">
         <div class="profile-avatar-section">
           <div class="profile-avatar">
-            <img v-if="userProfile.avatar" :src="userProfile.avatar" alt="Profil Fotoğrafı" />
-            <span v-else>{{ userProfile.name?.[0]?.toUpperCase() || 'U' }}</span>
+            <span>{{ userProfile.name?.[0]?.toUpperCase() || 'U' }}</span>
           </div>
-          <button class="edit-avatar-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Fotoğraf Yükle
-          </button>
         </div>
         <div class="profile-info">
           <div class="profile-name-section">
-            <h2>{{ userProfile.name || 'İsimsiz Kullanıcı' }}</h2>
+            <h2>
+              {{ userProfile.name ?? 'null' }} {{ userProfile.surname ?? 'null' }}
+            </h2>
             <button class="edit-profile-btn" @click="isEditingProfile = true" v-if="!isEditingProfile">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
               Profili Düzenle
             </button>
           </div>
-          <p class="profile-education">{{ userProfile.university }} / {{ userProfile.department }}</p>
-          <p class="profile-bio">{{ userProfile.bio || 'Henüz bir biyografi eklenmemiş.' }}</p>
+          <p>
+            <strong>Yaş:</strong> {{ userProfile.age ?? 'null' }}
+          </p>
+          <p>
+            <strong>Eğitim Seviyesi:</strong> {{ userProfile.education_level ?? 'null' }}
+          </p>
+          <p>
+            <strong>E-posta:</strong> {{ userProfile.email ?? 'null' }}
+          </p>
+          <p>
+            <strong>Kayıt Tarihi:</strong> {{ userProfile.created_at ?? 'null' }}
+          </p>
+          <p>
+            <strong>Son Güncelleme:</strong> {{ userProfile.updated_at ?? 'null' }}
+          </p>
         </div>
       </div>
   
@@ -36,23 +38,23 @@
       <div v-if="isEditingProfile" class="profile-edit-form">
         <h3>Profil Bilgilerini Düzenle</h3>
         <div class="form-group">
-          <label>İsim Soyisim</label>
+          <label>İsim</label>
           <input type="text" v-model="editProfile.name" class="form-input" placeholder="İsminizi girin" />
         </div>
         <div class="form-group">
-          <label>Üniversite</label>
-          <input type="text" v-model="editProfile.university" class="form-input" placeholder="Üniversitenizi girin" />
+          <label>Soyisim</label>
+          <input type="text" v-model="editProfile.surname" class="form-input" placeholder="Soyisminizi girin" />
         </div>
         <div class="form-group">
-          <label>Bölüm</label>
-          <input type="text" v-model="editProfile.department" class="form-input" placeholder="Bölümünüzü girin" />
+          <label>Yaş</label>
+          <input type="number" v-model="editProfile.age" class="form-input" placeholder="Yaşınızı girin" />
         </div>
         <div class="form-group">
-          <label>Biyografi</label>
-          <textarea v-model="editProfile.bio" class="form-textarea" placeholder="Kendinizden bahsedin..."></textarea>
+          <label>Eğitim Seviyesi</label>
+          <input type="text" v-model="editProfile.education_level" class="form-input" placeholder="Eğitim seviyenizi girin" />
         </div>
         <div class="form-group">
-          <label>İletişim E-posta</label>
+          <label>E-posta</label>
           <input type="email" v-model="editProfile.email" class="form-input" placeholder="E-posta adresiniz" />
         </div>
         <div class="form-actions">
@@ -131,7 +133,6 @@
     education_level: null,
     created_at: null,
     updated_at: null,
-    // Sadece users tablosundaki alanlar!
   });
   
   const editProfile = ref({ ...userProfile.value });
@@ -222,16 +223,7 @@
     overflow: hidden;
   }
   
-  .profile-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .edit-avatar-btn,
   .edit-profile-btn,
-  .setting-btn,
-  .delete-account-btn,
   .cancel-btn,
   .save-btn {
     background: #7E57C2;
@@ -243,18 +235,16 @@
     transition: 0.2s;
   }
   
-  .edit-avatar-btn:hover,
   .edit-profile-btn:hover,
-  .setting-btn:hover,
   .save-btn:hover {
     background: #4527A0;
   }
   
-  .delete-account-btn {
+  .cancel-btn {
     background: #F44336;
   }
   
-  .delete-account-btn:hover {
+  .cancel-btn:hover {
     background: #D32F2F;
   }
   
@@ -273,8 +263,7 @@
     margin-bottom: 0.5rem;
   }
   
-  .form-input,
-  .form-textarea {
+  .form-input {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
