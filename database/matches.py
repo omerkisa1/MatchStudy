@@ -33,10 +33,10 @@ def get_match_by_id(match_id):
     if not connection:
         return
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         query = "SELECT * FROM matches WHERE match_id = %s"
         cursor.execute(query, (match_id,))
-        request = cursor.fetchall()
+        request = cursor.fetchone()
         return request
     except Exception as e:
         print(f"Eşleşme getirilemedi: {e}")
@@ -47,7 +47,7 @@ def get_matches_by_requester_id(requester_id):
     if not connection:
         return
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         query = "SELECT * FROM matches WHERE requester_id = %s"
         cursor.execute(query, (requester_id,))
         request = cursor.fetchall()
@@ -61,7 +61,7 @@ def get_matches_by_responder_id(responder_id):
     if not connection:
         return
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         query = "SELECT * FROM matches WHERE responder_id = %s"
         cursor.execute(query, (responder_id,))
         request = cursor.fetchall()
@@ -110,7 +110,7 @@ def list_macthes():
     if not connection:
         return
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         query = "SELECT * FROM matches"
         cursor.execute(query)
         matches = cursor.fetchall()
