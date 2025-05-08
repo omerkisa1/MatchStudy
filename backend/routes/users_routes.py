@@ -10,6 +10,14 @@ class LoginCredentials(BaseModel):
     email: str
     password: str
 
+class RegisterUser(BaseModel):
+    email: str
+    password: str
+    name: str
+    surname: str
+    age: int
+    education_level: str
+
 @router.post("/login")
 async def login_user_endpoint(credentials: LoginCredentials):
     try:
@@ -22,11 +30,17 @@ async def login_user_endpoint(credentials: LoginCredentials):
         raise HTTPException(status_code=500, detail="Kullanıcı giriş yapamadı.")
 
 @router.post("/add")
-async def add_user_endpoint(email: str, password: str,name:str,surname:str,age:int,education_level:str):
+async def add_user_endpoint(user: RegisterUser):
     try:
-        add_user(email, password,name,surname,age,education_level)
-        return {"message": True
-                }
+        add_user(
+            user.email,
+            user.password,
+            user.name,
+            user.surname,
+            user.age,
+            user.education_level
+        )
+        return {"message": True}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
