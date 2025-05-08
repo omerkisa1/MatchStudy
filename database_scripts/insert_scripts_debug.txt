@@ -1,16 +1,18 @@
 -- USERS
-INSERT INTO users (email, password)
+INSERT INTO users (email, password, name, surname, age, education_level)
 VALUES 
-  ('emir@example.com', '123456'),
-  ('bora@example.com', '123456'),
-  ('furkan@example.com', '123456');
+  ('emir@example.com', '123456', 'Emir', 'Candan', 22, 'lisans'),
+  ('bora@example.com', '123456', 'Bora', 'Hacıköylü', 24, 'yükseklisans'),
+  ('furkan@example.com', '123456', 'Furkan', 'Kalkan', 21, 'lisans');
+
 
 -- PROFILES
-INSERT INTO profiles (user_id, name, surname, age, education_level, institution)
+INSERT INTO profiles (user_id, institution)
 VALUES 
-  (1, 'Emir', 'Candan', 22, 'lisans', 'Boğaziçi Üniversitesi'),
-  (2, 'Bora', 'Hacıköylü', 24, 'yükseklisans', 'ODTÜ'),
-  (3, 'Furkan', 'Kalkan', 21, 'lisans', 'İTÜ');
+  (1, 'Boğaziçi Üniversitesi'),
+  (2, 'ODTÜ'),
+  (3, 'İTÜ');
+
 
 -- STUDY REQUESTS
 INSERT INTO study_requests (user_id, category, duration, study_date, topic, note)
@@ -18,6 +20,7 @@ VALUES
   (1, 'Matematik', '1-2 saat', '2025-05-10', 'Türev Uygulamaları', 'Lütfen grafik çizmeyi de tekrar edelim.'),
   (2, 'Fizik', '3-4 saat', '2025-05-11', 'Kuvvet ve Hareket', 'Soru çözümü ağırlıklı çalışalım.'),
   (3, 'Yazılım', '5-6 saat', '2025-05-12', 'Python ile OOP', 'Mini proje geliştirmek istiyorum.');
+
 
 -- MATCHES
 INSERT INTO matches (request_id, requester_id, responder_id, status)
