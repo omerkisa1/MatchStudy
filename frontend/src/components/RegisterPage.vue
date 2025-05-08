@@ -239,7 +239,7 @@ export default {
         if (response.ok && data.message === true) {
           registerSuccess.value = true;
           setTimeout(() => {
-            router.push('/login');
+            router.push('/');
           }, 1500);
         } else {
           throw new Error(data.detail || 'Kayıt işlemi başarısız oldu');
