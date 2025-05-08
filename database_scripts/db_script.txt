@@ -1,32 +1,32 @@
--- 1. DATABASE OLUŞTUR
+-- 1. VERİTABANI OLUŞTUR
 DROP DATABASE IF EXISTS match_study;
 CREATE DATABASE match_study;
 USE match_study;
 
--- 2. USERS
+-- 2. USERS TABLOSU
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    surname VARCHAR(50) NOT NULL,
+    age INT,
+    education_level VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 3. PROFILES
+-- 3. PROFILES TABLOSU
 CREATE TABLE profiles (
     profile_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNIQUE NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    surname VARCHAR(50) NOT NULL,
-    age INT,
-    education_level VARCHAR(50), -- enum yerine
     institution VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 4. STUDY_REQUESTS
+-- 4. STUDY_REQUESTS TABLOSU
 CREATE TABLE study_requests (
     request_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE study_requests (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 5. MATCHES
+-- 5. MATCHES TABLOSU
 CREATE TABLE matches (
     match_id INT AUTO_INCREMENT PRIMARY KEY,
     request_id INT NOT NULL,
@@ -54,8 +54,7 @@ CREATE TABLE matches (
     FOREIGN KEY (responder_id) REFERENCES users(id)
 );
 
-
-
+-- 6. FRIEND REQUEST STATUS ENUM GÖREVİ GÖREN TABLO
 CREATE TABLE friend_request_status (
     status VARCHAR(10) PRIMARY KEY
 );
@@ -66,25 +65,56 @@ INSERT INTO friend_request_status (status) VALUES
 ('declined'),
 ('blocked');
 
-
+-- 7. FRIEND REQUESTS TABLOSU
 CREATE TABLE friend_requests (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
     receiver_id INT NOT NULL,
     status VARCHAR(10) NOT NULL DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
     CONSTRAINT fk_sender FOREIGN KEY (sender_id) REFERENCES users(id),
     CONSTRAINT fk_receiver FOREIGN KEY (receiver_id) REFERENCES users(id),
     CONSTRAINT fk_status FOREIGN KEY (status) REFERENCES friend_request_status(status),
     UNIQUE (sender_id, receiver_id)
 );
+
+-- 8. USER INTERESTS TABLOSU
 CREATE TABLE user_interests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     interest VARCHAR(255) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE chats (
+    chat_id VARCHAR(255) PRIMARY KEY,
+    user_1_id INT NOT NULL,
+    user_2_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_1_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_2_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    chat_id VARCHAR(255) NOT NULL,
+    sender_id INT NOT NULL,
+    content TEXT NOT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE message_status (
+    message_id INT PRIMARY KEY,
+    delivered_at DATETIME DEFAULT NULL,
+    read_at DATETIME DEFAULT NULL,
+
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
 );
