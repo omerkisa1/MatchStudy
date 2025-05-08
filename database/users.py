@@ -21,7 +21,7 @@ def add_user(email, password,name,surname,age,education_level):
         cursor.close()
         connection.close()
 
-add_user("seher@example.com","123456","Seher","Akyel","20","Lisans")
+#add_user("seher@example.com","123456","Seher","Akyel","20","Lisans")
 
 def get_user_by_id(user_id):
     connection = mysql.connector.connect(**DB_CONFIG)
