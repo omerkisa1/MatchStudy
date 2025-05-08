@@ -118,26 +118,48 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue';
+  import { ref, onMounted } from 'vue';
   import { useUserStore } from '@/stores/userStore';
-  
   const userStore = useUserStore();
   
   const userProfile = ref({
-    name: userStore.name,
-    email: userStore.email,
-    university: '',
-    department: '',
-    bio: '',
-    avatar: null,
-    completedStudies: 0,
-    rating: '0.0',
-    activeGroups: 0,
-    interests: []
+    id: null,
+    name: null,
+    surname: null,
+    email: null,
+    age: null,
+    education_level: null,
+    created_at: null,
+    updated_at: null,
+    // Sadece users tablosundaki alanlar!
   });
   
   const editProfile = ref({ ...userProfile.value });
   const isEditingProfile = ref(false);
+  
+  onMounted(async () => {
+    const userId = userStore.id;
+    if (!userId) return;
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/users/user/${userId}`);
+      const data = await response.json();
+      if (data && data.user) {
+        userProfile.value = {
+          id: data.user.id ?? null,
+          name: data.user.name ?? null,
+          surname: data.user.surname ?? null,
+          email: data.user.email ?? null,
+          age: data.user.age ?? null,
+          education_level: data.user.education_level ?? null,
+          created_at: data.user.created_at ?? null,
+          updated_at: data.user.updated_at ?? null,
+        };
+        editProfile.value = { ...userProfile.value };
+      }
+    } catch (e) {
+      console.error("Profil bilgileri alınamadı:", e);
+    }
+  });
   
   const cancelProfileEdit = () => {
     isEditingProfile.value = false;

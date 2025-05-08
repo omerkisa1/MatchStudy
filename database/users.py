@@ -33,6 +33,7 @@ def get_user_by_id(user_id):
         query = "SELECT * FROM users WHERE id = %s"
         cursor.execute(query, (user_id,))
         user = cursor.fetchone()
+        print(user)
         return user
     except Exception as e:
         print(f" Kullanıcı getirilemedi: {e}")
@@ -40,6 +41,7 @@ def get_user_by_id(user_id):
     finally:
         cursor.close()
         connection.close()
+get_user_by_id(1)
 
 def list_users():
     connection = mysql.connector.connect(**DB_CONFIG)
@@ -116,4 +118,6 @@ def get_user_id(email: str, password: str):
         cursor.close()
         connection.close()
     
-login_user("test@example.com", "123")
+#login_user("test@example.com", "123")
+
+
