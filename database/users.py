@@ -3,15 +3,15 @@ from mysql.connector import Error
 import mysql.connector
 
 
-def add_user(email, password):
+def add_user(email, password,name,surname,age,education_level):
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
 
     try:
         cursor = connection.cursor()
-        query = "INSERT INTO users (email, password, created_at) VALUES (%s, %s, NOW())"
-        cursor.execute(query, (email, password))
+        query = "INSERT INTO users (email, password,name,surname,age,education_level, created_at,updated_at) VALUES (%s, %s,%s,%s,%s,%s, NOW(), NOW())"
+        cursor.execute(query, (email, password,name,surname,age,education_level))
         connection.commit()
         print(f"Kullanıcı {email} başarıyla eklendi.")
     except Exception as e:
@@ -20,6 +20,8 @@ def add_user(email, password):
     finally:
         cursor.close()
         connection.close()
+
+add_user("seher@example.com","123456","Seher","Akyel","20","Lisans")
 
 def get_user_by_id(user_id):
     connection = mysql.connector.connect(**DB_CONFIG)
