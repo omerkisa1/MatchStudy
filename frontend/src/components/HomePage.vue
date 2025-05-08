@@ -1,5 +1,15 @@
 <template>
   <div class="home-container">
+    <!-- Çıkış Yap Butonu (Sağ üstte) -->
+    <div class="header-logout">
+      <button class="logout-btn" @click="logout">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+          <path d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
+          <path d="M9 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"></path>
+        </svg>
+        Çıkış Yap
+      </button>
+    </div>
     <!-- Using the updated Sidebar component with navigateTo function as prop -->
     <Sidebar :currentContent="currentContent" :navigateTo="navigateTo" />
 
@@ -129,7 +139,7 @@ export default {
 
       // Store'da kullanıcı bilgileri yoksa ve localStorage'da da yoksa login'e yönlendir
       if (!userStore.isAuthenticated && !userId) {
-        router.push('/login');
+        router.push('/');
       }
 
       // Check URL hash for direct navigation
@@ -222,6 +232,17 @@ export default {
       // In a real app, you would call an API to delete the account
     };
 
+    // Çıkış fonksiyonu
+    const logout = () => {
+      localStorage.removeItem('email');
+      localStorage.removeItem('password');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userName');
+      if (userStore.logout) userStore.logout(); // Pinia store'da logout fonksiyonu varsa
+      router.push('/');
+    };
+
     // Initial data loading
     onMounted(() => {
       if (userStore.id) {
@@ -245,7 +266,8 @@ export default {
       handleProfileUpdated,
       handleAvatarUpdated,
       handlePasswordChangeRequested,
-      handleDeleteAccountRequested
+      handleDeleteAccountRequested,
+      logout
     };
   }
 };
@@ -319,5 +341,30 @@ export default {
     height: calc(100vh - 80px); /* Sidebar'ın yüksekliğini çıkarıyoruz */
     max-height: none;
   }
+}
+
+.header-logout {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 100;
+}
+
+.logout-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(126, 87, 194, 0.15);
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+.logout-btn:hover {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
 }
 </style>
