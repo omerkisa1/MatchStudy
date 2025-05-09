@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import List
 
 from database.profiles import (
-    add_profile, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
+    add_profile, get_bio_by_user_id, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
 )
 from models.base import StandardResponse
 from models.profile import ProfileCreate, ProfileUpdate, ProfileResponse
@@ -36,6 +36,18 @@ async def get_profile_endpoint(user_id: int):
         return StandardResponse.error_response("Profile not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
+
+@router.put("/update/{user_id}", response_model=StandardResponse)
+async def get_bio_by_user_id_endpoint(user_id):
+    try:
+        bio=get_bio_by_user_id(user_id)
+        if bio:
+            return StandardResponse.success_response("Biography found", bio)
+        return StandardResponse.error_response("Biography not found") 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve profile")
+
+
 
 @router.put("/update/{user_id}", response_model=StandardResponse)
 async def update_profile_endpoint(user_id: int, profile_update: ProfileUpdate):
