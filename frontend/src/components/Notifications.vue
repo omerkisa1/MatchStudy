@@ -23,7 +23,38 @@
       </button>
     </div>
 
-    <div class="notifications-list" v-if="filteredNotifications.length > 0">
+    <!-- Kullanıcının kendi oluşturduğu çalışma istekleri -->
+    <div v-if="currentFilter === 'my_requests'" class="notifications-list">
+      <div 
+        v-for="req in myRequests" 
+        :key="req.request_id" 
+        class="notification-item"
+      >
+        <div class="notification-icon system">📘</div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <span class="notification-title">
+              {{ req.topic }} başlıklı isteğin ({{ req.category }})
+            </span>
+            <p class="notification-time">
+              {{ formatTime(req.created_at) }} oluşturuldu
+            </p>
+          </div>
+          <p class="notification-message">
+            Eğitim Tarihi: {{ req.study_date }}<br/>
+            Süre: {{ req.duration }}<br/>
+            Not: {{ req.note }}<br/>
+            Durum: 
+            <span :style="{ color: req.status === 'matched' ? '#4CAF50' : (req.status === 'cancelled' ? '#F44336' : '#FF9800') }">
+              {{ req.status === 'matched' ? 'Eşleşti' : req.status === 'cancelled' ? 'İptal Edildi' : 'Bekliyor' }}
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diğer tüm bildirim tipleri -->
+    <div class="notifications-list" v-else-if="filteredNotifications.length > 0">
       <div 
         v-for="notification in filteredNotifications" 
         :key="notification.match_id"
@@ -40,41 +71,42 @@
           <div class="notification-header">
             <span class="notification-title">{{ notification.topic }} konusu için eşleşme isteği</span>
             <p class="notification-time">
-            <span v-if="notification.status === 'pending'">
-              {{ formatTime(notification.matched_at) }} gönderildi
-            </span>
-            <span v-else>
-              {{ formatTime(notification.updated_at) }} {{ notification.status === 'accepted' ? 'kabul edildi' : 'reddedildi' }}
-            </span>
-          </p>
+              <span v-if="notification.status === 'pending'">
+                {{ formatTime(notification.matched_at) }} gönderildi
+              </span>
+              <span v-else>
+                {{ formatTime(notification.updated_at) }} {{ notification.status === 'accepted' ? 'kabul edildi' : 'reddedildi' }}
+              </span>
+            </p>
           </div>
           <p class="notification-message">
-          Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
-          Konu: {{ notification.topic }}<br/>
+            Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
+            Konu: {{ notification.topic }}<br/>
 
-          <div v-if="currentFilter === 'latest'">
-            Durum:
-            <span :style="{ color: notification.status === 'accepted' ? '#4CAF50' : '#F44336' }">
-              {{ notification.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi' }}
-            </span>
-          </div>
+            <div v-if="currentFilter === 'latest'">
+              Durum:
+              <span :style="{ color: notification.status === 'accepted' ? '#4CAF50' : '#F44336' }">
+                {{ notification.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi' }}
+              </span>
+            </div>
 
-          <div v-else>
-            Eğitim Seviyesi: {{ notification.education_level }}<br/>
-            Kurum: {{ notification.institution }}<br/>
-            Süre: {{ notification.duration }}<br/>
-            Not: {{ notification.note }}
-          </div>
+            <div v-else>
+              Eğitim Seviyesi: {{ notification.education_level }}<br/>
+              Kurum: {{ notification.institution }}<br/>
+              Süre: {{ notification.duration }}<br/>
+              Not: {{ notification.note }}
+            </div>
           </p>
 
           <div class="notification-actions" v-if="notification.status === 'pending'">
-          <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
-          <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
-        </div>
+            <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
+            <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- Hiçbir bildirim yoksa -->
     <div v-else class="empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -83,6 +115,7 @@
     </div>
   </div>
 </template>
+
 
 <script>
 import { ref, computed, onMounted } from 'vue';
@@ -101,7 +134,8 @@ export default {
       { label: 'Tümü', value: 'all' },
       { label: 'Okunmamış', value: 'unread' },
       { label: 'Çalışma İstekleri', value: 'study' },
-      { label: 'Son Aktiviteler', value: 'latest' }
+      { label: 'Son Aktiviteler', value: 'latest' },
+      { label: 'Kendi İsteklerim', value: 'my_requests' }
     ];
 
     const fetchNotifications = async () => {
@@ -154,9 +188,11 @@ const formatTime = (timestamp) => {
       }
     };
 
+    
+
     const filteredNotifications = computed(() => {
   if (currentFilter.value === 'latest') return recentActivities.value;
-
+  if (currentFilter.value === 'my_requests') return myRequests.value;
   return notifications.value.filter(n => {
     if (currentFilter.value === 'all') return n.status === 'pending';
     if (currentFilter.value === 'unread') return !n.read && n.status === 'pending';
@@ -165,13 +201,23 @@ const formatTime = (timestamp) => {
   });
 });
 
+const myRequests = ref([]);
 
+const fetchMyRequests = async () => {
+  try {
+    const response = await axios.get(`http://localhost:8000/study_requests/user/${userStore.id}`);
+    myRequests.value = response.data.requests;
+  } catch (error) {
+    console.error("Kullanıcı istekleri alınamadı:", error);
+  }
+};
 
     
 
     onMounted(() => {
       fetchNotifications();
       fetchRecentActivities();
+      fetchMyRequests();
     });
 
     return {
@@ -182,7 +228,8 @@ const formatTime = (timestamp) => {
       unreadNotifications,
       formatTime,
       markAllAsRead,
-      respondToMatch
+      respondToMatch,
+      myRequests
     };
   }
 };
