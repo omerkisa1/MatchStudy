@@ -73,3 +73,21 @@ def manage_friend_request_status(request_id: int, receiver_id: int, new_status: 
     finally:
         cursor.close()
         connection.close()
+
+def get_friend_requests_by_id(user_id):
+    connection = mysql.connector.connect()
+    if not connection:
+        return
+
+    try: 
+        cursor = connection.cursor()
+        query = "SELECT * FROM friend_requests WHERE receiver_id = %s"
+        cursor.execute(query,(user_id))
+        connection.commit()
+        print(f"Kullanıcı istekleri getirildi.")
+    except Exception as e:
+        connection.rollback()
+        print(f"Kullanıcı istekleri getirilirken hata oluştu. {e}")
+    finally:
+        cursor.close()
+        connection.close()
