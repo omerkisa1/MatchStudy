@@ -68,7 +68,31 @@ def get_bio_by_user_id(user_id):
 
 print(get_bio_by_user_id(1))
 
+
+def update_bio(user_id):
+    """Update an existing biography"""
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return
+     
+    try:
+        bio=get_bio_by_user_id(user_id)
+        if not bio:
+            raise ValueError(f"Biography with user_id {user_id} not found")
+        
+        update_fields={}
+        if bio is not None:
+            update_fields["bio"] = bio
     
+    except Exception as e:
+        connection.rollback()
+        print(f"Error deleting biography: {e}")
+        raise ValueError(f"Failed to delete biography: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+
 def update_profile(user_id, name, surname, age, education_level, institution):
     """Update an existing profile"""
     connection = mysql.connector.connect(**DB_CONFIG)

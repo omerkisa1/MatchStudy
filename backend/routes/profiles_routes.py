@@ -37,7 +37,7 @@ async def get_profile_endpoint(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
 
-@router.put("/update/{user_id}", response_model=StandardResponse)
+@router.put("/get/{user_id}", response_model=StandardResponse)
 async def get_bio_by_user_id_endpoint(user_id):
     try:
         bio=get_bio_by_user_id(user_id)
