@@ -44,6 +44,31 @@ def get_profile_by_user_id(user_id):
         cursor.close()
         connection.close()
 
+def get_bio_by_user_id(user_id):
+    """Get user's bio by user_id"""
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return None
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT bio FROM profiles WHERE user_id = %s"
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchone()
+        if result:
+            return result['bio']  # sadece bio bilgisini döndür
+        else:
+            return None
+    except Exception as e:
+        print(f"Error retrieving bio: {e}")
+        return None
+    finally:
+        cursor.close()
+        connection.close()
+
+print(get_bio_by_user_id(1))
+
+    
 def update_profile(user_id, name, surname, age, education_level, institution):
     """Update an existing profile"""
     connection = mysql.connector.connect(**DB_CONFIG)
