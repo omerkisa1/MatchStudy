@@ -2,7 +2,7 @@ import sys
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from database.users import (
-    add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id
+    add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id, update_user_profile
 )
 router = APIRouter()
 
@@ -17,6 +17,14 @@ class RegisterUser(BaseModel):
     surname: str
     age: int
     education_level: str
+
+class UpdateProfile(BaseModel):
+    name: str = None
+    surname: str = None
+    age: int = None
+    education_level: str = None
+    bio: str = None
+    institution: str = None
 
 @router.post("/login")
 async def login_user_endpoint(credentials: LoginCredentials):
@@ -87,3 +95,23 @@ async def get_user_id_endpoint(email: str, password: str):
         return {"message": "User found", "user_id": user_id, "status": 200}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
+
+@router.put("/update/{user_id}")
+async def update_user_profile_endpoint(user_id: int, profile_data: UpdateProfile):
+    try:
+        updated = update_user_profile(
+            user_id,
+            profile_data.name,
+            profile_data.surname,
+            profile_data.age,
+            profile_data.education_level,
+            profile_data.bio,
+            profile_data.institution
+        )
+        if updated:
+            return {"message": "Profile updated successfully", "status": 200}
+        return {"message": "User not found", "status": 404}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profile update failed: {str(e)}")
