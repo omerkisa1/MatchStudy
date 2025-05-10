@@ -107,23 +107,37 @@
           ></textarea>
         </div>
 
-        <!-- Submit Button -->
+        <!-- Submit Button - Duruma göre stil değiştiren buton -->
         <button
           @click="createStudyRequest"
-          :disabled="!isFormValid"
+          :disabled="!isFormValid || isLoading || isSuccess"
           class="submit-btn"
-          :class="{ 'disabled': !isFormValid }"
+          :class="{
+            'disabled': !isFormValid,
+            'loading': isLoading,
+            'success': isSuccess
+          }"
         >
-          <span v-if="!isLoading">{{ isFormValid ? 'İstek Oluştur' : 'Tüm Alanları Doldurun' }}</span>
-          <div v-else class="btn-loader"></div>
+          <template v-if="isSuccess">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>İstek Oluşturuldu</span>
+          </template>
+          <div v-else-if="isLoading" class="btn-loader"></div>
+          <span v-else>{{ isFormValid ? 'İstek Oluştur' : 'Tüm Alanları Doldurun' }}</span>
         </button>
       </div>
     </div>
+    
+    <!-- Toast Bildirimleri -->
+    <ToastNotification ref="toast" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   userId: {
@@ -133,6 +147,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['requestCreated']);
+const toast = ref(null);
 
 // Form state
 const selectedCategory = ref(null);
@@ -141,6 +156,7 @@ const selectedDuration = ref(null);
 const topic = ref('');
 const note = ref('');
 const isLoading = ref(false);
+const isSuccess = ref(false);
 const categorySearch = ref('');
 
 // Dropdowns state
@@ -247,7 +263,7 @@ const selectDuration = (duration) => {
 
 const createStudyRequest = async () => {
   if (!isFormValid.value) {
-    alert('Lütfen tüm alanları doldurun ve giriş yaptığınızdan emin olun.');
+    toast.value.error('Lütfen tüm alanları doldurun ve giriş yaptığınızdan emin olun.');
     return;
   }
 
@@ -281,11 +297,18 @@ const createStudyRequest = async () => {
     topic.value = '';
     note.value = '';
     
-    alert('Çalışma isteği başarıyla oluşturuldu!');
-    emit('requestCreated');
+    // Başarı durumunu işaretleyip, toast göster
+    isSuccess.value = true;
+    toast.value.success('Çalışma isteği başarıyla oluşturuldu!');
+    
+    // 2 saniye sonra ana sayfaya yönlendir
+    setTimeout(() => {
+      emit('requestCreated');
+    }, 2000);
+    
   } catch (error) {
     console.error('Error:', error);
-    alert(error.message || 'Çalışma isteği oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+    toast.value.error(error.message || 'Çalışma isteği oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
   } finally {
     isLoading.value = false;
   }
@@ -449,7 +472,7 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
-.submit-btn:hover:not(.disabled) {
+.submit-btn:hover:not(.disabled):not(.success) {
   background: rgb(109, 40, 217);
   transform: translateY(-1px);
 }
@@ -457,6 +480,16 @@ onUnmounted(() => {
 .submit-btn.disabled {
   background: rgba(124, 58, 237, 0.5);
   cursor: not-allowed;
+}
+
+.submit-btn.loading {
+  background: rgb(124, 58, 237);
+  cursor: wait;
+}
+
+.submit-btn.success {
+  background: #4CAF50;
+  cursor: default;
 }
 
 .btn-loader {

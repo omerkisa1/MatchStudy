@@ -63,7 +63,7 @@
                 Engellendi
               </div>
               
-              <button @click="hideChat" class="delete-button" title="Bu sohbeti sil">
+              <button @click="showDeleteConfirm" class="delete-button" title="Bu sohbeti sil">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -115,6 +115,17 @@
         <p>Bir sohbet başlatmak için soldaki listeden bir kişi seçin</p>
       </div>
     </div>
+    
+    <!-- Özel Onay İletişim Kutusu -->
+    <ConfirmDialog 
+      ref="confirmDialog"
+      title="Sohbeti Sil"
+      message="Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+      @confirm="hideChat"
+    />
+    
+    <!-- Toast Bildirimleri -->
+    <ToastNotification ref="toast" />
   </div>
 </template>
 
@@ -123,9 +134,13 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useMatchesStore } from '@/stores/matchesStore'
 import { useUserStore } from '@/stores/userStore'
 import socket from '@/socket'
+import ConfirmDialog from './ConfirmDialog.vue'
+import ToastNotification from './ToastNotification.vue'
 
 const matchesStore = useMatchesStore()
 const userStore = useUserStore()
+const confirmDialog = ref(null)
+const toast = ref(null)
 
 const acceptedMatches = computed(() => matchesStore.acceptedMatches)
 const currentUser = computed(() => userStore.id)
@@ -575,13 +590,14 @@ function formatMessageTime(timestamp) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// Sohbeti gizle/sil onay iletişim kutusunu göster
+function showDeleteConfirm() {
+  confirmDialog.value.show();
+}
+
 // Sohbeti gizle/sil
 async function hideChat() {
   if (!selectedChatId.value) return;
-  
-  if (!confirm('Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
-    return;
-  }
   
   try {
     const response = await fetch(`http://127.0.0.1:8000/chat/hide`, {
@@ -609,13 +625,15 @@ async function hideChat() {
       selectedChatId.value = null;
       messages.value = [];
       
-      alert('Sohbet başarıyla silindi.');
+      // Başarılı toast bildirimi göster
+      toast.value.success('Sohbet başarıyla silindi');
     } else {
-      alert('Sohbet silinirken bir hata oluştu: ' + data.message);
+      // Hata toast bildirimi göster
+      toast.value.error('Sohbet silinirken bir hata oluştu: ' + data.message);
     }
   } catch (error) {
     console.error('Sohbet silinirken hata:', error);
-    alert('Sohbet silinirken bir hata oluştu.');
+    toast.value.error('Sohbet silinirken bir hata oluştu');
   }
 }
 </script>
