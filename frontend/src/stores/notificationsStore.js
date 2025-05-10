@@ -8,6 +8,7 @@ export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
     // List of all notifications
     notifications: [],
+    friendRequests: [],
     // Loading state
     isLoading: false,
     // Last fetch timestamp
@@ -36,7 +37,20 @@ export const useNotificationsStore = defineStore('notifications', {
         this.isLoading = false
       }
     },
-
+    async fetchFriendRequests() {
+      const userStore = useUserStore()
+      if (!userStore.id) return
+    
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${userStore.id}`)
+        if (!res.ok) throw new Error("Arkadaşlık istekleri alınamadı")
+        const data = await res.json()
+        this.friendRequests = data.requests || []
+      } catch (error) {
+        console.error("Error fetching friend requests:", error)
+      }
+    },
+    
     /**
      * Mark a notification as read
      * @param {Number} notificationId - ID of the notification to mark as read
@@ -131,6 +145,10 @@ export const useNotificationsStore = defineStore('notifications', {
       return [...this.notifications].sort((a, b) => {
         return new Date(b.created_at) - new Date(a.created_at)
       })
+    },
+    pendingFriendRequests() {
+      return this.friendRequests.filter(req => req.status === 'pending')
     }
+    
   }
 }) 

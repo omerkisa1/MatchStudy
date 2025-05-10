@@ -53,7 +53,37 @@
       </div>
     </div>
 
-    <!-- Diğer tüm bildirim tipleri -->
+    <!-- Arkadaşlık istekleri -->
+    <div class="notifications-list" v-else-if="currentFilter === 'friend_requests'">
+      <div 
+        v-for="request in friendRequests" 
+        :key="request.id" 
+        class="notification-item unread"
+      >
+        <div class="notification-icon system">👥</div>
+        <div class="notification-content">
+          <div class="notification-header">
+            <span class="notification-title">
+              {{ request.sender_name }} {{ request.sender_surname }} sana arkadaşlık isteği gönderdi
+            </span>
+            <p class="notification-time">
+              {{ formatTime(request.created_at) }}
+            </p>
+          </div>
+          <p class="notification-message">
+            Yaş: {{ request.sender_age }}<br/>
+            Eğitim: {{ request.sender_education_level }}
+          </p>
+
+          <div class="notification-actions" v-if="request.status === 'pending'">
+            <button class="action-btn accept" @click="respondToFriendRequest(request.id, 'accepted')">Kabul Et</button>
+            <button class="action-btn reject" @click="respondToFriendRequest(request.id, 'rejected')">Reddet</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diğer çalışma istekleri ve eşleşmeler -->
     <div class="notifications-list" v-else-if="filteredNotifications.length > 0">
       <div 
         v-for="notification in filteredNotifications" 
@@ -66,7 +96,6 @@
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
           </svg>
         </div>
-
         <div class="notification-content">
           <div class="notification-header">
             <span class="notification-title">{{ notification.topic }} konusu için eşleşme isteği</span>
@@ -82,20 +111,10 @@
           <p class="notification-message">
             Gönderen: {{ notification.name }} {{ notification.surname }}<br/>
             Konu: {{ notification.topic }}<br/>
-
-            <div v-if="currentFilter === 'latest'">
-              Durum:
-              <span :style="{ color: notification.status === 'accepted' ? '#4CAF50' : '#F44336' }">
-                {{ notification.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi' }}
-              </span>
-            </div>
-
-            <div v-else>
-              Eğitim Seviyesi: {{ notification.education_level }}<br/>
-              Kurum: {{ notification.institution }}<br/>
-              Süre: {{ notification.duration }}<br/>
-              Not: {{ notification.note }}
-            </div>
+            Eğitim Seviyesi: {{ notification.education_level }}<br/>
+            Kurum: {{ notification.institution }}<br/>
+            Süre: {{ notification.duration }}<br/>
+            Not: {{ notification.note }}
           </p>
 
           <div class="notification-actions" v-if="notification.status === 'pending'">
@@ -117,6 +136,7 @@
 </template>
 
 
+
 <script>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
@@ -132,7 +152,7 @@ export default {
 
     const filters = [
       { label: 'Tümü', value: 'all' },
-      { label: 'Okunmamış', value: 'unread' },
+      { label: 'Arkadaşlık İstekleri', value: 'friend_requests' },
       { label: 'Çalışma İstekleri', value: 'study' },
       { label: 'Son Aktiviteler', value: 'latest' },
       { label: 'Kendi İsteklerim', value: 'my_requests' }
@@ -188,14 +208,25 @@ const formatTime = (timestamp) => {
       }
     };
 
+
+    const friendRequests = ref([])
+    const fetchFriendRequests = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/friend_requests/get_friend_requests?user_id=${userStore.id}`)
+        friendRequests.value = res.data.requests
+      } catch (error) {
+        console.error("Arkadaşlık istekleri alınamadı:", error)
+      }
+    }
+
     
 
     const filteredNotifications = computed(() => {
   if (currentFilter.value === 'latest') return recentActivities.value;
   if (currentFilter.value === 'my_requests') return myRequests.value;
+  if (currentFilter.value === 'friend_requests') return friendRequests.value;
   return notifications.value.filter(n => {
     if (currentFilter.value === 'all') return n.status === 'pending';
-    if (currentFilter.value === 'unread') return !n.read && n.status === 'pending';
     if (currentFilter.value === 'study') return n.type === 'study' && n.status === 'pending';
     return false;
   });
@@ -218,6 +249,7 @@ const fetchMyRequests = async () => {
       fetchNotifications();
       fetchRecentActivities();
       fetchMyRequests();
+      fetchFriendRequests();
     });
 
     return {
@@ -229,7 +261,8 @@ const fetchMyRequests = async () => {
       formatTime,
       markAllAsRead,
       respondToMatch,
-      myRequests
+      myRequests,
+      friendRequests
     };
   }
 };

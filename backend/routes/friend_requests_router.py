@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from database.friend_requests import (send_friend_request, manage_friend_request_status)
+from database.friend_requests import (send_friend_request, manage_friend_request_status, get_friend_requests_by_id)
 
 router = APIRouter()
 
@@ -22,3 +22,13 @@ async def manage_request(request_id: int, receiver_id: int, status: str):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception:
         raise HTTPException(status_code=500, detail="İstek durumu güncellenemedi")
+@router.get("/get_friend_requests")
+async def get_requests(user_id: int):
+    try:
+        requests = get_friend_requests_by_id(user_id)
+        return {"message": "Arkadaşlık isteği başarıyla listelendi",
+                "requests": requests}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Arkadaşlık isteği listelenemedi")
