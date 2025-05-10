@@ -119,6 +119,7 @@ def update_bio(user_id, new_bio):
             cursor.close()
         if connection.is_connected():
             connection.close()
+print(update_bio(1, "Selam"))
 
 
 
