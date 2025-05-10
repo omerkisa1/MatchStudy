@@ -146,30 +146,8 @@ const acceptedMatches = computed(() => matchesStore.acceptedMatches)
 const currentUser = computed(() => userStore.id)
 
 // Benzersiz kullanıcılar listesi
-const uniqueMatchedUsers = computed(() => {
-  const users = new Map(); // Benzersiz kullanıcıları tutmak için Map kullanıyoruz
-  
-  acceptedMatches.value.forEach(match => {
-    // Karşı taraf kullanıcı ID'sini belirle
-    const otherUserId = currentUser.value === match.requester_id 
-      ? match.responder_id 
-      : match.requester_id;
-    
-    // Bu kullanıcı zaten listeye eklenmiş mi kontrol et
-    if (!users.has(otherUserId)) {
-      users.set(otherUserId, {
-        userId: otherUserId,
-        displayName: `Kullanıcı ${otherUserId}`, // Bu geçici olarak kalacak, sonra gerçek isimle değiştirilecek
-        lastMessage: 'Son mesaj içeriği burada görünecek...',
-        lastMessageTime: '14:30',
-        unreadCount: unreadMessages.value[getMatchId(match)] || 0,
-        match: match // İlgili eşleşme nesnesini saklayalım
-      });
-    }
-  });
-  
-  return Array.from(users.values());
-});
+const uniqueMatchedUsers = ref([])
+
 
 const selectedMatchId = computed(() => matchesStore.selectedMatchId)
 const selectedUserId = ref(null);
@@ -368,34 +346,55 @@ async function markMessagesAsRead(chatId) {
 // İlk açılışta eşleşmeleri ve okunmamış mesaj sayılarını getir
 onMounted(async () => {
   console.log("Mesaj sayfası yükleniyor, kullanıcı ID:", currentUser.value);
-  
-  // Eşleşmeleri getir
+
+  // Eşleşmeleri çek
   await matchesStore.fetchMatches();
   console.log("Tüm eşleşmeler:", matchesStore.matches);
   console.log("Kabul edilmiş eşleşmeler:", acceptedMatches.value);
-  
-  // Eşleşme hiç yoksa veya accepted olanlar yoksa uyarı göster
-  if (matchesStore.matches.length === 0) {
-    console.warn("Hiç eşleşme bulunamadı!");
-  } else if (acceptedMatches.value.length === 0) {
-    console.warn("Accepted statusünde eşleşme bulunamadı!");
-    console.log("Eşleşmelerin statüleri:", matchesStore.matches.map(m => m.status));
+
+  const usersMap = new Map();
+
+  // Kullanıcı listesini doldur ve isimlerini getir
+  for (const match of acceptedMatches.value) {
+    const otherUserId = currentUser.value === match.requester_id 
+      ? match.responder_id 
+      : match.requester_id;
+
+    if (!usersMap.has(otherUserId)) {
+      const userEntry = {
+        userId: otherUserId,
+        displayName: `Kullanıcı ${otherUserId}`,
+        lastMessage: 'Son mesaj içeriği burada görünecek...',
+        lastMessageTime: '14:30',
+        unreadCount: 0,
+        match
+      };
+
+      usersMap.set(otherUserId, userEntry);
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/users/user/${otherUserId}`);
+        const data = await res.json();
+        if (data.user) {
+          userEntry.displayName = `${data.user.name} ${data.user.surname}`;
+        }
+      } catch (e) {
+        console.error('Kullanıcı bilgisi alınamadı', e);
+      }
+
+      uniqueMatchedUsers.value.push(userEntry);
+    }
   }
-  
+
+  // Okunmamış mesaj sayılarını getir
   await fetchUnreadCounts();
-  
-  // Tüm eşleşilmiş kullanıcıların bilgilerini getir
-  for (const user of uniqueMatchedUsers.value) {
-    await fetchUserInfo(user.userId);
-  }
-  
-  // Tüm kullanıcıların arkadaşlık durumunu kontrol et
+
+  // Arkadaşlık durumlarını getir
   try {
     const response = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
     const data = await response.json();
-    
+
     if (data.requests && data.requests.length > 0) {
-      // Tüm arkadaşlık isteklerini döngüye al
       data.requests.forEach(request => {
         const otherUserId = request.sender_id == currentUser.value ? request.receiver_id : request.sender_id;
         friendshipStatus.value[otherUserId] = request.status;
@@ -404,29 +403,29 @@ onMounted(async () => {
   } catch (error) {
     console.error("Arkadaşlık durumları alınamadı:", error);
   }
-  
+
   console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
-  
-  // URL'de bir match ID varsa otomatik olarak o sohbeti aç
+
+  // URL'de bir userId varsa doğrudan o kullanıcıyı aç
   const urlParams = new URLSearchParams(window.location.search)
   const userId = urlParams.get('userId')
   if (userId) {
-    // Önce kullanıcı bilgilerini getir
-    await fetchUserInfo(parseInt(userId));
-    
     const user = uniqueMatchedUsers.value.find(u => u.userId === parseInt(userId))
     if (user) {
       selectUserAndLoadMessages(user)
     }
   }
-  
-  // Socket bağlantısı kurulduğunda login olayını tetikle
+
+  // Socket bağlantısı olduğunda kullanıcıyı login et
   socket.on('connect', () => {
     if (currentUser.value) {
       socket.emit('user_login', currentUser.value)
     }
-  })
-})
+  });
+});
+
+
+   
 
 // Mesajlar değiştiğinde otomatik kaydır
 watch(messages, () => {
