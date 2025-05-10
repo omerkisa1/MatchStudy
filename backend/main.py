@@ -9,6 +9,7 @@ from routes.study_requests_routes import router as study_requests_router
 from routes.matches_routes import router as matches_router
 from routes.user_interests_routes import router as user_interests_router
 from routes.chat_router import router as chat_router
+from routes.friend_requests_router import router as friend_requests_router
 
 # FastAPI uygulaması oluştur
 app = FastAPI()
@@ -28,6 +29,7 @@ app.include_router(study_requests_router, prefix="/study_requests", tags=["Study
 app.include_router(matches_router, prefix="/matches", tags=["Matches"])
 app.include_router(user_interests_router, prefix="/user_interests", tags=["User Interests"])
 app.include_router(chat_router, tags=["Chat"])
+app.include_router(friend_requests_router,prefix="/friend_requests", tags= ["Friend Requests"] )
 
 # Statik dosyalar için mount (opsiyonel)
 

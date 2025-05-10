@@ -37,6 +37,9 @@
         <template v-else>
           <div class="chat-header">
             <h3>{{ selectedUserName }}</h3>
+            <button @click="sendFriendRequest" class="friend-button">
+            Arkadaşlık İsteği Gönder
+          </button>
           </div>
           
           <div class="messages" ref="messagesContainer">
@@ -186,6 +189,34 @@ async function fetchUnreadCounts() {
     console.error("Okunmamış mesaj sayıları alınamadı:", err)
   }
 }
+
+
+async function sendFriendRequest() {
+  try {
+    const senderId = currentUser.value
+    const receiverId = selectedUserId.value
+    const res = await fetch(`http://127.0.0.1:8000/friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender_id: currentUser.value,
+        receiver_id: selectedUserId.value
+      })
+    })
+    
+    const data = await res.json()
+    if (data.message) {
+      alert('Arkadaşlık isteği gönderildi!')
+    } else {
+      alert('İstek gönderilemedi: ' + data.detail)
+    }
+  } catch (err) {
+    alert('Bir hata oluştu: ' + err.message)
+  }
+}
+
 
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
@@ -494,7 +525,12 @@ function formatMessageTime(timestamp) {
 .chat-header {
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
+
 
 .chat-header h3 {
   margin: 0;
@@ -615,4 +651,21 @@ function formatMessageTime(timestamp) {
     height: 500px;
   }
 }
+
+.friend-button {
+  margin-top: 0.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.friend-button:hover {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+}
+
 </style>

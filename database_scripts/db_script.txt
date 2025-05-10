@@ -36,11 +36,12 @@ CREATE TABLE study_requests (
     duration VARCHAR(20) DEFAULT '1-2 saat',
     study_date DATE NOT NULL,
     topic VARCHAR(255),
-    note TEXT,
+    note TEXT,  
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE study_requests ADD COLUMN status VARCHAR(20) DEFAULT 'pending';
 
 -- 5. MATCHES TABLOSU
 CREATE TABLE matches (
@@ -56,17 +57,6 @@ CREATE TABLE matches (
     FOREIGN KEY (responder_id) REFERENCES users(id)
 );
 
--- 6. FRIEND REQUEST STATUS ENUM GÖREVİ GÖREN TABLO
-CREATE TABLE friend_request_status (
-    status VARCHAR(10) PRIMARY KEY
-);
-
-INSERT INTO friend_request_status (status) VALUES 
-('pending'),
-('accepted'),
-('declined'),
-('blocked');
-
 -- 7. FRIEND REQUESTS TABLOSU
 CREATE TABLE friend_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,7 +70,7 @@ CREATE TABLE friend_requests (
     CONSTRAINT fk_status FOREIGN KEY (status) REFERENCES friend_request_status(status),
     UNIQUE (sender_id, receiver_id)
 );
-
+ALTER TABLE friend_requests ADD COLUMN status VARCHAR(10) DEFAULT 'pending';
 -- 8. USER INTERESTS TABLOSU
 CREATE TABLE user_interests (
     id INT AUTO_INCREMENT PRIMARY KEY,

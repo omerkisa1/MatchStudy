@@ -126,9 +126,10 @@ def list_user_requests(user_id):
 
     try:
         cursor = connection.cursor(dictionary=True)
-        query = "SELECT * FROM study_requests WHERE user_id = %s"
+        query = "SELECT * FROM study_requests WHERE user_id = %s ORDER BY created_at DESC"
         cursor.execute(query, (user_id,))
         requests = cursor.fetchall()
+        print(requests)
         return requests
     except Exception as e:
         print(f"Kullanıcı istekleri getirilemedi: {e}")
@@ -160,4 +161,4 @@ def get_past_study_requests_by_user(user_id):
         cursor.close()
         connection.close()
 
-get_past_study_requests_by_user(1)
+list_user_requests(1)
