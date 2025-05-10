@@ -37,10 +37,6 @@ async def get_profile_endpoint(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
     
-from fastapi import APIRouter, HTTPException, Form
-
-
-router = APIRouter()
 
 @router.put("/update-bio/{user_id}", response_model=StandardResponse)
 async def update_bio_endpoint(user_id: int, new_bio: str = Form(...)):
