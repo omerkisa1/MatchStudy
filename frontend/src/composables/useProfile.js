@@ -127,6 +127,43 @@ export function useProfile() {
     initForm()
   }
   
+
+  const updateBio = async () => {
+    isLoading.value = true
+    error.value = null
+    success.value = null
+  
+    try {
+      const response = await api.put(`/profiles/update-bio/${userStore.id}`, null, {
+        params: { new_bio: profileForm.bio }
+      })
+  
+      const result = response.data
+  
+      if (result.data === true) {
+        await userStore.updateProfile({ bio: result.new_bio })
+  
+        success.value = 'Biography updated successfully!'
+      } else {
+        error.value = result.message || 'Failed to update biography'
+      }
+  
+      return result
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Failed to update biography'
+      console.error(err)
+      return {
+        success: false,
+        message: 'Failed to update biography',
+        errors: [err.message]
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+
+
   /**
    * Save profile changes
    * @returns {Promise<ApiResponse>} Result with success status
@@ -135,13 +172,12 @@ export function useProfile() {
     isLoading.value = true
     error.value = null
     success.value = null
-    
+  
     try {
       const response = await api.put(`/profiles/update/${userStore.id}`, profileForm)
       const result = response.data
-      
+  
       if (result.success) {
-        // Update local store with new profile data
         await userStore.updateProfile({
           name: profileForm.name,
           surname: profileForm.surname,
@@ -150,13 +186,14 @@ export function useProfile() {
           institution: profileForm.institution,
           bio: profileForm.bio
         })
-        
+  
         success.value = 'Profile updated successfully!'
-        isEditing.value = false
+        
+  
       } else {
         error.value = result.message || 'An error occurred while updating profile'
       }
-      
+  
       return result
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to update profile'
@@ -170,6 +207,7 @@ export function useProfile() {
       isLoading.value = false
     }
   }
+  
   
   /**
    * Trigger file input click for avatar upload
@@ -518,6 +556,7 @@ export function useProfile() {
     removeInterest,
     changePassword,
     deleteAccount,
-    fetchInterests
+    fetchInterests,
+    updateBio
   }
 } 
