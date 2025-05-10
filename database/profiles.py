@@ -1,13 +1,14 @@
+
 from database.config import DB_CONFIG
 from mysql.connector import Error
-import mysql.connector
+import mysql.connector 
 
 def add_profile(user_id, name, surname, age, education_level, institution):
     """Add a new profile to the database"""
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
-
+    
     try:
         cursor = connection.cursor()
         query = """
@@ -69,28 +70,36 @@ def get_bio_by_user_id(user_id):
 print(get_bio_by_user_id(1))
 
 
-def update_bio(user_id):
+def update_bio(user_id, new_bio):
     """Update an existing biography"""
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
         return
-     
+
     try:
-        bio=get_bio_by_user_id(user_id)
-        if not bio:
-            raise ValueError(f"Biography with user_id {user_id} not found")
+        cursor = connection.cursor()
         
-        update_fields={}
-        if bio is not None:
-            update_fields["bio"] = bio
-    
+        # Kullanıcı mevcut mu kontrolü
+        existing_bio = get_bio_by_user_id(user_id)
+        if existing_bio is None:
+            raise ValueError(f"Biography with user_id {user_id} not found")
+
+        # Güncelleme sorgusu
+        query = "UPDATE profiles SET bio = %s WHERE user_id = %s"
+        cursor.execute(query, (new_bio, user_id))
+        connection.commit()
+
+        print("Biography updated successfully")
+
     except Exception as e:
         connection.rollback()
-        print(f"Error deleting biography: {e}")
-        raise ValueError(f"Failed to delete biography: {e}")
+        print(f"Error updating biography: {e}")
+        raise ValueError(f"Failed to update biography: {e}")
+    
     finally:
         cursor.close()
         connection.close()
+
 
 
 def update_profile(user_id, name, surname, age, education_level, institution):
