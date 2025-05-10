@@ -38,7 +38,7 @@ def send_friend_request(sender_id, receiver_id):
 #Bu fonksiyon önemli arkadaşlık isteği durumlarını birden fazla fonk yazarak
 #kontrol edebilirdik ama tek noktadan yönetiyoruz
 
-def manage_friend_request_status(request_id: int, receiver_id: int, new_status: str):
+def manage_friend_request_status(sender_id: int, receiver_id: int, new_status: str):
     valid_statuses = ['accepted', 'rejected', 'blocked']
     if new_status not in valid_statuses:
         raise ValueError("Geçersiz durum: " + new_status)
@@ -49,9 +49,9 @@ def manage_friend_request_status(request_id: int, receiver_id: int, new_status: 
 
         check_query = """
             SELECT status FROM friend_requests
-            WHERE id = %s AND receiver_id = %s
+            WHERE sender_id = %s AND receiver_id = %s
         """
-        cursor.execute(check_query, (request_id, receiver_id))
+        cursor.execute(check_query, (sender_id, receiver_id))
         row = cursor.fetchone()
 
         if not row:
@@ -62,9 +62,9 @@ def manage_friend_request_status(request_id: int, receiver_id: int, new_status: 
         update_query = """
             UPDATE friend_requests
             SET status = %s, updated_at = NOW()
-            WHERE id = %s
+            WHERE sender_id = %s AND receiver_id = %s
         """
-        cursor.execute(update_query, (new_status, request_id))
+        cursor.execute(update_query, (new_status, sender_id, receiver_id))
         connection.commit()
 
     except Exception as e:

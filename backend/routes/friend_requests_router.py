@@ -14,9 +14,9 @@ async def send_request(sender_id: int, receiver_id: int):
         raise HTTPException(status_code=500, detail="Arkadaşlık isteği gönderilemedi")
 
 @router.post("/manage")
-async def manage_request(request_id: int, receiver_id: int, status: str):
+async def manage_request(sender_id: int, receiver_id: int, status: str):
     try:
-        manage_friend_request_status(request_id, receiver_id, status)
+        manage_friend_request_status(sender_id, receiver_id, status)
         return {"message": f"Arkadaşlık isteği '{status}' olarak güncellendi"}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

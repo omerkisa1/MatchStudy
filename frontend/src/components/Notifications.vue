@@ -75,9 +75,17 @@
             Eğitim: {{ request.sender_education_level }}
           </p>
 
-          <div class="notification-actions" v-if="request.status === 'pending'">
-            <button class="action-btn accept" @click="respondToFriendRequest(request.id, 'accepted')">Kabul Et</button>
-            <button class="action-btn reject" @click="respondToFriendRequest(request.id, 'rejected')">Reddet</button>
+          <div class="notification-actions">
+            <template v-if="request.status === 'pending'">
+              <button class="action-btn accept" @click="respondToFriendRequest(request.sender_id, 'accepted')">Kabul Et</button>
+              <button class="action-btn reject" @click="respondToFriendRequest(request.sender_id, 'rejected')">Reddet</button>
+            </template>
+            <template v-else-if="request.status === 'accepted'">
+              <span style="color: #4CAF50; font-weight: 500;">✅ Kabul Edildi</span>
+            </template>
+            <template v-else-if="request.status === 'rejected'">
+              <span style="color: #F44336; font-weight: 500;">❌ Reddedildi</span>
+            </template>
           </div>
         </div>
       </div>
@@ -221,7 +229,17 @@ const formatTime = (timestamp) => {
       }
     }
 
+    const respondToFriendRequest = async (senderId, status) => {
+  try {
+    await axios.post(`http://localhost:8000/friend_requests/manage?sender_id=${senderId}&receiver_id=${userStore.id}&status=${status}`);
     
+    // güncel listeyi yeniden al
+    await fetchFriendRequests();
+  } catch (error) {
+    console.error('Arkadaşlık isteği güncellenemedi:', error);
+  }
+};
+
 
     const filteredNotifications = computed(() => {
   if (currentFilter.value === 'latest') return recentActivities.value;
@@ -264,7 +282,8 @@ const fetchMyRequests = async () => {
       markAllAsRead,
       respondToMatch,
       myRequests,
-      friendRequests
+      friendRequests,
+      respondToFriendRequest
     };
   }
 };
