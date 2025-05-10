@@ -98,3 +98,56 @@ def get_friend_requests_by_id(user_id):
             cursor.close()
         if connection:
             connection.close()
+        
+
+def get_friend_requests_by_id(user_id):
+    connection = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='123456789',  # kendi şifreni yaz
+        database='match_study'
+    )
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+
+        query = """
+        SELECT 
+            sr.id AS request_id,
+            sr.status,
+            sr.created_at,
+            sr.updated_at,
+
+            -- Karşı taraf bilgileri
+            u.id AS user_id,
+            u.name,
+            u.surname,
+            u.age,
+            u.education_level,
+            u.email
+
+        FROM study_requests sr
+        JOIN users u 
+            ON (
+                (sr.sender_id = %s AND sr.receiver_id = u.id)
+                OR
+                (sr.receiver_id = %s AND sr.sender_id = u.id)
+            )
+        ORDER BY sr.created_at DESC;
+        """
+
+        cursor.execute(query, (user_id, user_id))
+        results = cursor.fetchall()
+        return results
+
+    except Exception as e:
+        print(f"Hata oluştu: {e}")
+        return []
+    finally:
+        cursor.close()
+        connection.close()
+if __name__ == "__main__":
+    user_id = 1  # test etmek istediğin kullanıcı ID'sini buraya yaz
+    results = get_friend_requests_by_id(user_id)
+    for r in results:
+        print(r)
