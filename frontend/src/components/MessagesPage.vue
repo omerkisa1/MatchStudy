@@ -36,10 +36,31 @@
         </div>
         <template v-else>
           <div class="chat-header">
-            <h3>{{ selectedUserName }}</h3>
-            <button @click="sendFriendRequest" class="friend-button">
-            Arkadaşlık İsteği Gönder
-          </button>
+            <div class="user-info">
+              <h3>{{ selectedUserName }}</h3>
+              <p v-if="userInfoCache[selectedUserId]" class="user-meta">
+                {{ userInfoCache[selectedUserId].age }} yaş | {{ userInfoCache[selectedUserId].education_level }}
+              </p>
+            </div>
+            <button 
+              v-if="!friendshipStatus[selectedUserId]" 
+              @click="sendFriendRequest" 
+              class="friend-button"
+            >
+              Arkadaşlık İsteği Gönder
+            </button>
+            <div v-else-if="friendshipStatus[selectedUserId] === 'pending'" class="friend-status pending">
+              Arkadaşlık İsteği Gönderildi
+            </div>
+            <div v-else-if="friendshipStatus[selectedUserId] === 'accepted'" class="friend-status accepted">
+              Arkadaşsınız
+            </div>
+            <div v-else-if="friendshipStatus[selectedUserId] === 'rejected'" class="friend-status rejected">
+              İstek Reddedildi
+            </div>
+            <div v-else-if="friendshipStatus[selectedUserId] === 'blocked'" class="friend-status blocked">
+              Engellendi
+            </div>
           </div>
           
           <div class="messages" ref="messagesContainer">
@@ -104,7 +125,7 @@ const uniqueMatchedUsers = computed(() => {
     if (!users.has(otherUserId)) {
       users.set(otherUserId, {
         userId: otherUserId,
-        displayName: `Kullanıcı ${otherUserId}`,
+        displayName: `Kullanıcı ${otherUserId}`, // Bu geçici olarak kalacak, sonra gerçek isimle değiştirilecek
         lastMessage: 'Son mesaj içeriği burada görünecek...',
         lastMessageTime: '14:30',
         unreadCount: unreadMessages.value[getMatchId(match)] || 0,
@@ -133,20 +154,87 @@ const messagesContainer = ref(null)
 // Track unread messages counts
 const unreadMessages = ref({}) // format: { matchId: count }
 
+// Kullanıcı bilgilerini tutan obje
+const userInfoCache = ref({});
+
+// Arkadaşlık durumunu tutan obje
+const friendshipStatus = ref({});
+
+// Kullanıcı bilgilerini getir
+async function fetchUserInfo(userId) {
+  if (userInfoCache.value[userId]) return;
+  
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/users/user/${userId}`);
+    const data = await response.json();
+    
+    if (data.user) {
+      userInfoCache.value[userId] = data.user;
+      
+      // Kullanıcı listesindeki displayName'i güncelle
+      const user = uniqueMatchedUsers.value.find(u => u.userId === userId);
+      if (user) {
+        user.displayName = `${data.user.name} ${data.user.surname}`;
+      }
+    }
+  } catch (error) {
+    console.error("Kullanıcı bilgileri alınamadı:", error);
+  }
+}
+
+// Arkadaşlık durumunu kontrol et
+async function checkFriendshipStatus(userId) {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
+    const data = await response.json();
+    
+    if (data.requests && data.requests.length > 0) {
+      // Seçili kullanıcıyla ilgili arkadaşlık isteği var mı?
+      const friendRequest = data.requests.find(request => 
+        (request.sender_id == userId && request.receiver_id == currentUser.value) ||
+        (request.sender_id == currentUser.value && request.receiver_id == userId)
+      );
+      
+      if (friendRequest) {
+        friendshipStatus.value[userId] = friendRequest.status;
+      } else {
+        friendshipStatus.value[userId] = null; // Hiç istek yok
+      }
+    }
+  } catch (error) {
+    console.error("Arkadaşlık durumu alınamadı:", error);
+  }
+}
+
 // Yeni mesaj geldiğinde socket üzerinden ekle
 socket.on('new_message', (msg) => {
   if (msg.chat_id === selectedChatId.value) {
     messages.value.push(msg)
     markMessagesAsRead(msg.chat_id)
     scrollToBottom()
+    // Son mesajı güncelle
+    updateLastMessage(msg)
   } else {
     // Diğer sohbetlerden gelen mesajları okunmamış olarak işaretle
     if (!unreadMessages.value[msg.chat_id]) {
       unreadMessages.value[msg.chat_id] = 0
     }
     unreadMessages.value[msg.chat_id]++
+    // Son mesajı güncelle
+    updateLastMessage(msg)
   }
 })
+
+// Son mesajı güncelle
+function updateLastMessage(msg) {
+  const userId = msg.sender_id === currentUser.value ? msg.receiver_id : msg.sender_id;
+  const user = uniqueMatchedUsers.value.find(u => u.userId === userId);
+  
+  if (user) {
+    user.lastMessage = msg.content;
+    user.lastMessageTime = formatMessageTime(msg.sent_at);
+  }
+}
 
 // Eşleşmenin ID'sini al (match_id veya id)
 function getMatchId(match) {
@@ -209,6 +297,8 @@ async function sendFriendRequest() {
     const data = await res.json()
     if (data.message) {
       alert('Arkadaşlık isteği gönderildi!')
+      // Arkadaşlık durumunu güncelle
+      friendshipStatus.value[selectedUserId.value] = 'pending';
     } else {
       alert('İstek gönderilemedi: ' + data.detail)
     }
@@ -260,12 +350,36 @@ onMounted(async () => {
   
   await fetchUnreadCounts();
   
+  // Tüm eşleşilmiş kullanıcıların bilgilerini getir
+  for (const user of uniqueMatchedUsers.value) {
+    await fetchUserInfo(user.userId);
+  }
+  
+  // Tüm kullanıcıların arkadaşlık durumunu kontrol et
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
+    const data = await response.json();
+    
+    if (data.requests && data.requests.length > 0) {
+      // Tüm arkadaşlık isteklerini döngüye al
+      data.requests.forEach(request => {
+        const otherUserId = request.sender_id == currentUser.value ? request.receiver_id : request.sender_id;
+        friendshipStatus.value[otherUserId] = request.status;
+      });
+    }
+  } catch (error) {
+    console.error("Arkadaşlık durumları alınamadı:", error);
+  }
+  
   console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
   
   // URL'de bir match ID varsa otomatik olarak o sohbeti aç
   const urlParams = new URLSearchParams(window.location.search)
   const userId = urlParams.get('userId')
   if (userId) {
+    // Önce kullanıcı bilgilerini getir
+    await fetchUserInfo(parseInt(userId));
+    
     const user = uniqueMatchedUsers.value.find(u => u.userId === parseInt(userId))
     if (user) {
       selectUserAndLoadMessages(user)
@@ -301,6 +415,14 @@ async function selectUserAndLoadMessages(user) {
   // Seçilen kullanıcıyı ayarla
   selectedUserId.value = user.userId;
   isLoadingChat.value = true;
+  
+  // Eğer kullanıcı bilgileri henüz alınmadıysa, şimdi al
+  if (!userInfoCache.value[user.userId]) {
+    await fetchUserInfo(user.userId);
+  }
+  
+  // Arkadaşlık durumunu kontrol et
+  await checkFriendshipStatus(user.userId);
   
   try {
     // Chat ID yoksa backend'den al veya oluştur
@@ -368,6 +490,12 @@ async function fetchMessages(chatId) {
     if (data.success) {
       messages.value = data.messages || []
       markMessagesAsRead(chatId)
+      
+      // Son mesajları güncelle
+      if (messages.value.length > 0) {
+        const lastMsg = messages.value[messages.value.length - 1];
+        updateLastMessage(lastMsg);
+      }
     } else {
       messages.value = []
     }
@@ -411,6 +539,11 @@ function formatMessageTime(timestamp) {
 </script>
 
 <style scoped>
+:root {
+  --success-color: #4CAF50;
+  --danger-color: #F44336;
+}
+
 .content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
@@ -531,10 +664,19 @@ function formatMessageTime(timestamp) {
   gap: 1rem;
 }
 
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
 
-.chat-header h3 {
+.user-info h3 {
   margin: 0;
   font-weight: 500;
+}
+
+.user-meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .messages {
@@ -666,6 +808,31 @@ function formatMessageTime(timestamp) {
 
 .friend-button:hover {
   background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+}
+
+.friend-status {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background-color: var(--surface-color);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.pending {
+  background-color: var(--primary-color);
+}
+
+.accepted {
+  background-color: var(--success-color);
+}
+
+.rejected {
+  background-color: var(--danger-color);
+}
+
+.blocked {
+  background-color: var(--danger-color);
 }
 
 </style>
