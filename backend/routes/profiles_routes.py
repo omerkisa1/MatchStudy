@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import List
 
 from database.profiles import (
-    add_profile, get_bio_by_user_id, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles
+    add_profile, get_bio_by_user_id, get_profile_by_user_id, update_profile, delete_profile_by_user_id, list_profiles,update_bio
 )
 from models.base import StandardResponse
 from models.profile import ProfileCreate, ProfileUpdate, ProfileResponse
@@ -36,17 +36,21 @@ async def get_profile_endpoint(user_id: int):
         return StandardResponse.error_response("Profile not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
+    
+from fastapi import APIRouter, HTTPException, Form
 
-@router.put("/get/{user_id}", response_model=StandardResponse)
-async def get_bio_by_user_id_endpoint(user_id):
+
+router = APIRouter()
+
+@router.put("/update-bio/{user_id}", response_model=StandardResponse)
+async def update_bio_endpoint(user_id: int, new_bio: str = Form(...)):
     try:
-        bio=get_bio_by_user_id(user_id)
-        if bio:
-            return StandardResponse.success_response("Biography found", bio)
-        return StandardResponse.error_response("Biography not found") 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to retrieve profile")
-
+        bio=update_bio(user_id, new_bio)
+        return StandardResponse(success=True, message="Biography updated successfully")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="An error occurred while updating biography")
 
 
 @router.put("/update/{user_id}", response_model=StandardResponse)
