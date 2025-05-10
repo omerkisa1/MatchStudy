@@ -7,6 +7,7 @@ import time
 import json
 import mysql.connector
 from database.config import DB_CONFIG
+from datetime import datetime
 
 router = APIRouter()
 
@@ -46,24 +47,26 @@ async def create_chat_endpoint(
 @router.get("/chat/{user_1_id}/{user_2_id}")
 async def get_or_create_chat(user_1_id: int, user_2_id: int):
     connection = None
+    cursor = None
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
         
-        # Try to get existing chat ID
+        # Try to get existing chat ID - check if it's not hidden for the requesting user
         query = """
             SELECT chat_id FROM chats 
             WHERE 
-                ((user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s))
-                AND (
-                    hidden_for_users IS NULL 
-                    OR JSON_CONTAINS(hidden_for_users, %s) = 0
-                )
+                ((user_1_id = %s AND user_2_id = %s AND hidden_for_user_1 = FALSE)
+                OR 
+                (user_1_id = %s AND user_2_id = %s AND hidden_for_user_2 = FALSE))
         """
-        user_id_json = json.dumps(str(user_1_id))
-        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id, user_id_json))
+        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
         result = cursor.fetchone()
         
+        # Make sure we consume all results
+        if cursor.with_rows:
+            cursor.fetchall()
+            
         chat_id = result['chat_id'] if result else None
         
         if chat_id:
@@ -78,10 +81,10 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
                 return {"success": False, "message": "Kullanıcı engellendi"}
                 
             insert_query = """
-                INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at, hidden_for_users)
-                VALUES (%s, %s, %s, NOW(), %s)
+                INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at, hidden_for_user_1, hidden_for_user_2)
+                VALUES (%s, %s, %s, NOW(), FALSE, FALSE)
             """
-            cursor.execute(insert_query, (new_chat_id, user_1_id, user_2_id, json.dumps([])))
+            cursor.execute(insert_query, (new_chat_id, user_1_id, user_2_id))
             connection.commit()
             
             return {"success": True, "chat_id": new_chat_id, "newly_created": True}
@@ -90,7 +93,11 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
             connection.rollback()
         return {"success": False, "message": str(e)}
     finally:
-        if 'cursor' in locals() and cursor:
+        if cursor and cursor.with_rows:
+            # Consume any remaining results to avoid "unread result" errors
+            cursor.fetchall()
+            
+        if cursor:
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
@@ -119,33 +126,31 @@ async def get_messages(chat_id: str):
     connection = None
     cursor = None
     try:
+        print(f"Fetching messages for chat: {chat_id}")
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
         
-        # Önce sohbetin gizlenip gizlenmediğini kontrol et
-        query = "SELECT hidden_for_users FROM chats WHERE chat_id = %s"
-        cursor.execute(query, (chat_id,))
-        chat = cursor.fetchone()
-        
-        if not chat:
-            return {"success": False, "message": "Sohbet bulunamadı"}
-            
-        # Kullanıcı ID'sini al
-        user_id = int(chat_id.split('_')[1])  # chat_1_2_timestamp formatından 1'i alıyoruz
-        
-        # Kullanıcı için gizlenmişse mesajları gösterme
-        hidden_users = chat['hidden_for_users'] or []
-        if str(user_id) in hidden_users:
-            return {"success": False, "message": "Bu sohbete erişiminiz yok"}
-            
         # Mesajları getir
         messages_query = "SELECT * FROM messages WHERE chat_id = %s ORDER BY sent_at ASC"
         cursor.execute(messages_query, (chat_id,))
-        messages = cursor.fetchall()
+        messages = cursor.fetchall()  # Fetch all results to avoid unread result errors
+        
+        # Python DateTime objelerini ISO string formatına dönüştür
+        for msg in messages:
+            if 'sent_at' in msg and msg['sent_at']:
+                if isinstance(msg['sent_at'], datetime):
+                    msg['sent_at'] = msg['sent_at'].isoformat()
+                
+        print(f"Found {len(messages)} messages for chat: {chat_id}")
         return {"success": True, "messages": messages}
     except Exception as e:
+        print(f"Error fetching messages: {str(e)}")
         return {"success": False, "message": str(e)}
     finally:
+        if cursor and cursor.with_rows:
+            # Consume any remaining results
+            cursor.fetchall()
+            
         if cursor:
             cursor.close()
         if connection:
@@ -183,14 +188,19 @@ async def get_unread_message_counts(user_id: int):
 @router.post("/chat/hide")
 async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...)):
     connection = None
+    cursor = None
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
         
         # Sohbetin kullanıcı bilgilerini çek
-        query = "SELECT user_1_id, user_2_id, hidden_for_users FROM chats WHERE chat_id = %s"
+        query = "SELECT user_1_id, user_2_id FROM chats WHERE chat_id = %s"
         cursor.execute(query, (chat_id,))
         chat = cursor.fetchone()
+        
+        # Make sure to consume all results
+        if cursor.with_rows:
+            cursor.fetchall()
         
         if not chat:
             return {"success": False, "message": "Sohbet bulunamadı"}
@@ -199,14 +209,14 @@ async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...))
         if user_id != chat['user_1_id'] and user_id != chat['user_2_id']:
             return {"success": False, "message": "Bu sohbete erişiminiz yok"}
             
-        # hidden_for_users alanını güncelle
-        hidden_users = chat['hidden_for_users'] or []
-        if str(user_id) not in hidden_users:
-            hidden_users.append(str(user_id))
+        # Hangi kullanıcı için gizleneceğini belirle
+        update_query = ""
+        if user_id == chat['user_1_id']:
+            update_query = "UPDATE chats SET hidden_for_user_1 = TRUE WHERE chat_id = %s"
+        else:
+            update_query = "UPDATE chats SET hidden_for_user_2 = TRUE WHERE chat_id = %s"
             
-        # JSON olarak serialize et ve güncelle
-        update_query = "UPDATE chats SET hidden_for_users = %s WHERE chat_id = %s"
-        cursor.execute(update_query, (json.dumps(hidden_users), chat_id))
+        cursor.execute(update_query, (chat_id,))
         connection.commit()
         
         return {"success": True, "message": "Sohbet başarıyla gizlendi"}
@@ -215,6 +225,10 @@ async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...))
             connection.rollback()
         return {"success": False, "message": str(e)}
     finally:
+        if cursor and cursor.with_rows:
+            # Consume any remaining results
+            cursor.fetchall()
+            
         if cursor:
             cursor.close()
         if connection:

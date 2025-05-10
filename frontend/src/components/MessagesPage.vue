@@ -563,9 +563,16 @@ async function sendMessage() {
 
 // Mesaj zamanını formatlama
 function formatMessageTime(timestamp) {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (!timestamp) return '';
+  
+  let date;
+  if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else {
+    date = timestamp;
+  }
+  
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Sohbeti gizle/sil
