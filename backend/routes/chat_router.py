@@ -4,6 +4,9 @@ from database.message import save_message, get_messages_by_chat, mark_message_re
 from database.message_status import update_delivery_status, mark_messages_read_by_chat, get_unread_counts_by_user
 from database.friend_requests import get_friend_requests_by_id
 import time
+import json
+import mysql.connector
+from database.config import DB_CONFIG
 
 router = APIRouter()
 
@@ -42,20 +45,55 @@ async def create_chat_endpoint(
 
 @router.get("/chat/{user_1_id}/{user_2_id}")
 async def get_or_create_chat(user_1_id: int, user_2_id: int):
+    connection = None
     try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor(dictionary=True)
+        
         # Try to get existing chat ID
-        chat_id = get_chat_id(user_1_id, user_2_id)
+        query = """
+            SELECT chat_id FROM chats 
+            WHERE 
+                ((user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s))
+                AND (
+                    hidden_for_users IS NULL 
+                    OR JSON_CONTAINS(hidden_for_users, %s) = 0
+                )
+        """
+        user_id_json = json.dumps(str(user_1_id))
+        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id, user_id_json))
+        result = cursor.fetchone()
+        
+        chat_id = result['chat_id'] if result else None
         
         if chat_id:
             # If chat exists, return it
             return {"success": True, "chat_id": chat_id}
         else:
-            # If chat doesn't exist, create one with an auto-generated ID
+            # If chat doesn't exist or is hidden, create one with an auto-generated ID
             new_chat_id = f"chat_{user_1_id}_{user_2_id}_{int(time.time())}"
-            create_chat(user_1_id, user_2_id, new_chat_id)
+            
+            # Öncelikle kullanıcıların birbirini engelleyip engellemediğini kontrol et
+            if is_user_blocked(user_1_id, user_2_id) or is_user_blocked(user_2_id, user_1_id):
+                return {"success": False, "message": "Kullanıcı engellendi"}
+                
+            insert_query = """
+                INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at, hidden_for_users)
+                VALUES (%s, %s, %s, NOW(), %s)
+            """
+            cursor.execute(insert_query, (new_chat_id, user_1_id, user_2_id, json.dumps([])))
+            connection.commit()
+            
             return {"success": True, "chat_id": new_chat_id, "newly_created": True}
     except Exception as e:
+        if connection and connection.is_connected():
+            connection.rollback()
         return {"success": False, "message": str(e)}
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
 
 
 @router.post("/messages/send")
@@ -78,11 +116,40 @@ async def send_message_endpoint(chat_id: str = Body(...), sender_id: int = Body(
 
 @router.get("/messages/{chat_id}")
 async def get_messages(chat_id: str):
+    connection = None
+    cursor = None
     try:
-        messages = get_messages_by_chat(chat_id)
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor(dictionary=True)
+        
+        # Önce sohbetin gizlenip gizlenmediğini kontrol et
+        query = "SELECT hidden_for_users FROM chats WHERE chat_id = %s"
+        cursor.execute(query, (chat_id,))
+        chat = cursor.fetchone()
+        
+        if not chat:
+            return {"success": False, "message": "Sohbet bulunamadı"}
+            
+        # Kullanıcı ID'sini al
+        user_id = int(chat_id.split('_')[1])  # chat_1_2_timestamp formatından 1'i alıyoruz
+        
+        # Kullanıcı için gizlenmişse mesajları gösterme
+        hidden_users = chat['hidden_for_users'] or []
+        if str(user_id) in hidden_users:
+            return {"success": False, "message": "Bu sohbete erişiminiz yok"}
+            
+        # Mesajları getir
+        messages_query = "SELECT * FROM messages WHERE chat_id = %s ORDER BY sent_at ASC"
+        cursor.execute(messages_query, (chat_id,))
+        messages = cursor.fetchall()
         return {"success": True, "messages": messages}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "message": str(e)}
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
 
 
 @router.post("/messages/mark_read")
@@ -111,3 +178,44 @@ async def get_unread_message_counts(user_id: int):
         return {"success": True, "unread_counts": unread_counts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/hide")
+async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...)):
+    connection = None
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor(dictionary=True)
+        
+        # Sohbetin kullanıcı bilgilerini çek
+        query = "SELECT user_1_id, user_2_id, hidden_for_users FROM chats WHERE chat_id = %s"
+        cursor.execute(query, (chat_id,))
+        chat = cursor.fetchone()
+        
+        if not chat:
+            return {"success": False, "message": "Sohbet bulunamadı"}
+            
+        # Kullanıcının sohbete yetkisi var mı kontrol et
+        if user_id != chat['user_1_id'] and user_id != chat['user_2_id']:
+            return {"success": False, "message": "Bu sohbete erişiminiz yok"}
+            
+        # hidden_for_users alanını güncelle
+        hidden_users = chat['hidden_for_users'] or []
+        if str(user_id) not in hidden_users:
+            hidden_users.append(str(user_id))
+            
+        # JSON olarak serialize et ve güncelle
+        update_query = "UPDATE chats SET hidden_for_users = %s WHERE chat_id = %s"
+        cursor.execute(update_query, (json.dumps(hidden_users), chat_id))
+        connection.commit()
+        
+        return {"success": True, "message": "Sohbet başarıyla gizlendi"}
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        return {"success": False, "message": str(e)}
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()

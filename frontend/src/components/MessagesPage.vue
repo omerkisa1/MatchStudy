@@ -42,24 +42,35 @@
                 {{ userInfoCache[selectedUserId].age }} yaş | {{ userInfoCache[selectedUserId].education_level }}
               </p>
             </div>
-            <button 
-              v-if="!friendshipStatus[selectedUserId]" 
-              @click="sendFriendRequest" 
-              class="friend-button"
-            >
-              Arkadaşlık İsteği Gönder
-            </button>
-            <div v-else-if="friendshipStatus[selectedUserId] === 'pending'" class="friend-status pending">
-              Arkadaşlık İsteği Gönderildi
-            </div>
-            <div v-else-if="friendshipStatus[selectedUserId] === 'accepted'" class="friend-status accepted">
-              Arkadaşsınız
-            </div>
-            <div v-else-if="friendshipStatus[selectedUserId] === 'rejected'" class="friend-status rejected">
-              İstek Reddedildi
-            </div>
-            <div v-else-if="friendshipStatus[selectedUserId] === 'blocked'" class="friend-status blocked">
-              Engellendi
+            <div class="header-actions">
+              <button 
+                v-if="!friendshipStatus[selectedUserId]" 
+                @click="sendFriendRequest" 
+                class="friend-button"
+              >
+                Arkadaşlık İsteği Gönder
+              </button>
+              <div v-else-if="friendshipStatus[selectedUserId] === 'pending'" class="friend-status pending">
+                Arkadaşlık İsteği Gönderildi
+              </div>
+              <div v-else-if="friendshipStatus[selectedUserId] === 'accepted'" class="friend-status accepted">
+                Arkadaşsınız
+              </div>
+              <div v-else-if="friendshipStatus[selectedUserId] === 'rejected'" class="friend-status rejected">
+                İstek Reddedildi
+              </div>
+              <div v-else-if="friendshipStatus[selectedUserId] === 'blocked'" class="friend-status blocked">
+                Engellendi
+              </div>
+              
+              <button @click="hideChat" class="delete-button" title="Bu sohbeti sil">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
             </div>
           </div>
           
@@ -80,14 +91,22 @@
           </div>
 
           <div class="chat-input">
-            <input 
-              v-model="newMessage" 
-              placeholder="Mesaj yaz..." 
-              @keyup.enter="sendMessage" 
-            />
-            <button @click="sendMessage" :disabled="!newMessage.trim()">
-              Gönder
-            </button>
+            <div v-if="friendshipStatus[selectedUserId] === 'blocked'" class="message-disabled">
+              <p>Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.</p>
+            </div>
+            <div v-else-if="friendshipStatus[selectedUserId] === 'rejected'" class="message-disabled">
+              <p>Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.</p>
+            </div>
+            <template v-else>
+              <input 
+                v-model="newMessage" 
+                placeholder="Mesaj yaz..." 
+                @keyup.enter="sendMessage" 
+              />
+              <button @click="sendMessage" :disabled="!newMessage.trim()">
+                Gönder
+              </button>
+            </template>
           </div>
         </template>
       </div>
@@ -507,7 +526,19 @@ async function fetchMessages(chatId) {
 
 // Mesaj gönder
 async function sendMessage() {
+  // Mesaj boşsa veya seçili chat yoksa mesaj gönderme
   if (!newMessage.value.trim() || !selectedChatId.value || !selectedUserId.value) return
+
+  // Kullanıcı engellenmiş veya arkadaşlıktan çıkarılmışsa mesaj gönderme
+  if (friendshipStatus.value[selectedUserId.value] === 'blocked') {
+    alert('Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.');
+    return;
+  }
+  
+  if (friendshipStatus.value[selectedUserId.value] === 'rejected') {
+    alert('Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.');
+    return;
+  }
 
   const msg = {
     chat_id: selectedChatId.value,
@@ -535,6 +566,50 @@ function formatMessageTime(timestamp) {
   if (!timestamp) return ''
   const date = new Date(timestamp)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+// Sohbeti gizle/sil
+async function hideChat() {
+  if (!selectedChatId.value) return;
+  
+  if (!confirm('Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/chat/hide`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: selectedChatId.value,
+        user_id: currentUser.value
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Sohbeti listeden kaldır
+      const index = uniqueMatchedUsers.value.findIndex(u => u.userId === selectedUserId.value);
+      if (index !== -1) {
+        uniqueMatchedUsers.value.splice(index, 1);
+      }
+      
+      // Seçili sohbeti temizle
+      selectedUserId.value = null;
+      selectedChatId.value = null;
+      messages.value = [];
+      
+      alert('Sohbet başarıyla silindi.');
+    } else {
+      alert('Sohbet silinirken bir hata oluştu: ' + data.message);
+    }
+  } catch (error) {
+    console.error('Sohbet silinirken hata:', error);
+    alert('Sohbet silinirken bir hata oluştu.');
+  }
 }
 </script>
 
@@ -833,6 +908,47 @@ function formatMessageTime(timestamp) {
 
 .blocked {
   background-color: var(--danger-color);
+}
+
+.message-disabled {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 0, 0, 0.1);
+  padding: 0.75rem;
+  border-radius: 8px;
+  width: 100%;
+  text-align: center;
+}
+
+.message-disabled p {
+  color: var(--danger-color);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.delete-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+  background-color: var(--danger-color);
+  color: white;
 }
 
 </style>
