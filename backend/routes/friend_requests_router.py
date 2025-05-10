@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from database.friend_requests import (send_friend_request, manage_friend_request_status, get_friend_requests_by_id,get_friend_list_by_id )
+from database.friend_requests import (send_friend_request, manage_friend_request_status, get_friend_requests_by_id,get_friend_list_by_id)
 
 router = APIRouter()
 
@@ -46,3 +46,23 @@ async def list_friends(user_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@router.post("/block")
+async def block_user_endpoint(user_id: int, blocked_user_id: int):
+    try:
+        manage_friend_request_status(blocked_user_id, user_id, 'blocked')
+        return {"message": "Kullanıcı başarıyla engellendi"}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Kullanıcı engellenemedi")
+
+@router.post("/unfriend")
+async def unfriend_user_endpoint(user_id: int, friend_id: int):
+    try:
+        manage_friend_request_status(friend_id, user_id, 'rejected')
+        return {"message": "Arkadaşlıktan başarıyla çıkarıldı"}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Arkadaşlıktan çıkarılamadı")

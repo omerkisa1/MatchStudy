@@ -133,9 +133,21 @@ export default {
 
       // Check URL hash for direct navigation
       const hash = window.location.hash.replace('#', '');
-      if (hash && ['create-request', 'discover', 'messages', 'notifications', 'history', 'profile'].includes(hash)) {
+      if (hash && ['create-request', 'discover', 'messages', 'notifications', 'history', 'profile', 'friends'].includes(hash)) {
         currentContent.value = hash;
       }
+
+      // Add event listener for navigation
+      window.addEventListener('navigate', (event) => {
+        currentContent.value = event.detail;
+      });
+    });
+
+    onUnmounted(() => {
+      // Clean up event listener
+      window.removeEventListener('navigate', (event) => {
+        currentContent.value = event.detail;
+      });
     });
 
     // Fetch notifications

@@ -26,6 +26,26 @@
             </p>
           </div>
         </div>
+        <div class="friend-actions">
+          <button class="action-btn message" @click="navigateToMessages(friend.sender_id)" title="Mesajlaş">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
+          <button class="action-btn block" @click="blockFriend(friend.sender_id)" title="Engelle">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
+            </svg>
+          </button>
+          <button class="action-btn unfriend" @click="unfriendUser(friend.sender_id)" title="Arkadaşlıktan Çıkar">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="8.5" cy="7" r="4"/>
+              <line x1="18" y1="8" x2="23" y2="13"/>
+              <line x1="23" y1="8" x2="18" y2="13"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -34,12 +54,14 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/stores/userStore';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 
 export default {
   name: "FriendsPage",
   setup() {
     const userStore = useUserStore();
+    const router = useRouter();
     const friends = ref([]);
 
     const fetchFriendRequests = async () => {
@@ -51,12 +73,70 @@ export default {
       }
     };
 
+    const navigateToMessages = (userId) => {
+      // Update the current content in the parent component
+      const event = new CustomEvent('navigate', { detail: 'messages' });
+      window.dispatchEvent(event);
+      
+      // Add a small delay to ensure the messages page is loaded
+      setTimeout(() => {
+        // Then navigate to the specific chat
+        router.push({
+          path: '/home',
+          query: { content: 'messages', userId: userId }
+        });
+      }, 100);
+    };
+
+    const blockFriend = async (userId) => {
+      if (!confirm('Bu kullanıcıyı engellemek istediğinize emin misiniz?')) return;
+      
+      try {
+        await axios.post('http://localhost:8000/friend_requests/manage', null, {
+          params: {
+            sender_id: userId,
+            receiver_id: userStore.id,
+            status: 'blocked'
+          }
+        });
+        
+        // Engellenen kullanıcıyı listeden kaldır
+        friends.value = friends.value.filter(f => f.sender_id !== userId);
+      } catch (error) {
+        console.error("Kullanıcı engellenemedi:", error);
+        alert("Kullanıcı engellenirken bir hata oluştu.");
+      }
+    };
+
+    const unfriendUser = async (userId) => {
+      if (!confirm('Bu kullanıcıyı arkadaş listenizden çıkarmak istediğinize emin misiniz?')) return;
+      
+      try {
+        await axios.post('http://localhost:8000/friend_requests/manage', null, {
+          params: {
+            sender_id: userId,
+            receiver_id: userStore.id,
+            status: 'rejected'
+          }
+        });
+        
+        // Arkadaşlıktan çıkarılan kullanıcıyı listeden kaldır
+        friends.value = friends.value.filter(f => f.sender_id !== userId);
+      } catch (error) {
+        console.error("Arkadaşlıktan çıkarılamadı:", error);
+        alert("Arkadaşlıktan çıkarılırken bir hata oluştu.");
+      }
+    };
+
     onMounted(() => {
       fetchFriendRequests();
     });
 
     return {
-      friends
+      friends,
+      navigateToMessages,
+      blockFriend,
+      unfriendUser
     };
   }
 };
@@ -148,5 +228,46 @@ export default {
 .empty-state p {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.action-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn.message:hover {
+  color: #4CAF50;
+}
+
+.action-btn.block:hover {
+  color: #F44336;
+}
+
+.action-btn.unfriend:hover {
+  color: #FF9800;
 }
 </style>
