@@ -204,6 +204,13 @@ export const useMatchesStore = defineStore('matches', {
     getMatchStatusForRequest: (state) => (requestId) => {
       const match = state.matches.find(m => m.request_id === requestId)
       return match ? match.status : null
+    },
+    pendingResponderMatches(state) {
+      const userStore = useUserStore()
+      return state.matches.filter(
+        m => m.status === 'pending' && m.responder_id === userStore.id
+      )
     }
+    
   }
 }) 

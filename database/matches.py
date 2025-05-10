@@ -126,19 +126,18 @@ def get_matches_for_responder(user_id):
         SELECT 
             m.match_id,
             m.status,
-            m.matched_at,
+            m.matched_at,   
             sr.category,
             sr.duration,
             sr.study_date,
             sr.topic,
             sr.note,
-            p.name,
-            p.surname,
-            p.education_level,
-            p.institution
+            u.name,
+            u.surname,
+            u.education_level
         FROM matches m
         JOIN study_requests sr ON m.request_id = sr.request_id
-        JOIN profiles p ON m.requester_id = p.user_id
+        JOIN users u ON m.requester_id = u.id
         WHERE m.responder_id = %s AND m.status = 'pending'
     """
     cursor.execute(query, (user_id,))
@@ -171,3 +170,5 @@ def get_old_matches_for_responder(user_id):
     cursor.close()
     conn.close()
     return result
+
+print(get_matches_for_responder(1))

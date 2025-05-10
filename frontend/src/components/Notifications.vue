@@ -141,7 +141,7 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useUserStore } from '@/stores/userStore';
-
+import { useMatchesStore } from '@/stores/matchesStore';
 export default {
   name: 'Notifications',
   setup() {
@@ -149,7 +149,7 @@ export default {
     const notifications = ref([]);
     const currentFilter = ref('all');
     const recentActivities = ref([]);
-
+    const matchesStore = useMatchesStore();
     const filters = [
       { label: 'Tümü', value: 'all' },
       { label: 'Arkadaşlık İstekleri', value: 'friend_requests' },
@@ -178,7 +178,9 @@ export default {
 const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read).length;
 });
-
+const studyMatches = computed(() => {
+  return matchesStore.pendingResponderMatches
+})
 const formatTime = (timestamp) => {
   const now = new Date();
   const time = new Date(timestamp);
@@ -227,7 +229,7 @@ const formatTime = (timestamp) => {
   if (currentFilter.value === 'friend_requests') return friendRequests.value;
   return notifications.value.filter(n => {
     if (currentFilter.value === 'all') return n.status === 'pending';
-    if (currentFilter.value === 'study') return n.type === 'study' && n.status === 'pending';
+    if (currentFilter.value === 'study') return studyMatches.value;
     return false;
   });
 });
