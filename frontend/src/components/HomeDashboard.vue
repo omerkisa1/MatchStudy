@@ -43,12 +43,28 @@
         :navigateTo="navigateTo"
       />
       <DashboardCard 
-      icon="👥"
-      title="Arkadaşlarım"
-      description="Arkadaş listenizi yönetin, yeni arkadaşlar edinin ve birlikte çalışın."
-      cta="Arkadaşlara Git →"
-      target="friends"
-      :navigateTo="navigateTo"
+        icon="👥"
+        title="Arkadaşlarım"
+        description="Arkadaş listenizi yönetin, yeni arkadaşlar edinin ve birlikte çalışın."
+        cta="Arkadaşlara Git →"
+        target="friends"
+        :navigateTo="navigateTo"
+      />
+      <DashboardCard 
+        icon="💬"
+        title="Mesajlar"
+        description="Diğer kullanıcılarla mesajlaşmalarınızı görüntüleyin ve yeni sohbet başlatın."
+        cta="Mesajlara Git →"
+        target="messages"
+        :navigateTo="navigateTo"
+      />
+      <DashboardCard 
+        icon="🕓"
+        title="Geçmiş"
+        description="Geçmiş çalışma isteklerinizi ve tamamlanan etkinliklerinizi inceleyin."
+        cta="Geçmişi Gör →"
+        target="history"
+        :navigateTo="navigateTo"
       />
     </div>
     
