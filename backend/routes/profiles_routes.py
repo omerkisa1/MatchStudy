@@ -42,11 +42,13 @@ from fastapi import APIRouter, HTTPException, Form
 
 router = APIRouter()
 
-@router.put("/update-bio/{user_id}", response_model=StandardResponse)
-async def update_bio_endpoint(user_id: int, new_bio: str = Form(...)):
+@router.put("/update-bio/{user_id}")
+async def update_bio_endpoint(user_id: int, new_bio: str ):
     try:
-        bio=update_bio(user_id, new_bio)
-        return StandardResponse(success=True, message="Biography updated successfully")
+        bio = update_bio(user_id, new_bio)
+        return {"message": "Biography updated succesfully",
+                "data": bio,
+                "new_bio": new_bio}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception:

@@ -30,16 +30,12 @@
                 {{ profile.education_level || 'Education Level' }}
               </p>
             </div>
-            <button class="edit-profile-btn" @click="startEditing" v-if="!isEditing">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
+            <button class="edit-profile-btn" @click="isEditingProfile = true" v-if="!isEditingProfile">
               Edit Profile
             </button>
           </div>
 
-          <div v-if="!isEditing">
+          <div v-if="!isEditingProfile">
             <p class="profile-bio">{{ profile.bio || 'Henüz biyografi eklenmemiş.' }}</p>
             
             <div class="profile-stats">
@@ -108,8 +104,8 @@
               <input type="text" v-model="profileForm.institution" class="form-input" />
             </div>
             <div class="form-actions">
-              <button class="cancel-btn" @click="cancelEditing">Cancel</button>
-              <button class="save-btn" :disabled="isLoading" @click="saveProfile">
+              <button class="cancel-btn" @click="isEditingProfile = false">Cancel</button>
+              <button class="save-btn" :disabled="isLoading" @click="handleSaveProfile">
                 <span v-if="isLoading" class="loading-spinner"></span>
                 Save
               </button>
@@ -121,28 +117,23 @@
       <!-- Biography Section -->
       <div class="bio-section">
         <h3>Biography</h3>
-        <div v-if="!isEditing" class="bio-content">
+        <div v-if="!isEditingBio" class="bio-content">
           <p class="profile-bio">{{ profile.bio || 'Henüz biyografi eklenmemiş.' }}</p>
-          <button class="edit-bio-btn" @click="startEditing">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
+          <button class="edit-bio-btn" @click="isEditingBio = true">
             Edit Biography
           </button>
         </div>
         <div v-else class="bio-edit-form">
           <textarea v-model="profileForm.bio" class="bio-textarea" placeholder="Write your biography..."></textarea>
           <div class="bio-actions">
-            <button class="cancel-btn" @click="cancelEditing">Cancel</button>
-            <button class="save-btn" :disabled="isLoading" @click="saveProfile">
+            <button class="cancel-btn" @click="isEditingBio = false">Cancel</button>
+            <button class="save-btn" :disabled="isLoading" @click="handleSaveBio">
               <span v-if="isLoading" class="loading-spinner"></span>
               Save
             </button>
           </div>
         </div>
       </div>
-
       <!-- Study History Section -->
       <div class="study-history">
         <h3>Study History</h3>
@@ -259,7 +250,6 @@ export default {
       isLoading,
       error,
       success,
-      isEditing,
       isUploading,
       uploadProgress,
       profileForm,
@@ -269,17 +259,17 @@ export default {
       
       // Methods
       initialize,
-      startEditing,
-      cancelEditing,
       saveProfile,
       handleAvatarChange,
       addInterest,
       removeInterest,
       changePassword,
       deleteAccount,
-      fetchInterests
+      fetchInterests,
+      updateBio
     } = useProfile();
-    
+    const isEditingProfile = ref(false);
+    const isEditingBio = ref(false);
     // Study requests
     const { getUserRequests, formatDate, formatDuration } = useStudyRequests();
     const userRequests = ref([]);
@@ -308,7 +298,23 @@ export default {
     const loadUserRequests = async () => {
       userRequests.value = await getUserRequests();
     };
-    
+    const handleSaveProfile = async () => {
+    const result = await saveProfile();
+    if (result.success) {
+      isEditingProfile.value = false;
+      //isEditingBio.value = false;
+    }
+  };
+
+  const handleSaveBio = async () => {
+  const result = await updateBio()
+  if (result.data) {
+    isEditingBio.value = false
+  }
+}
+
+
+
     // Handle interest submission from modal
     const handleAddInterest = async (interest) => {
       const result = await addInterest(interest);
@@ -341,13 +347,14 @@ export default {
         error.value = 'Please type DELETE to confirm account deletion';
       }
     };
+
+    
     
     return {
       // Profile state
       isLoading,
       error,
       success,
-      isEditing,
       isUploading,
       uploadProgress,
       profileForm,
@@ -369,14 +376,15 @@ export default {
       interestSuggestions,
       
       // Methods
-      startEditing,
-      cancelEditing,
-      saveProfile,
+      isEditingProfile,
+      isEditingBio,
+      handleSaveProfile,
       handleAvatarChange,
       handleRemoveInterest,
       handleAddInterest,
       handlePasswordChange,
-      confirmDeleteAccount
+      confirmDeleteAccount,
+      handleSaveBio
     };
   }
 }
