@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 from database.chat import create_chat, get_chat_id
-from database.message import save_message, get_messages_by_chat, mark_message_read
+from database.message import save_message, get_messages_by_chat, mark_message_read, get_last_message_by_chat
 from database.message_status import update_delivery_status, mark_messages_read_by_chat, get_unread_counts_by_user
 from database.friend_requests import get_friend_requests_by_id
 import time
@@ -233,3 +233,16 @@ async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...))
             cursor.close()
         if connection:
             connection.close()
+
+@router.get("/messages/last/{chat_id}")
+async def get_last_message(chat_id: str):
+    try:
+        last_message = get_last_message_by_chat(chat_id)
+        if last_message:
+            if 'sent_at' in last_message and isinstance(last_message['sent_at'], datetime):
+                last_message['sent_at'] = last_message['sent_at'].isoformat()
+            return {"success": True, "message": last_message}
+        else:
+            return {"success": True, "message": None}
+    except Exception as e:
+        return {"success": False, "detail": str(e)}

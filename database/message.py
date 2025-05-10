@@ -57,3 +57,22 @@ def mark_message_read(message_id: int):
     finally:
         cursor.close()
         connection.close()
+
+def get_last_message_by_chat(chat_id: str):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT * FROM messages
+            WHERE chat_id = %s
+            ORDER BY sent_at DESC
+            LIMIT 1
+        """
+        cursor.execute(query, (chat_id,))
+        result = cursor.fetchone()
+        return result
+    except Exception as e:
+        raise ValueError(f"Failed to fetch last message: {e}\n{traceback.format_exc()}")
+    finally:
+        cursor.close()
+        connection.close()

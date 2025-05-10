@@ -1,12 +1,15 @@
 <template>
   <div class="content-wrapper">
     <h1>Mesajlar</h1>
+
+    <!-- Hiç eşleşme yoksa -->
     <p v-if="uniqueMatchedUsers.length === 0" class="no-matches">
       Henüz onaylanmış bir eşleşmeniz bulunmuyor. Onaylı eşleşmeler burada görünecektir.
     </p>
 
+    <!-- Eşleşmeler varsa -->
     <div v-else class="messages-container">
-      <!-- Eşleşme listesi -->
+      <!-- Kullanıcı listesi -->
       <div class="message-list">
         <div
           v-for="user in uniqueMatchedUsers"
@@ -16,32 +19,42 @@
           @click="selectUserAndLoadMessages(user)"
         >
           <div class="message-avatar"></div>
+
           <div class="message-content">
             <h4>{{ user.displayName }}</h4>
-            <p>{{ user.lastMessage }}</p>
+            <p class="last-message-preview">
+              {{ user.lastMessage || 'Henüz mesaj yok.' }}
+            </p>
           </div>
+
           <div class="message-info">
             <span v-if="user.unreadCount > 0" class="unread-badge">
               {{ user.unreadCount }}
             </span>
-            <span class="message-time">{{ user.lastMessageTime }}</span>
+            <span class="message-time">
+              {{ user.lastMessageTime || '' }}
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Sohbet penceresi -->
+      <!-- Sohbet ekranı -->
       <div v-if="selectedUserId" class="chat-window">
         <div v-if="isLoadingChat" class="loading-chat">
           <p>Mesajlar yükleniyor...</p>
         </div>
+
         <template v-else>
+          <!-- Başlık -->
           <div class="chat-header">
             <div class="user-info">
               <h3>{{ selectedUserName }}</h3>
               <p v-if="userInfoCache[selectedUserId]" class="user-meta">
-                {{ userInfoCache[selectedUserId].age }} yaş | {{ userInfoCache[selectedUserId].education_level }}
+                {{ userInfoCache[selectedUserId].age }} yaş |
+                {{ userInfoCache[selectedUserId].education_level }}
               </p>
             </div>
+
             <div class="header-actions">
               <button 
                 v-if="!friendshipStatus[selectedUserId]" 
@@ -62,7 +75,7 @@
               <div v-else-if="friendshipStatus[selectedUserId] === 'blocked'" class="friend-status blocked">
                 Engellendi
               </div>
-              
+
               <button @click="showDeleteConfirm" class="delete-button" title="Bu sohbeti sil">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
@@ -73,11 +86,13 @@
               </button>
             </div>
           </div>
-          
+
+          <!-- Mesajlar -->
           <div class="messages" ref="messagesContainer">
             <div v-if="messages.length === 0" class="no-messages">
               <p>Henüz mesaj bulunmuyor. İlk mesajı göndermeye ne dersin?</p>
             </div>
+
             <div
               v-else
               v-for="(msg, i) in messages"
@@ -90,6 +105,7 @@
             </div>
           </div>
 
+          <!-- Mesaj yazma -->
           <div class="chat-input">
             <div v-if="friendshipStatus[selectedUserId] === 'blocked'" class="message-disabled">
               <p>Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.</p>
@@ -110,24 +126,26 @@
           </div>
         </template>
       </div>
-      
+
+      <!-- Henüz kimse seçilmediyse -->
       <div v-else-if="uniqueMatchedUsers.length > 0" class="chat-placeholder">
         <p>Bir sohbet başlatmak için soldaki listeden bir kişi seçin</p>
       </div>
     </div>
-    
-    <!-- Özel Onay İletişim Kutusu -->
+
+    <!-- Onay Kutusu -->
     <ConfirmDialog 
       ref="confirmDialog"
       title="Sohbeti Sil"
       message="Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
       @confirm="hideChat"
     />
-    
+
     <!-- Toast Bildirimleri -->
     <ToastNotification ref="toast" />
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
@@ -356,35 +374,53 @@ onMounted(async () => {
 
   // Kullanıcı listesini doldur ve isimlerini getir
   for (const match of acceptedMatches.value) {
-    const otherUserId = currentUser.value === match.requester_id 
-      ? match.responder_id 
-      : match.requester_id;
+  const otherUserId = currentUser.value === match.requester_id
+    ? match.responder_id
+    : match.requester_id;
 
-    if (!usersMap.has(otherUserId)) {
-      const userEntry = {
-        userId: otherUserId,
-        displayName: `Kullanıcı ${otherUserId}`,
-        lastMessage: 'Son mesaj içeriği burada görünecek...',
-        lastMessageTime: '14:30',
-        unreadCount: 0,
-        match
-      };
+  if (!usersMap.has(otherUserId)) {
+    const userEntry = {
+      userId: otherUserId,
+      displayName: `Kullanıcı ${otherUserId}`, // Geçici, sonra güncellenecek
+      lastMessage: '', // Bu da dinamik olacak
+      lastMessageTime: '',
+      unreadCount: 0,
+      match
+    };
 
-      usersMap.set(otherUserId, userEntry);
+    usersMap.set(otherUserId, userEntry);
 
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/users/user/${otherUserId}`);
-        const data = await res.json();
-        if (data.user) {
-          userEntry.displayName = `${data.user.name} ${data.user.surname}`;
-        }
-      } catch (e) {
-        console.error('Kullanıcı bilgisi alınamadı', e);
+    try {
+      // 1. Kullanıcı adını getir
+      const res = await fetch(`http://127.0.0.1:8000/users/user/${otherUserId}`);
+      const data = await res.json();
+      if (data.user) {
+        userEntry.displayName = `${data.user.name} ${data.user.surname}`;
       }
 
-      uniqueMatchedUsers.value.push(userEntry);
+      // 2. Chat ID’yi al ve son mesajı getir
+      const chatRes = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${otherUserId}`);
+      const chatData = await chatRes.json();
+      if (chatData.success) {
+        const chatId = chatData.chat_id;
+
+        const msgRes = await fetch(`http://127.0.0.1:8000/messages/last/${chatId}`);
+        const msgData = await msgRes.json();
+
+        if (msgData.success && msgData.message) {
+          userEntry.lastMessage = msgData.message.content;
+          userEntry.lastMessageTime = formatMessageTime(msgData.message.sent_at);
+        }
+      }
+    } catch (e) {
+      console.error('Kullanıcı ya da mesaj bilgisi alınamadı:', e);
     }
+
+    uniqueMatchedUsers.value.push(userEntry);
   }
+}
+
+  
 
   // Okunmamış mesaj sayılarını getir
   await fetchUnreadCounts();
