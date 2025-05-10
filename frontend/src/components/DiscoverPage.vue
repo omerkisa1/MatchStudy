@@ -73,9 +73,17 @@
           </div>
           <button
             class="join-btn"
-            :disabled="getMatchStatus(request.request_id) === 'pending' || getMatchStatus(request.request_id) === 'accepted'"
+            :class="{
+              'join-pending': getMatchStatus(request.request_id) === 'pending',
+              'join-accepted': getMatchStatus(request.request_id) === 'accepted',
+              'sending': requestInProgress === request.request_id
+            }"
+            :disabled="getMatchStatus(request.request_id) === 'pending' || getMatchStatus(request.request_id) === 'accepted' || requestInProgress === request.request_id"
             @click="joinStudyRequest(request)">
-            <template v-if="getMatchStatus(request.request_id) === 'pending'">İstek Gönderildi</template>
+            <template v-if="requestInProgress === request.request_id">
+              <span class="btn-spinner"></span>
+            </template>
+            <template v-else-if="getMatchStatus(request.request_id) === 'pending'">İstek Gönderildi</template>
             <template v-else-if="getMatchStatus(request.request_id) === 'accepted'">Kabul Edildi</template>
             <template v-else-if="getMatchStatus(request.request_id) === 'rejected'">Tekrar Gönder</template>
             <template v-else>İstek Gönder</template>
@@ -83,6 +91,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast Bildirimleri -->
+    <ToastNotification ref="toast" />
   </div>
 </template>
 
@@ -91,14 +102,24 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useStudyRequestsStore } from '../stores/studyRequestsStore';
 import { useMatchesStore } from '../stores/matchesStore';
+import ToastNotification from './ToastNotification.vue';
 
 export default {
   name: "DiscoverPage",
+  components: {
+    ToastNotification
+  },
   setup() {
     // Stores
     const userStore = useUserStore();
     const studyRequestsStore = useStudyRequestsStore();
     const matchesStore = useMatchesStore();
+
+    // Toast referansı
+    const toast = ref(null);
+    
+    // İstek durumu takibi için
+    const requestInProgress = ref(null);
 
     // UI state
     const dropdowns = ref({
@@ -190,22 +211,35 @@ export default {
       return matchesStore.matches.find(m => m.request_id === requestId)?.status || null;
     };
 
-    // Join study request function - now using the matchesStore
+    // Join study request function - updated to use toast
     const joinStudyRequest = async (request) => {
       if (userStore.id === request.user_id) {
-        alert("Kendi isteğinize başvuru yapamazsınız.");
+        toast.value.error("Kendi isteğinize başvuru yapamazsınız.");
         return;
       }
 
-      const result = await matchesStore.createMatch({
-        user2_id: request.user_id,
-        request_id: request.request_id
-      });
+      // İşlem başladığında buton durumunu güncelle
+      requestInProgress.value = request.request_id;
 
-      if (result.success) {
-        alert('İstek başarıyla gönderildi.');
-      } else {
-        alert(result.error || 'Bir hata oluştu.');
+      try {
+        const result = await matchesStore.createMatch({
+          user2_id: request.user_id,
+          request_id: request.request_id
+        });
+
+        if (result.success) {
+          toast.value.success('İstek başarıyla gönderildi.');
+        } else {
+          toast.value.error(result.error || 'Bir hata oluştu.');
+        }
+      } catch (error) {
+        toast.value.error('İstek gönderilirken bir hata oluştu.');
+        console.error('Error sending request:', error);
+      } finally {
+        // İşlem bittiğinde buton durumunu sıfırla
+        setTimeout(() => {
+          requestInProgress.value = null;
+        }, 500);
       }
     };
 
@@ -236,6 +270,8 @@ export default {
       
       // UI state
       dropdowns,
+      toast,
+      requestInProgress,
       selectedFilterCategory,
       selectedFilterDuration,
       selectedFilterDate,
@@ -454,9 +490,13 @@ h1 {
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
 }
 
-.join-btn:hover {
+.join-btn:hover:not(:disabled) {
   background: var(--primary-dark);
   transform: translateY(-1px);
 }
@@ -465,6 +505,33 @@ h1 {
   opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+}
+
+.join-btn.join-pending {
+  background: #FFA500; /* Turuncu */
+}
+
+.join-btn.join-accepted {
+  background: #4CAF50; /* Yeşil */
+}
+
+.join-btn.sending {
+  background: var(--primary-color);
+  cursor: wait;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes slideDown {
