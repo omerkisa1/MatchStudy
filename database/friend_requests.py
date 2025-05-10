@@ -141,8 +141,4 @@ def get_friend_list_by_id(user_id):
     finally:
         cursor.close()
         connection.close()
-if __name__ == "__main__":
-    user_id = 1  # test etmek istediğin kullanıcı ID'sini buraya yaz
-    results = get_friend_requests_by_id(user_id)
-    for r in results:
-        print(r)
+print(get_friend_list_by_id(1))
