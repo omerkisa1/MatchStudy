@@ -100,25 +100,19 @@ def get_friend_requests_by_id(user_id):
             connection.close()
         
 
-def get_friend_requests_by_id(user_id):
-    connection = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='123456789',  # kendi şifreni yaz
-        database='match_study'
-    )
+def get_friend_list_by_id(user_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
 
     try:
         cursor = connection.cursor(dictionary=True)
 
         query = """
         SELECT 
-            sr.id AS request_id,
-            sr.status,
-            sr.created_at,
-            sr.updated_at,
+            fr.id AS receiver_id,
+            fr.status,
+            fr.created_at,
+            fr.updated_at,
 
-            -- Karşı taraf bilgileri
             u.id AS user_id,
             u.name,
             u.surname,
@@ -126,15 +120,16 @@ def get_friend_requests_by_id(user_id):
             u.education_level,
             u.email
 
-        FROM study_requests sr
+        FROM friend_requests fr
         JOIN users u 
             ON (
-                (sr.sender_id = %s AND sr.receiver_id = u.id)
+                (fr.sender_id = %s AND fr.receiver_id = u.id)
                 OR
-                (sr.receiver_id = %s AND sr.sender_id = u.id)
+                (fr.receiver_id = %s AND fr.sender_id = u.id)
             )
-        ORDER BY sr.created_at DESC;
-        """
+        WHERE fr.status = 'accepted'
+        ORDER BY fr.created_at DESC;
+        """
 
         cursor.execute(query, (user_id, user_id))
         results = cursor.fetchall()
