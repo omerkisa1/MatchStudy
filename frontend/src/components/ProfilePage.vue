@@ -118,7 +118,7 @@
         </div>
       </div>
 
-      <!-- Biyografi Bölümü -->
+      <!-- Biography Section -->
       <div class="bio-section">
         <h3>Biography</h3>
         <div v-if="!isEditing" class="bio-content">
@@ -128,21 +128,22 @@
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-            Biyografiyi Düzenle
+            Edit Biography
           </button>
         </div>
         <div v-else class="bio-edit-form">
-          <textarea v-model="profileForm.bio" class="bio-textarea" placeholder="Biyografinizi yazın..."></textarea>
+          <textarea v-model="profileForm.bio" class="bio-textarea" placeholder="Write your biography..."></textarea>
           <div class="bio-actions">
-            <button class="cancel-btn" @click="cancelEditing">İptal</button>
+            <button class="cancel-btn" @click="cancelEditing">Cancel</button>
             <button class="save-btn" :disabled="isLoading" @click="saveProfile">
               <span v-if="isLoading" class="loading-spinner"></span>
-              Kaydet
+              Save
             </button>
           </div>
         </div>
       </div>
 
+      <!-- Study History Section -->
       <div class="study-history">
         <h3>Study History</h3>
         <div v-if="userRequests.length > 0">
@@ -698,107 +699,6 @@ export default {
   animation: spin 1s linear infinite;
 }
 
-.study-history {
-  padding: 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.study-history h3 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.history-card {
-  background: rgba(45, 35, 75, 0.3);
-  backdrop-filter: blur(5px);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.history-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-}
-
-.history-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.history-card-header h4 {
-  margin: 0;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.tag {
-  background-color: var(--primary-color);
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  color: white;
-}
-
-.history-card p {
-  margin-bottom: 1rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.history-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.875rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.date, .duration {
-  margin-right: 1rem;
-  color: var(--text-secondary);
-}
-
-.status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-}
-
-.status.pending {
-  background-color: rgba(255, 193, 7, 0.2);
-  color: #ffd866;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.status.completed {
-  background-color: rgba(25, 135, 84, 0.2);
-  color: #a3ffcb;
-  border: 1px solid rgba(25, 135, 84, 0.3);
-}
-
-.status.cancelled {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #ff8a8a;
-  border: 1px solid rgba(220, 53, 69, 0.3);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-  background: rgba(45, 35, 75, 0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(5px);
-}
-
 .settings-container {
   padding: 2rem;
 }
@@ -863,47 +763,12 @@ export default {
   transform: translateY(-2px);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .profile-header {
-    flex-direction: column;
-  }
-  
-  .profile-avatar-section {
-    margin-right: 0;
-    margin-bottom: 1.5rem;
-    align-self: center;
-  }
-  
-  .profile-name-section {
-    flex-direction: column;
-  }
-  
-  .edit-profile-btn {
-    margin-top: 1rem;
-    align-self: flex-start;
-  }
-  
-  .profile-stats {
-    flex-direction: column;
-  }
-  
-  .setting-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .setting-btn, .delete-account-section {
-    margin-top: 0.75rem;
-  }
-}
-
 .bio-section {
   padding: 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(45, 35, 75, 0.3);
   border-radius: 12px;
-  margin: 0 2rem;
+  margin: 0 2rem 2rem 2rem;
   backdrop-filter: blur(5px);
 }
 
@@ -946,11 +811,6 @@ export default {
   transform: translateY(-2px);
 }
 
-.edit-bio-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
 .bio-edit-form {
   display: flex;
   flex-direction: column;
@@ -973,5 +833,83 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.study-history {
+  padding: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(45, 35, 75, 0.3);
+  border-radius: 12px;
+  margin: 0 2rem 2rem 2rem;
+  backdrop-filter: blur(5px);
+}
+
+.study-history h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.history-card {
+  background: rgba(30, 22, 54, 0.6);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.history-card-header h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.history-card-header .tag {
+  padding: 0.25rem 0.5rem;
+  background: rgba(126, 87, 194, 0.2);
+  color: var(--text-primary);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.history-card p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.history-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.history-card-footer .date,
+.history-card-footer .duration {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.history-card-footer .status {
+  padding: 0.25rem 0.5rem;
+  background: rgba(126, 87, 194, 0.2);
+  color: var(--text-primary);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 </style> 

@@ -58,8 +58,11 @@
           <input type="email" v-model="editProfile.email" class="form-input" placeholder="E-posta adresiniz" />
         </div>
         <div class="form-actions">
-          <button class="cancel-btn" @click="cancelProfileEdit">İptal</button>
-          <button class="save-btn" @click="saveProfileChanges">Değişiklikleri Kaydet</button>
+          <button class="cancel-btn" @click="cancelEditing">Cancel</button>
+          <button class="save-btn" :disabled="isLoading" @click="saveProfile">
+            <span v-if="isLoading" class="loading-spinner"></span>
+            Save
+          </button>
         </div>
       </div>
   
@@ -162,12 +165,12 @@
     }
   });
   
-  const cancelProfileEdit = () => {
+  const cancelEditing = () => {
     isEditingProfile.value = false;
     editProfile.value = { ...userProfile.value };
   };
   
-  const saveProfileChanges = async () => {
+  const saveProfile = async () => {
     try {
       userProfile.value = { ...editProfile.value };
       isEditingProfile.value = false;
