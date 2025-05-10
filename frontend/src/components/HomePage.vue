@@ -28,25 +28,12 @@
           :userId="userStore.id"
           @requestCreated="handleRequestCreated"
         />
-
-        <!-- Discover Page -->
-        <DiscoverPage 
-          v-else-if="currentContent === 'discover'" 
-        />
-
-        <!-- Messages Page -->
+        <DiscoverPage v-else-if="currentContent === 'discover'" />
         <MessagesPage v-else-if="currentContent === 'messages'" />
-
-        <!-- Notifications -->
         <Notifications v-else-if="currentContent === 'notifications'" />
-
-        <!-- History Page -->
         <HistoryPage v-else-if="currentContent === 'history'" />
-
-        <!-- Profile Page -->
-        <ProfilePage 
-          v-else-if="currentContent === 'profile'" 
-        />
+        <ProfilePage v-else-if="currentContent === 'profile'" />
+        <FriendsPage v-else-if="currentContent === 'friends'"/>
       </transition>
     </main>
   </div>
@@ -66,6 +53,7 @@ import MessagesPage from './MessagesPage.vue';
 import Notifications from './Notifications.vue';
 import HistoryPage from './HistoryPage.vue';
 import ProfilePage from './ProfilePage.vue';
+import FriendsPage from './FriendsPage.vue';
 
 export default {
   name: "HomePage",
@@ -77,7 +65,8 @@ export default {
     MessagesPage,
     Notifications,
     HistoryPage,
-    ProfilePage
+    ProfilePage,
+    FriendsPage
   },
   setup() {
     const router = useRouter();

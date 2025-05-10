@@ -72,6 +72,19 @@
         </a>
       </div>
     </div>
+    <a @click="navigateTo('friends')" :class="['nav-item', { active: currentContent === 'friends' }]">
+      <div class="nav-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="8" cy="7" r="4"/>
+          <circle cx="16" cy="7" r="4"/>
+          <path d="M2 21v-2a6 6 0 0 1 6-6h0a6 6 0 0 1 6 6v2"/>
+          <path d="M14 21v-2a6 6 0 0 1 6-6"/>
+        </svg>
+      </div>
+      <span>Arkadaşlarım</span>
+    </a>
+
+
 
     <!-- Profil Bölümü (En Alt) -->
     <div class="profile-section">

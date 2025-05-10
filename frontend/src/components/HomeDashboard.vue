@@ -42,6 +42,14 @@
         target="notifications"
         :navigateTo="navigateTo"
       />
+      <DashboardCard 
+      icon="👥"
+      title="Arkadaşlarım"
+      description="Arkadaş listenizi yönetin, yeni arkadaşlar edinin ve birlikte çalışın."
+      cta="Arkadaşlara Git →"
+      target="friends"
+      :navigateTo="navigateTo"
+      />
     </div>
     
     <!-- Quick Stats -->
