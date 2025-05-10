@@ -1,4 +1,3 @@
-
 from database.config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector 
@@ -47,58 +46,79 @@ def get_profile_by_user_id(user_id):
 
 def get_bio_by_user_id(user_id):
     """Get user's bio by user_id"""
+    if not isinstance(user_id, int):
+        raise ValueError("user_id must be an integer")
+        
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
-        return None
+        raise ConnectionError("Veritabanına bağlanılamadı")
 
     try:
         cursor = connection.cursor(dictionary=True)
         query = "SELECT bio FROM profiles WHERE user_id = %s"
         cursor.execute(query, (user_id,))
         result = cursor.fetchone()
-        if result:
-            return result['bio']  # sadece bio bilgisini döndür
-        else:
-            return None
-    except Exception as e:
-        print(f"Error retrieving bio: {e}")
+        
+        if result and 'bio' in result:
+            return result['bio']
         return None
+        
+    except mysql.connector.Error as e:
+        print(f"Veritabanı hatası: {e}")
+        raise
+    except Exception as e:
+        print(f"Beklenmeyen hata: {e}")
+        raise
     finally:
-        cursor.close()
-        connection.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if connection.is_connected():
+            connection.close()
 
 print(get_bio_by_user_id(1))
 
 
 def update_bio(user_id, new_bio):
     """Update an existing biography"""
+    if not isinstance(user_id, int):
+        raise ValueError("user_id must be an integer")
+    if not isinstance(new_bio, str):
+        raise ValueError("new_bio must be a string")
+        
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
-        return
+        raise ConnectionError("Veritabanına bağlanılamadı")
 
     try:
         cursor = connection.cursor()
         
-        # Kullanıcı mevcut mu kontrolü
-        existing_bio = get_bio_by_user_id(user_id)
-        if existing_bio is None:
-            raise ValueError(f"Biography with user_id {user_id} not found")
+        # Önce kullanıcının var olup olmadığını kontrol et
+        check_query = "SELECT user_id FROM profiles WHERE user_id = %s"
+        cursor.execute(check_query, (user_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"user_id {user_id} için profil bulunamadı")
 
-        # Güncelleme sorgusu
-        query = "UPDATE profiles SET bio = %s WHERE user_id = %s"
-        cursor.execute(query, (new_bio, user_id))
+        # Biyografiyi güncelle
+        update_query = "UPDATE profiles SET bio = %s, updated_at = NOW() WHERE user_id = %s"
+        cursor.execute(update_query, (new_bio, user_id))
         connection.commit()
+        
+        print(f"user_id {user_id} için biyografi başarıyla güncellendi")
+        return True
 
-        print("Biography updated successfully")
-
+    except mysql.connector.Error as e:
+        connection.rollback()
+        print(f"Veritabanı hatası: {e}")
+        raise
     except Exception as e:
         connection.rollback()
-        print(f"Error updating biography: {e}")
-        raise ValueError(f"Failed to update biography: {e}")
-    
+        print(f"Beklenmeyen hata: {e}")
+        raise
     finally:
-        cursor.close()
-        connection.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if connection.is_connected():
+            connection.close()
 
 
 
