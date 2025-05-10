@@ -40,7 +40,7 @@
           </div>
 
           <div v-if="!isEditing">
-            <p class="profile-bio">{{ profile.bio || 'No biography added yet.' }}</p>
+            <p class="profile-bio">{{ profile.bio || 'Henüz biyografi eklenmemiş.' }}</p>
             
             <div class="profile-stats">
               <div class="stat-item">
@@ -107,10 +107,6 @@
               <label>Institution</label>
               <input type="text" v-model="profileForm.institution" class="form-input" />
             </div>
-            <div class="form-group">
-              <label>Biography</label>
-              <textarea v-model="profileForm.bio" class="form-textarea"></textarea>
-            </div>
             <div class="form-actions">
               <button class="cancel-btn" @click="cancelEditing">Cancel</button>
               <button class="save-btn" :disabled="isLoading" @click="saveProfile">
@@ -118,6 +114,31 @@
                 Save
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Biyografi Bölümü -->
+      <div class="bio-section">
+        <h3>Biography</h3>
+        <div v-if="!isEditing" class="bio-content">
+          <p class="profile-bio">{{ profile.bio || 'Henüz biyografi eklenmemiş.' }}</p>
+          <button class="edit-bio-btn" @click="startEditing">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Biyografiyi Düzenle
+          </button>
+        </div>
+        <div v-else class="bio-edit-form">
+          <textarea v-model="profileForm.bio" class="bio-textarea" placeholder="Biyografinizi yazın..."></textarea>
+          <div class="bio-actions">
+            <button class="cancel-btn" @click="cancelEditing">İptal</button>
+            <button class="save-btn" :disabled="isLoading" @click="saveProfile">
+              <span v-if="isLoading" class="loading-spinner"></span>
+              Kaydet
+            </button>
           </div>
         </div>
       </div>
@@ -875,5 +896,82 @@ export default {
   .setting-btn, .delete-account-section {
     margin-top: 0.75rem;
   }
+}
+
+.bio-section {
+  padding: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(45, 35, 75, 0.3);
+  border-radius: 12px;
+  margin: 0 2rem;
+  backdrop-filter: blur(5px);
+}
+
+.bio-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.bio-content {
+  position: relative;
+}
+
+.profile-bio {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  padding: 1rem;
+  background: rgba(30, 22, 54, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.edit-bio-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-bio-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.edit-bio-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.bio-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bio-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(30, 22, 54, 0.6);
+  color: var(--text-primary);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.bio-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style> 
