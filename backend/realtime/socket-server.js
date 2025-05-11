@@ -4,6 +4,11 @@ const http = require("http");
 const cors = require("cors");
 const express = require("express");
 
+//this is for logging
+const fs = require("fs");
+const path = require("path");
+const logFilePath = path.join(__dirname, "..", "logs", "admin_panel.log");
+
 const app = express();
 app.use(cors());
 
@@ -15,15 +20,22 @@ const io = new Server(server, {
   }
 });
 
+function logToFile(message) {
+  const logEntry = `${new Date().toISOString()} - ${message}\n`;
+  fs.appendFileSync(logFilePath, logEntry);
+}
+
+
 const connectedUsers = {};
 
 io.on("connection", (socket) => {
   console.log("Bir kullanıcı bağlandı:", socket.id);
-
+  logToFile(`Kullanıcı ${socket.id} bağlantıyı açtı.`);
   // Kullanıcı login olduysa bağlandığında user_id bilgisini yollamalı
   socket.on("user_login", (userId) => {
     connectedUsers[userId] = socket.id;
     console.log(`Kullanıcı ${userId} giriş yaptı.`);
+    logToFile(`Kullanıcı ${userId} giriş yaptı.`);
   });
 
   // Mesaj gönderme
@@ -54,6 +66,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("Bir kullanıcı ayrıldı:", socket.id);
+    logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`);
     // connectedUsers'tan sil
     for (let uid in connectedUsers) {
       if (connectedUsers[uid] === socket.id) {
@@ -65,6 +78,7 @@ io.on("connection", (socket) => {
 
   socket.on("user_logout", (userId) => {
     console.log(`Kullanıcı ${userId} çıkış yaptı.`);
+    logToFile(`Kullanıcı ${userId} çıkış yaptı.`);
     delete connectedUsers[userId];
   });
   
