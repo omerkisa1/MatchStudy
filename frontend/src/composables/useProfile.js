@@ -493,20 +493,23 @@ export function useProfile() {
     error.value = null
     
     try {
-      const response = await api.get(`/profiles/${userStore.id}`)
+      // Doğru endpoint: /users/user/
+      const response = await api.get(`/users/user/${userStore.id}`)
       const result = response.data
       
-      if (result.success && result.data) {
-        // Update store with profile data
-        await userStore.updateProfile(result.data)
-        return result.data
+      console.log("Profil yanıtı:", result); // Debug için
+      
+      if (result.message === "User found" && result.user) {
+        // Backend'in döndürdüğü yapı: { message, user, status }
+        await userStore.updateProfile(result.user)
+        return result.user
       } else {
-        error.value = result.message || 'Failed to fetch profile'
+        error.value = result.detail || 'Failed to fetch profile'
         return null
       }
     } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to fetch profile'
-      console.error(err)
+      error.value = err.response?.data?.detail || 'Failed to fetch profile'
+      console.error("Profil çekme hatası:", err)
       return null
     } finally {
       isLoading.value = false

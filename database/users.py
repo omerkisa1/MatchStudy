@@ -22,8 +22,6 @@ def add_user(email, password,name,surname,age,education_level):
         cursor.close()
         connection.close()
 
-#add_user("seher@example.com","123456","Seher","Akyel","20","Lisans")
-
 def get_user_by_id(user_id):
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
@@ -42,7 +40,6 @@ def get_user_by_id(user_id):
     finally:
         cursor.close()
         connection.close()
-get_user_by_id(1)
 
 def list_users():
     connection = mysql.connector.connect(**DB_CONFIG)
@@ -54,7 +51,6 @@ def list_users():
         query = "SELECT * FROM users"
         cursor.execute(query)
         users = cursor.fetchall()
-        #print(users)
         return users
     except Exception as e:
         print(f"Kullanıcılar getirilemedi: {e}")
