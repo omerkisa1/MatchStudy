@@ -412,3 +412,13 @@ async def get_api_status(username: str = Depends(verify_admin)):
 async def log_client_info(info: Dict[str, Any]):
     logger.info(f"[CLIENT-INFO] {json.dumps(info, ensure_ascii=False)}")
     return {"success": True}
+
+@router.post("/client-logs")
+async def receive_client_log(log_data: dict):
+    try:
+        log_entry = f"[CLIENT LOG] {log_data}"
+        logger.info(log_entry)
+        return {"success": True, "message": "Log kaydedildi"}
+    except Exception as e:
+        logger.error(f"Client log hatası: {str(e)}")
+        return {"success": False, "message": "Log kaydedilirken hata oluştu"}
