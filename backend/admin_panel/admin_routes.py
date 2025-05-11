@@ -407,3 +407,8 @@ async def get_api_status(username: str = Depends(verify_admin)):
             "server_time": datetime.datetime.now().isoformat(),
             "error": str(e)
         } 
+
+@router.post("/client-info")
+async def log_client_info(info: Dict[str, Any]):
+    logger.info(f"[CLIENT-INFO] {json.dumps(info, ensure_ascii=False)}")
+    return {"success": True}
