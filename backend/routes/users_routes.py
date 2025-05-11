@@ -1,8 +1,9 @@
 import sys
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from database.users import (
-    add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id
+    add_user, get_user_by_id, list_users, delete_user_by_id, login_user, get_user_id, update_user
 )
 router = APIRouter()
 
@@ -17,6 +18,14 @@ class RegisterUser(BaseModel):
     surname: str
     age: int
     education_level: str
+
+class UpdateUser(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    age: Optional[int] = None
+    education_level: Optional[str] = None
 
 @router.post("/login")
 async def login_user_endpoint(credentials: LoginCredentials):
@@ -87,3 +96,21 @@ async def get_user_id_endpoint(email: str, password: str):
         return {"message": "User found", "user_id": user_id, "status": 200}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
+
+@router.put("/update/{user_id}")
+async def update_user_endpoint(user_id: int, user: UpdateUser):
+    try:
+        update_user(
+            user_id,
+            user.email,
+            user.password,
+            user.name,
+            user.surname,
+            user.age,
+            user.education_level
+        )
+        return {"message": "User updated"}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Kullanıcı güncellenemedi.")

@@ -172,11 +172,45 @@
   
   const saveProfile = async () => {
     try {
-      userProfile.value = { ...editProfile.value };
-      isEditingProfile.value = false;
-      alert('Profil başarıyla güncellendi!');
+      // Değişen alanları tespit et
+      const changedFields = {};
+      const fields = ['name', 'surname', 'email', 'age', 'education_level'];
+      
+      fields.forEach(field => {
+        // Sadece değişen alanları değişiklikler nesnesine ekle
+        if (editProfile.value[field] !== userProfile.value[field]) {
+          changedFields[field] = editProfile.value[field];
+        }
+      });
+      
+      // Eğer hiçbir alan değişmediyse güncelleme yapma
+      if (Object.keys(changedFields).length === 0) {
+        isEditingProfile.value = false;
+        return;
+      }
+      
+      // API isteği gönder, sadece değişen alanları içeren nesneyi gönder
+      const response = await fetch(`http://127.0.0.1:8000/users/update/${userProfile.value.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(changedFields)
+      });
+      
+      const data = await response.json();
+      
+      if (data.message === "User updated") {
+        // Başarılı olduysa yerel profili güncelle
+        userProfile.value = { ...userProfile.value, ...changedFields };
+        isEditingProfile.value = false;
+        alert('Profil başarıyla güncellendi!');
+      } else {
+        throw new Error(data.detail || 'Güncelleme başarısız oldu');
+      }
     } catch (error) {
-      alert('Profil güncellenirken bir hata oluştu.');
+      console.error("Profil güncelleme hatası:", error);
+      alert('Profil güncellenirken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
     }
   };
   

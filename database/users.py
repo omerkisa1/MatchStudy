@@ -1,6 +1,7 @@
 from database.config import DB_CONFIG
 from mysql.connector import Error
 import mysql.connector
+from typing import Optional
 
 
 def add_user(email, password,name,surname,age,education_level):
@@ -118,6 +119,43 @@ def get_user_id(email: str, password: str):
         cursor.close()
         connection.close()
     
-#login_user("test@example.com", "123")
+def update_user(user_id: int,email: Optional[str] = None,password: Optional[str] = None,name: Optional[str] = None,surname: Optional[str] = None,age: Optional[int] = None,education_level: Optional[str] = None):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    if not connection:
+        return
+
+    try:
+        cursor = connection.cursor()
+
+        data = {
+            "email": email,
+            "password": password,
+            "name": name,
+            "surname": surname,
+            "age": age,
+            "education_level": education_level
+        }
+
+        fields = [f"{key} = %s" for key, value in data.items() if value is not None]
+        values = [value for value in data.values() if value is not None]
+
+        if not fields:
+            raise ValueError("Güncellenecek alan yok.")
+
+        fields.append("updated_at = NOW()")
+
+        query = f"UPDATE users SET {', '.join(fields)} WHERE id = %s"
+        values.append(user_id)
+
+        cursor.execute(query, values)
+        connection.commit()
+        print(f"Kullanıcı {user_id} başarıyla güncellendi.")
+
+    except Exception as e:
+        connection.rollback()
+        print(f"Hata: {e}")
+    finally:
+        cursor.close()
+        connection.close()
 
 

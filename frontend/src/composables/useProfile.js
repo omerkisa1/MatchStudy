@@ -173,11 +173,32 @@ export function useProfile() {
     error.value = null
     success.value = null
   
+    console.log("saveProfile çağrıldı - endpoint: /users/update/" + userStore.id);
+    
     try {
-      const response = await api.put(`/profiles/update/${userStore.id}`, profileForm)
+      // Değişen alanları tespit et ve sadece değişenleri gönder
+      const changedFields = {}
+      const currentProfile = userStore.fullProfile
+      
+      Object.keys(profileForm).forEach(key => {
+        if (profileForm[key] !== currentProfile[key]) {
+          changedFields[key] = profileForm[key]
+        }
+      })
+      
+      // Eğer değişiklik yoksa işlem yapma
+      if (Object.keys(changedFields).length === 0) {
+        success.value = 'No changes to update'
+        isLoading.value = false
+        return { success: true, message: 'No changes to update' }
+      }
+      
+      // users/update API'sine değişen alanları gönder
+      const response = await api.put(`/users/update/${userStore.id}`, changedFields)
       const result = response.data
   
-      if (result.success) {
+      if (result.message === "User updated") {
+        // Başarılı olursa profili güncelle
         await userStore.updateProfile({
           name: profileForm.name,
           surname: profileForm.surname,
@@ -188,8 +209,6 @@ export function useProfile() {
         })
   
         success.value = 'Profile updated successfully!'
-        
-  
       } else {
         error.value = result.message || 'An error occurred while updating profile'
       }
@@ -197,7 +216,7 @@ export function useProfile() {
       return result
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to update profile'
-      console.error(err)
+      console.error("Profil güncelleme hatası:", err)
       return { 
         success: false, 
         message: 'Failed to update profile',
