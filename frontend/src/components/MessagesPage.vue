@@ -151,7 +151,8 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useMatchesStore } from '@/stores/matchesStore'
 import { useUserStore } from '@/stores/userStore'
-import socket from '@/socket'
+import { getSocket } from '@/socket'
+const socket = getSocket()
 import ConfirmDialog from './ConfirmDialog.vue'
 import ToastNotification from './ToastNotification.vue'
 

@@ -1,16 +1,27 @@
-import { io } from "socket.io-client"
-import { useUserStore } from "@/stores/userStore"
+// src/socket.js
+import { io } from "socket.io-client";
 
-const socket = io("http://127.0.0.1:3000") // sunucu adresin
+let socket = null;
 
-socket.on("connect", () => {
-  console.log("Socket.IO bağlandı:", socket.id);
+export function initSocket(userId) {
+  if (socket) return socket;
 
-  // Otomatik olarak login olan kullanıcıyı bildir
-  const userStore = useUserStore()
-  if (userStore.id) {
-    socket.emit("user_login", userStore.id)
-  }
-})
+  socket = io("http://127.0.0.1:3000");
 
-export default socket
+  socket.on("connect", () => {
+    console.log("🔌 Socket.IO bağlandı:", socket.id);
+    if (userId) {
+      socket.emit("user_login", userId);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Socket.IO bağlantısı kesildi:", socket.id);
+  });
+
+  return socket;
+}
+
+export function getSocket() {
+  return socket;
+}

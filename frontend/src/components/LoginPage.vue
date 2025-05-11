@@ -149,16 +149,17 @@
 </template>
 
 <script>
-import axios from "axios";
 import { ref, reactive, computed, onMounted } from "vue";
-import { useUserStore } from '../stores/userStore';
-import { useRouter } from 'vue-router';
+import { useUserStore } from "@/stores/userStore";
+import { useRouter } from "vue-router";
+import { initSocket } from "@/socket";
 
 export default {
   name: "EnhancedLoginPage",
   setup() {
     const router = useRouter();
     const userStore = useUserStore();
+
     const email = ref("");
     const password = ref("");
     const rememberMe = ref(false);
@@ -167,13 +168,10 @@ export default {
     const showPassword = ref(false);
     const isLoading = ref(false);
     const loginSuccess = ref(false);
-    
-    // Parçacık animasyonu için rastgele değerler üret
+
     const particleStyles = reactive({});
-    
+
     onMounted(() => {
-      // Sayfa yüklendiğinde partical animasyonları için
-      // rastgele değerler atayalım
       for (let i = 1; i <= 20; i++) {
         particleStyles[`p${i}`] = {
           left: `${Math.random() * 100}%`,
@@ -183,11 +181,10 @@ export default {
           size: `${5 + Math.random() * 15}px`
         };
       }
-      
-      // Eğer localStorage'da kayıtlı email varsa
-      const savedEmail = localStorage.getItem('email');
-      const savedPassword = localStorage.getItem('password');
-      
+
+      const savedEmail = localStorage.getItem("email");
+      const savedPassword = localStorage.getItem("password");
+
       if (savedEmail && savedPassword) {
         email.value = savedEmail;
         password.value = savedPassword;
@@ -203,23 +200,18 @@ export default {
       showPassword.value = !showPassword.value;
     };
 
-    // Email validasyonu için yardımcı fonksiyon
-    const validateEmail = (email) => {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
+    const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    // Form validasyonu
     const isFormValid = computed(() => {
       return email.value.length > 0 && password.value.length > 0;
     });
 
     const handleLogin = async () => {
-      // Email ve şifre validasyonları
       if (!validateEmail(email.value)) {
         errorMessage.value = "Lütfen geçerli bir e-posta adresi girin";
         return;
       }
-      
+
       if (password.value.length < 6) {
         errorMessage.value = "Şifre en az 6 karakter olmalıdır";
         return;
@@ -229,75 +221,70 @@ export default {
       isLoading.value = true;
 
       try {
-        // Yeni API endpoint'i ile kullanıcı bilgilerini al
-        const response = await fetch(`http://127.0.0.1:8000/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`);
+        const response = await fetch(
+          `http://127.0.0.1:8000/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`
+        );
         const data = await response.json();
-        
+
         if (response.ok && data.user_id) {
-          // Kullanıcı bilgilerini store'a kaydet - Using setUser instead of login
+          // Kullanıcı bilgilerini store'a yaz
           userStore.setUser({
             id: data.user_id,
             email: email.value,
-            name: email.value.split('@')[0], // Geçici olarak email'den kullanıcı adı oluştur
-            surname: '',
+            name: email.value.split("@")[0],
+            surname: "",
             age: null,
-            gender: '',
-            education_level: '',
+            gender: "",
+            education_level: "",
             interests: []
           });
-          
-          // Store user info in localStorage for persistence
-          localStorage.setItem('userId', data.user_id);
-          localStorage.setItem('userEmail', email.value);
-          localStorage.setItem('userName', email.value.split('@')[0]);
-          
-          // Remember me seçeneği işaretliyse bilgileri localStorage'a kaydet
+
+          // 🔌 Socket bağlantısını login'den sonra başlat
+          initSocket(data.user_id);
+
+          localStorage.setItem("userId", data.user_id);
+          localStorage.setItem("userEmail", email.value);
+          localStorage.setItem("userName", email.value.split("@")[0]);
+
           if (rememberMe.value) {
-            localStorage.setItem('email', email.value);
-            localStorage.setItem('password', password.value);
+            localStorage.setItem("email", email.value);
+            localStorage.setItem("password", password.value);
           } else {
-            localStorage.removeItem('email');
-            localStorage.removeItem('password');
+            localStorage.removeItem("email");
+            localStorage.removeItem("password");
           }
 
-          // Başarılı animasyonu göster
           loginSuccess.value = true;
-          
-          // Animasyon tamamlandıktan sonra yönlendirme
+
           setTimeout(() => {
-            router.push('/home');
+            router.push("/home");
           }, 1500);
         } else {
-          throw new Error(data.message || 'Kullanıcı bulunamadı');
+          throw new Error(data.message || "Kullanıcı bulunamadı");
         }
       } catch (error) {
-        console.error('Login error:', error);
-        errorMessage.value = 'Giriş yapılırken bir hata oluştu. Lütfen bilgilerinizi kontrol edin.';
+        console.error("Login error:", error);
+        errorMessage.value = "Giriş yapılırken bir hata oluştu. Lütfen bilgilerinizi kontrol edin.";
       } finally {
         isLoading.value = false;
       }
     };
-    
+
     const socialLogin = (provider) => {
       isLoading.value = true;
-      
-      // Simüle edilmiş sosyal medya girişi
       setTimeout(() => {
-        // Burada gerçek bir uygulama sosyal medya API'larını çağırır
         console.log(`${provider} ile giriş yapılıyor...`);
         loginSuccess.value = true;
-        
         setTimeout(() => {
           window.location.href = "/home";
         }, 1500);
       }, 1500);
     };
-    
+
     const goToSignup = () => {
-      // Kayıt sayfasına yönlendirme
       window.location.href = "/signup";
     };
-    
+
     return {
       email,
       password,
@@ -318,6 +305,8 @@ export default {
   }
 };
 </script>
+
+
 
 <style>
 /* Global stil tanımlamaları */
