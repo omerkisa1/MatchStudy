@@ -81,12 +81,25 @@ async def get_users(username: str = Depends(verify_admin)):
         
         # Tam kullanıcı bilgilerini al - Profil tablosuna daha güvenli bir join
         cursor.execute("""
-            SELECT u.id, u.email, u.name, u.surname, u.created_at, u.updated_at, 
-                   p.age, p.education_level, p.bio, p.institution,
-                   (SELECT COUNT(*) FROM messages WHERE sender_id = u.id) as message_count
-            FROM users u
-            LEFT JOIN profiles p ON u.id = p.user_id
-        """)
+                SELECT 
+                    u.id,
+                    u.email,
+                    u.name,
+                    u.surname,
+                    u.age,
+                    u.education_level,
+                    u.created_at,
+                    u.updated_at,
+                    p.bio,
+                    p.institution,
+                    COUNT(m.id) AS message_count
+                FROM users u
+                LEFT JOIN profiles p ON u.id = p.user_id
+                LEFT JOIN messages m ON u.id = m.sender_id
+                GROUP BY 
+                    u.id, u.email, u.name, u.surname, u.age, u.education_level, 
+                    u.created_at, u.updated_at, p.bio, p.institution;
+                    """)
         
         users = cursor.fetchall()
         cursor.close()
