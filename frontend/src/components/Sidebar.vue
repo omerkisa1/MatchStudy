@@ -49,9 +49,6 @@
             </svg>
           </div>
           <span>Mesajlar</span>
-          <div v-if="userStore.totalUnreadMessages > 0" class="nav-badge">
-            {{ userStore.totalUnreadMessages > 99 ? '99+' : userStore.totalUnreadMessages }}
-          </div>
         </a>
 
         <a @click="navigateTo('notifications')" :class="['nav-item', { active: currentContent === 'notifications' }]">
@@ -104,21 +101,20 @@
   </nav>
 </template>
 
-<script setup>
-import { useUserStore } from '@/stores/userStore'
-
-const props = defineProps({
-  currentContent: {
-    type: String,
-    required: true
-  },
-  navigateTo: {
-    type: Function,
-    required: true
+<script>
+export default {
+  name: "Sidebar",
+  props: {
+    currentContent: {
+      type: String,
+      required: true
+    },
+    navigateTo: {
+      type: Function,
+      required: true
+    }
   }
-})
-
-const userStore = useUserStore()
+}
 </script>
 
 <style>
@@ -248,23 +244,6 @@ const userStore = useUserStore()
   background: rgba(126, 87, 194, 0.12);
   border-color: rgba(126, 87, 194, 0.2);
   transform: translateY(-1px);
-}
-
-/* Badge stilini ekle */
-.nav-badge {
-  position: absolute;
-  right: 12px;
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 0.7rem;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Responsive tasarım */
