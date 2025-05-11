@@ -20,10 +20,11 @@ const io = new Server(server, {
   }
 });
 
-function logToFile(message) {
-  const logEntry = `${new Date().toISOString()} - ${message}\n`;
+function logToFile(message, level = "INFO", source = "SOCKET") {
+  const logEntry = `${new Date().toISOString()} [${source}] [${level}] ${message}\n`;
   fs.appendFileSync(logFilePath, logEntry);
 }
+
 
 
 const connectedUsers = {};
@@ -35,7 +36,7 @@ io.on("connection", (socket) => {
   socket.on("user_login", (userId) => {
     connectedUsers[userId] = socket.id;
     console.log(`Kullanıcı ${userId} giriş yaptı.`);
-    logToFile(`Kullanıcı ${userId} giriş yaptı.`);
+    logToFile(`Kullanıcı ${userId} giriş yaptı.`, "INFO", "SOCKET");
   });
 
   // Mesaj gönderme
@@ -66,7 +67,8 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("Bir kullanıcı ayrıldı:", socket.id);
-    logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`);
+    logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`, "INFO", "SOCKET");
+
     // connectedUsers'tan sil
     for (let uid in connectedUsers) {
       if (connectedUsers[uid] === socket.id) {
@@ -78,7 +80,7 @@ io.on("connection", (socket) => {
 
   socket.on("user_logout", (userId) => {
     console.log(`Kullanıcı ${userId} çıkış yaptı.`);
-    logToFile(`Kullanıcı ${userId} çıkış yaptı.`);
+    logToFile(`Kullanıcı ${userId} çıkış yaptı.`, "INFO", "SOCKET");
     delete connectedUsers[userId];
   });
   
