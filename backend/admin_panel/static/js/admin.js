@@ -1,5 +1,21 @@
 // Admin paneli JS dosyası
 document.addEventListener('DOMContentLoaded', function() {
+    // Mobile sidebar toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const mainContent = document.getElementById('mainContent');
+    
+    menuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('active');
+        sidebarOverlay.classList.toggle('active');
+    });
+    
+    sidebarOverlay.addEventListener('click', function() {
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+    });
+    
     // Sayfa bölümleri arasında geçiş
     const navLinks = document.querySelectorAll('.nav-link, .list-group-item');
     navLinks.forEach(link => {
@@ -18,23 +34,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 navLink.classList.remove('active');
             });
             document.querySelector(`.nav-link[data-section="${targetSection}"]`).classList.add('active');
+            
+            // Mobil görünümde sidebar'ı kapat
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            }
         });
     });
     
-    // API durumunu kontrol et
-    checkApiStatus();
+    // Ana veri yükleme fonksiyonu
+    function initializeData() {
+        // API durumunu kontrol et
+        checkApiStatus();
+        
+        // İstatistik verilerini yükle
+        loadStats();
+        
+        // Kullanıcı verilerini yükle
+        loadUsers();
+        
+        // Sohbet verilerini yükle
+        loadChats();
+        
+        // Logları yükle
+        loadLogs();
+    }
     
-    // İstatistik verilerini yükle
-    loadStats();
+    // Veri yenileme zamanlaması (her 30 saniyede bir - performans için süreyi artırdık)
+    let dataRefreshInterval = setInterval(initializeData, 30000);
     
-    // Kullanıcı verilerini yükle
-    loadUsers();
+    // Sayfa görünür olmadığında veri yenilemeyi durdur, görünür olduğunda yeniden başlat
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            clearInterval(dataRefreshInterval);
+        } else {
+            initializeData();
+            dataRefreshInterval = setInterval(initializeData, 30000);
+        }
+    });
     
-    // Sohbet verilerini yükle
-    loadChats();
-    
-    // Logları yükle
-    loadLogs();
+    // İlk veri yüklemesi - API hatası durumunda 3 saniye sonra bir daha dene
+    initializeData();
     
     // Logları yenile butonu
     const refreshLogsBtn = document.getElementById('refreshLogsBtn');
@@ -43,80 +84,151 @@ document.addEventListener('DOMContentLoaded', function() {
             loadLogs();
         });
     }
+    
+    // Pencere boyutu değiştiğinde yanıt verme
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            mainContent.style.marginLeft = '250px';
+        } else {
+            mainContent.style.marginLeft = '0';
+        }
+    });
+    
+    // İlk yükleme için pencere boyutunu kontrol et
+    if (window.innerWidth <= 768) {
+        mainContent.style.marginLeft = '0';
+    }
 });
+
+// Güvenli fetch fonksiyonu - hata yönetimi geliştirilmiş
+function safeFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        fetch(url, options)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success === false && data.error) {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                }
+                resolve(data);
+            })
+            .catch(error => {
+                console.error(`Fetch error for ${url}:`, error);
+                reject(error);
+            });
+    });
+}
 
 // API durumunu kontrol etme
 function checkApiStatus() {
-    fetch('/admin/api-status')
-        .then(response => response.json())
+    const apiStatus = document.getElementById('apiStatus');
+    if (!apiStatus) return;
+    
+    apiStatus.innerHTML = 'API Durumu: <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+    
+    safeFetch('/admin/api-status')
         .then(data => {
-            const apiStatus = document.getElementById('apiStatus');
             if (data.success) {
-                apiStatus.textContent = 'API Durumu: Çevrimiçi';
-                apiStatus.classList.add('online');
-                apiStatus.classList.remove('offline');
+                apiStatus.innerHTML = 'API Durumu: <span class="badge bg-success">Çevrimiçi</span>';
+                
+                // Tablo sayılarını konsola yazdır - hata ayıklama için
+                if (data.table_counts) {
+                    console.log('Tablo sayıları:', data.table_counts);
+                }
             } else {
-                apiStatus.textContent = 'API Durumu: Çevrimdışı';
-                apiStatus.classList.add('offline');
-                apiStatus.classList.remove('online');
+                apiStatus.innerHTML = 'API Durumu: <span class="badge bg-danger">Çevrimdışı</span>';
             }
         })
         .catch(error => {
-            const apiStatus = document.getElementById('apiStatus');
-            apiStatus.textContent = 'API Durumu: Çevrimdışı';
-            apiStatus.classList.add('offline');
-            apiStatus.classList.remove('online');
-            console.error('API status error:', error);
+            apiStatus.innerHTML = 'API Durumu: <span class="badge bg-danger">Bağlantı Hatası</span>';
         });
 }
 
 // İstatistik verilerini yükleme
 function loadStats() {
-    fetch('/admin/stats')
-        .then(response => response.json())
+    const statsElements = {
+        totalUsers: document.getElementById('totalUsers'),
+        totalChats: document.getElementById('totalChats'),
+        totalMessages: document.getElementById('totalMessages'),
+        recentMessages: document.getElementById('recentMessages'),
+        statTotalUsers: document.getElementById('statTotalUsers'),
+        statTotalChats: document.getElementById('statTotalChats'),
+        statTotalMessages: document.getElementById('statTotalMessages'),
+        statRecentMessages: document.getElementById('statRecentMessages')
+    };
+    
+    // Eğer elementler sayfada yoksa işlem yapma
+    if (!statsElements.totalUsers || !statsElements.totalChats) return;
+    
+    safeFetch('/admin/stats')
         .then(data => {
-            if (data.success) {
+            if (data.success && data.stats) {
                 const stats = data.stats;
                 
-                // Dashboard istatistiklerini güncelle
-                document.getElementById('totalUsers').textContent = stats.user_count;
-                document.getElementById('totalChats').textContent = stats.chat_count;
-                document.getElementById('totalMessages').textContent = stats.message_count;
-                document.getElementById('recentMessages').textContent = stats.recent_messages;
-                
-                // İstatistik sayfası verilerini güncelle
-                document.getElementById('statTotalUsers').textContent = stats.user_count;
-                document.getElementById('statTotalChats').textContent = stats.chat_count;
-                document.getElementById('statTotalMessages').textContent = stats.message_count;
-                document.getElementById('statRecentMessages').textContent = stats.recent_messages;
+                // Tüm istatistik elementlerini güncelle
+                for (const [key, element] of Object.entries(statsElements)) {
+                    if (element) {
+                        // İstatistik anahtarlarını element ID'lerine eşle
+                        const statKey = key.replace('stat', '').toLowerCase();
+                        const value = stats[statKey] || stats.user_count || 0;
+                        element.innerHTML = value;
+                    }
+                }
                 
                 // Grafikler
                 if (typeof Chart !== 'undefined') {
                     createUserStatsChart(stats);
                     createMessageStatsChart(stats);
                 }
+            } else {
+                showStatsError(statsElements);
             }
         })
         .catch(error => {
-            console.error('Stats error:', error);
+            console.error('Stats loading error:', error);
+            showStatsError(statsElements);
         });
 }
 
+// İstatistik yükleme hatası durumunda gösterilecek
+function showStatsError(elements) {
+    for (const element of Object.values(elements)) {
+        if (element) {
+            element.innerHTML = '<span class="text-danger">Hata</span>';
+        }
+    }
+}
+
+// Chart.js grafikleri için global değişkenler
+let userStatsChart = null;
+let messageStatsChart = null;
+
 // Kullanıcı grafiği oluşturma
 function createUserStatsChart(stats) {
-    const ctx = document.getElementById('userStatsChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'pie',
+    const ctx = document.getElementById('userStatsChart');
+    if (!ctx) return;
+    
+    const ctxContext = ctx.getContext('2d');
+    if (!ctxContext) return;
+    
+    // Chart yapılandırması
+    const chartConfig = {
+        type: 'doughnut',
         data: {
             labels: ['Kullanıcılar'],
             datasets: [{
-                data: [stats.user_count],
+                data: [stats.user_count || 0],
                 backgroundColor: ['#3498db'],
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -127,25 +239,40 @@ function createUserStatsChart(stats) {
                 }
             }
         }
-    });
+    };
+    
+    // Eğer grafik zaten varsa güncelle, yoksa oluştur
+    if (userStatsChart) {
+        userStatsChart.data.datasets[0].data = [stats.user_count || 0];
+        userStatsChart.update();
+    } else {
+        userStatsChart = new Chart(ctxContext, chartConfig);
+    }
 }
 
 // Mesaj grafiği oluşturma
 function createMessageStatsChart(stats) {
-    const ctx = document.getElementById('messageStatsChart').getContext('2d');
-    new Chart(ctx, {
+    const ctx = document.getElementById('messageStatsChart');
+    if (!ctx) return;
+    
+    const ctxContext = ctx.getContext('2d');
+    if (!ctxContext) return;
+    
+    // Chart yapılandırması
+    const chartConfig = {
         type: 'bar',
         data: {
             labels: ['Toplam Mesajlar', 'Son 7 Gün'],
             datasets: [{
                 label: 'Mesaj Sayısı',
-                data: [stats.message_count, stats.recent_messages],
+                data: [stats.message_count || 0, stats.recent_messages || 0],
                 backgroundColor: ['#3498db', '#2ecc71'],
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             scales: {
                 y: {
                     beginAtZero: true
@@ -161,230 +288,416 @@ function createMessageStatsChart(stats) {
                 }
             }
         }
-    });
+    };
+    
+    // Eğer grafik zaten varsa güncelle, yoksa oluştur
+    if (messageStatsChart) {
+        messageStatsChart.data.datasets[0].data = [stats.message_count || 0, stats.recent_messages || 0];
+        messageStatsChart.update();
+    } else {
+        messageStatsChart = new Chart(ctxContext, chartConfig);
+    }
 }
 
 // Kullanıcı verilerini yükleme
 function loadUsers() {
-    fetch('/admin/users')
-        .then(response => response.json())
+    const usersTableBody = document.getElementById('usersTableBody');
+    if (!usersTableBody) return;
+    
+    // Yükleniyor göstergesi
+    usersTableBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    safeFetch('/admin/users')
         .then(data => {
-            if (data.success) {
+            if (data.success && Array.isArray(data.users)) {
                 const users = data.users;
-                const usersTableBody = document.getElementById('usersTableBody');
-                let usersTableHtml = '';
                 
-                users.forEach(user => {
-                    usersTableHtml += `
-                        <tr>
-                            <td>${user.id}</td>
-                            <td>${user.name || '-'}</td>
-                            <td>${user.surname || '-'}</td>
-                            <td>${user.email || '-'}</td>
-                            <td>${user.age || '-'}</td>
-                            <td>${user.education_level || '-'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="viewUser(${user.id})">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                usersTableBody.innerHTML = usersTableHtml;
-                
-                // DataTable başlat (jQuery gerektirir)
-                if (typeof $ !== 'undefined' && $.fn.DataTable) {
-                    if ($.fn.DataTable.isDataTable('#usersTable')) {
-                        $('#usersTable').DataTable().destroy();
-                    }
+                if (users.length > 0) {
+                    let usersTableHtml = '';
                     
-                    $('#usersTable').DataTable({
-                        language: {
-                            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json'
-                        }
+                    users.forEach(user => {
+                        usersTableHtml += `
+                            <tr>
+                                <td>${user.id || '-'}</td>
+                                <td>${escapeHtml(user.name || '-')}</td>
+                                <td>${escapeHtml(user.surname || '-')}</td>
+                                <td>${escapeHtml(user.email || '-')}</td>
+                                <td>${user.age || '-'}</td>
+                                <td>${escapeHtml(user.education_level || '-')}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewUser(${user.id})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
                     });
+                    
+                    usersTableBody.innerHTML = usersTableHtml;
+                } else {
+                    usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Kullanıcı bulunamadı</td></tr>';
                 }
+                
+                // DataTable başlat
+                initializeDataTable('#usersTable');
+            } else {
+                const errorMsg = data.message || 'Veri yüklenirken hata oluştu';
+                usersTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${escapeHtml(errorMsg)}</td></tr>`;
             }
         })
         .catch(error => {
             console.error('Users error:', error);
+            usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Veri yüklenirken bir bağlantı hatası oluştu</td></tr>';
         });
+}
+
+// DataTable başlatma yardımcı fonksiyonu
+function initializeDataTable(selector) {
+    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+        try {
+            if ($.fn.DataTable.isDataTable(selector)) {
+                $(selector).DataTable().destroy();
+            }
+            
+            $(selector).DataTable({
+                responsive: true,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json'
+                },
+                columnDefs: [
+                    { responsivePriority: 1, targets: 0 },
+                    { responsivePriority: 2, targets: -1 }
+                ],
+                order: [[0, 'desc']], // ID'ye göre sırala
+                pageLength: 10,
+                lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Tümü"]]
+            });
+        } catch (e) {
+            console.error('DataTable initialization error:', e);
+        }
+    }
 }
 
 // Sohbet verilerini yükleme
 function loadChats() {
-    fetch('/admin/chats')
-        .then(response => response.json())
+    const chatsTableBody = document.getElementById('chatsTableBody');
+    if (!chatsTableBody) return;
+    
+    // Yükleniyor göstergesi
+    chatsTableBody.innerHTML = `
+        <tr>
+            <td colspan="4" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    safeFetch('/admin/chats')
         .then(data => {
-            if (data.success) {
+            if (data.success && Array.isArray(data.chats)) {
                 const chats = data.chats;
-                const chatsTableBody = document.getElementById('chatsTableBody');
-                let chatsTableHtml = '';
                 
-                chats.forEach(chat => {
-                    chatsTableHtml += `
-                        <tr>
-                            <td>${chat.chat_id}</td>
-                            <td>${chat.user_1_name} (${chat.user_1_email})</td>
-                            <td>${chat.user_2_name} (${chat.user_2_email})</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="viewChatMessages('${chat.chat_id}', '${chat.user_1_name}', '${chat.user_2_name}')">
-                                    <i class="fas fa-comments"></i> Mesajlar
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                chatsTableBody.innerHTML = chatsTableHtml;
-                
-                // DataTable başlat (jQuery gerektirir)
-                if (typeof $ !== 'undefined' && $.fn.DataTable) {
-                    if ($.fn.DataTable.isDataTable('#chatsTable')) {
-                        $('#chatsTable').DataTable().destroy();
-                    }
+                if (chats.length > 0) {
+                    let chatsTableHtml = '';
                     
-                    $('#chatsTable').DataTable({
-                        language: {
-                            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json'
-                        }
+                    chats.forEach(chat => {
+                        const user1Name = escapeHtml(chat.user_1_name || 'İsimsiz');
+                        const user2Name = escapeHtml(chat.user_2_name || 'İsimsiz');
+                        const user1Email = escapeHtml(chat.user_1_email || '');
+                        const user2Email = escapeHtml(chat.user_2_email || '');
+                        const chatId = escapeHtml(chat.chat_id || '');
+                        
+                        chatsTableHtml += `
+                            <tr>
+                                <td>${chatId}</td>
+                                <td>${user1Name} ${user1Email ? `<small>(${user1Email})</small>` : ''}</td>
+                                <td>${user2Name} ${user2Email ? `<small>(${user2Email})</small>` : ''}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewChatMessages('${chatId}', '${user1Name}', '${user2Name}')">
+                                        <i class="fas fa-comments"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
                     });
+                    
+                    chatsTableBody.innerHTML = chatsTableHtml;
+                } else {
+                    chatsTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Sohbet bulunamadı</td></tr>';
                 }
+                
+                // DataTable başlat
+                initializeDataTable('#chatsTable');
+            } else {
+                const errorMsg = data.message || 'Veri yüklenirken hata oluştu';
+                chatsTableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${escapeHtml(errorMsg)}</td></tr>`;
             }
         })
         .catch(error => {
             console.error('Chats error:', error);
+            chatsTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Veri yüklenirken bir bağlantı hatası oluştu</td></tr>';
         });
 }
 
-// Logları yükleme
+// Sistem loglarını yükleme
 function loadLogs() {
-    fetch('/admin/logs')
-        .then(response => response.json())
+    const logsContainer = document.getElementById('logsContainer');
+    const recentLogs = document.getElementById('recentLogs');
+    
+    // Yükleniyor göstergesi
+    const loadingHtml = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+        </div>
+    `;
+    
+    if (logsContainer) logsContainer.innerHTML = loadingHtml;
+    if (recentLogs) recentLogs.innerHTML = loadingHtml;
+    
+    safeFetch('/admin/logs')
         .then(data => {
-            if (data.success) {
+            if (data.success && Array.isArray(data.logs)) {
                 const logs = data.logs;
-                const logContainer = document.getElementById('logContainer');
-                let logsHtml = '';
                 
-                logs.forEach(log => {
-                    // Log seviyesine göre renk belirleme
-                    let logClass = '';
-                    if (log.includes('ERROR') || log.includes('CRITICAL')) {
-                        logClass = 'text-danger';
-                    } else if (log.includes('WARNING')) {
-                        logClass = 'text-warning';
-                    } else if (log.includes('INFO')) {
-                        logClass = 'text-info';
+                if (logs && logs.length > 0) {
+                    // Log girdilerini oluştur
+                    let logsHtml = '';
+                    logs.forEach(log => {
+                        let logClass = '';
+                        
+                        if (log.includes('ERROR') || log.includes('error')) {
+                            logClass = 'text-danger';
+                        } else if (log.includes('WARNING') || log.includes('warning')) {
+                            logClass = 'text-warning';
+                        } else if (log.includes('INFO') || log.includes('info')) {
+                            logClass = 'text-info';
+                        }
+                        
+                        logsHtml += `<div class="log-entry ${logClass}">${escapeHtml(log)}</div>`;
+                    });
+                    
+                    // Ana loglar sayfasını güncelle
+                    if (logsContainer) {
+                        logsContainer.innerHTML = logsHtml;
+                        logsContainer.scrollTop = logsContainer.scrollHeight;
                     }
                     
-                    logsHtml += `<div class="log-entry ${logClass}">${log}</div>`;
-                });
-                
-                logContainer.innerHTML = logsHtml;
-                logContainer.scrollTop = logContainer.scrollHeight;
-                
-                // Dashboard için son logları da güncelle
-                const recentLogs = logs.slice(-5);
-                const recentLogsContainer = document.getElementById('recentLogs');
-                let recentLogsHtml = '';
-                
-                recentLogs.forEach(log => {
-                    let activityDotClass = 'activity-info';
-                    if (log.includes('ERROR') || log.includes('CRITICAL')) {
-                        activityDotClass = 'activity-error';
-                    } else if (log.includes('WARNING')) {
-                        activityDotClass = 'activity-warning';
+                    // Dashboard son loglar bölümünü güncelle
+                    if (recentLogs) {
+                        // Son 5 logu al
+                        const recentLogsHtml = logs.slice(-5).reverse().map(log => {
+                            let logClass = '';
+                            let dotClass = 'activity-info';
+                            
+                            if (log.includes('ERROR') || log.includes('error')) {
+                                logClass = 'text-danger';
+                                dotClass = 'activity-error';
+                            } else if (log.includes('WARNING') || log.includes('warning')) {
+                                logClass = 'text-warning';
+                                dotClass = 'activity-warning';
+                            }
+                            
+                            return `
+                                <div class="log-entry">
+                                    <span class="activity-dot ${dotClass}"></span>
+                                    <span class="${logClass}">${escapeHtml(log.substring(0, 100))}${log.length > 100 ? '...' : ''}</span>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        recentLogs.innerHTML = recentLogsHtml || '<div class="text-center p-3">Henüz log kaydı bulunmuyor</div>';
                     }
-                    
-                    recentLogsHtml += `
-                        <div class="log-entry">
-                            <span class="activity-dot ${activityDotClass}"></span>
-                            ${log}
-                        </div>
-                    `;
-                });
-                
-                recentLogsContainer.innerHTML = recentLogsHtml;
+                } else {
+                    const noLogsHtml = '<div class="text-center p-3">Henüz log kaydı bulunmuyor</div>';
+                    if (logsContainer) logsContainer.innerHTML = noLogsHtml;
+                    if (recentLogs) recentLogs.innerHTML = noLogsHtml;
+                }
+            } else {
+                const errorMsg = data.message || 'Loglar yüklenirken hata oluştu';
+                const errorHtml = `<div class="text-center text-danger p-3">${escapeHtml(errorMsg)}</div>`;
+                if (logsContainer) logsContainer.innerHTML = errorHtml;
+                if (recentLogs) recentLogs.innerHTML = errorHtml;
             }
         })
         .catch(error => {
             console.error('Logs error:', error);
-            document.getElementById('logContainer').innerHTML = '<div class="alert alert-danger">Loglar yüklenirken hata oluştu</div>';
-            document.getElementById('recentLogs').innerHTML = '<div class="alert alert-danger">Loglar yüklenirken hata oluştu</div>';
+            const errorHtml = '<div class="text-center text-danger p-3">Loglar yüklenirken bir bağlantı hatası oluştu</div>';
+            if (logsContainer) logsContainer.innerHTML = errorHtml;
+            if (recentLogs) recentLogs.innerHTML = errorHtml;
         });
 }
 
-// Sohbet mesajlarını görüntüleme
-function viewChatMessages(chatId, user1Name, user2Name) {
-    // Seçilen sohbet başlığını güncelle
-    document.getElementById('selectedChatTitle').textContent = `${user1Name} ile ${user2Name} arasındaki mesajlar`;
+// HTML karakterlerini escape etme yardımcı fonksiyonu
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) {
+        return '';
+    }
     
-    // Mesajları yükle
-    fetch(`/admin/messages/${chatId}`)
-        .then(response => response.json())
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// Belirli bir sohbetin mesajlarını görüntüleme
+function viewChatMessages(chatId, user1Name, user2Name) {
+    const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+    const selectedChatTitle = document.getElementById('selectedChatTitle');
+    
+    if (!chatId || !chatMessagesContainer) {
+        console.error('Chat ID or container is missing');
+        return;
+    }
+    
+    // Yükleniyor göstergesi
+    chatMessagesContainer.innerHTML = `
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Mesajlar yükleniyor...</span>
+            </div>
+        </div>
+    `;
+    
+    // Başlığı güncelle
+    if (selectedChatTitle) {
+        selectedChatTitle.textContent = `${user1Name || 'Kullanıcı 1'} ve ${user2Name || 'Kullanıcı 2'} arasındaki sohbet`;
+    }
+    
+    safeFetch(`/admin/messages/${chatId}`)
         .then(data => {
-            if (data.success) {
+            if (data.success && Array.isArray(data.messages)) {
                 const messages = data.messages;
-                const chatMessagesContainer = document.getElementById('chatMessagesContainer');
-                let messagesHtml = '';
                 
-                if (messages.length === 0) {
-                    messagesHtml = '<div class="text-center p-5"><p>Bu sohbette henüz mesaj yok</p></div>';
-                } else {
+                if (messages.length > 0) {
+                    let messagesHtml = '';
+                    
                     messages.forEach(message => {
-                        const date = new Date(message.sent_at);
-                        const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                        
-                        messagesHtml += `
-                            <div class="message">
-                                <div class="sender">${message.sender_name} (${message.sender_email})</div>
-                                <div class="content">${message.content}</div>
-                                <div class="time">${formattedDate}</div>
-                            </div>
-                        `;
+                        try {
+                            const sentDate = new Date(message.sent_at);
+                            const messageTime = sentDate.toLocaleString('tr-TR');
+                            const senderName = escapeHtml(message.sender_name || 'İsimsiz Kullanıcı');
+                            const content = escapeHtml(message.content || '');
+                            
+                            messagesHtml += `
+                                <div class="message">
+                                    <div class="sender">${senderName}</div>
+                                    <div>${content}</div>
+                                    <div class="time">${messageTime}</div>
+                                </div>
+                            `;
+                        } catch (err) {
+                            console.error('Error processing message:', err, message);
+                        }
                     });
+                    
+                    chatMessagesContainer.innerHTML = messagesHtml;
+                    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+                } else {
+                    chatMessagesContainer.innerHTML = `
+                        <div class="text-center p-5">
+                            <i class="fas fa-comments text-muted" style="font-size: 3rem; opacity: 0.2;"></i>
+                            <p class="mt-3">Bu sohbette henüz mesaj bulunmuyor</p>
+                        </div>
+                    `;
                 }
-                
-                chatMessagesContainer.innerHTML = messagesHtml;
-                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            } else {
+                const errorMsg = data.message || 'Mesajlar yüklenirken bir hata oluştu';
+                chatMessagesContainer.innerHTML = `
+                    <div class="text-center p-5 text-danger">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem;"></i>
+                        <p class="mt-3">${escapeHtml(errorMsg)}</p>
+                    </div>
+                `;
             }
         })
         .catch(error => {
             console.error('Messages error:', error);
-            document.getElementById('chatMessagesContainer').innerHTML = '<div class="alert alert-danger">Mesajlar yüklenirken hata oluştu</div>';
+            chatMessagesContainer.innerHTML = `
+                <div class="text-center p-5 text-danger">
+                    <i class="fas fa-exclamation-circle" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Mesajlar yüklenirken bir bağlantı hatası oluştu</p>
+                </div>
+            `;
         });
 }
 
 // Kullanıcı silme
 function deleteUser(userId) {
-    if (confirm(`${userId} ID'li kullanıcıyı silmek istediğinize emin misiniz?`)) {
-        fetch(`/admin/users/${userId}`, {
-            method: 'DELETE'
-        })
+    if (!userId) {
+        console.error('User ID is required');
+        return;
+    }
+    
+    if (!confirm(`${userId} ID'li kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm ilişkili veriler de silinecektir.`)) {
+        return;
+    }
+    
+    // Yükleniyor göstergesi
+    const userRow = document.querySelector(`#usersTableBody tr td:first-child:contains('${userId}')`).closest('tr');
+    if (userRow) {
+        userRow.classList.add('table-warning');
+    }
+    
+    fetch(`/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Kullanıcı başarıyla silindi');
-                loadUsers(); // Kullanıcı listesini yenile
+                alert('✅ Kullanıcı başarıyla silindi.');
+                loadUsers();  // Kullanıcı listesini yenile
+                loadStats();  // İstatistikleri güncelle
+                loadChats();  // Sohbetleri güncelle
             } else {
-                alert('Kullanıcı silinirken bir hata oluştu: ' + data.message);
+                alert(`❌ Hata: ${data.message || 'Kullanıcı silinirken bir hata oluştu.'}`);
+                if (userRow) {
+                    userRow.classList.remove('table-warning');
+                }
             }
         })
         .catch(error => {
             console.error('Delete user error:', error);
-            alert('Kullanıcı silinirken bir hata oluştu');
+            alert('❌ Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin.');
+            if (userRow) {
+                userRow.classList.remove('table-warning');
+            }
         });
-    }
 }
 
-// Kullanıcı görüntüleme
+// Kullanıcı detaylarını görüntüleme
 function viewUser(userId) {
-    alert(`Kullanıcı detayları görüntüleniyor: ${userId}`);
-    // Bu fonksiyon daha sonra geliştirilebilir
+    if (!userId) {
+        console.error('User ID is required');
+        return;
+    }
+    
+    // Gelecekte burada bir modal veya popup ile kullanıcı detaylarını gösterebiliriz
+    alert(`Kullanıcı detayları görüntüleme özelliği henüz geliştirilme aşamasındadır. Kullanıcı ID: ${userId}`);
+}
+
+// jQuery yardımcı fonksiyonu - contains seçici - kullanıcı silme kısmı için
+if (typeof jQuery !== 'undefined') {
+    jQuery.expr[':'].contains = function(a, i, m) {
+        return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
+    };
 } 
