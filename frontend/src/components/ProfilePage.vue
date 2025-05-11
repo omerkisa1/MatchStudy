@@ -137,15 +137,15 @@
       <!-- Study History Section -->
       <div class="study-history">
         <h3>Study History</h3>
-        <div v-if="userRequests.length > 0">
+        <div v-if="userRequests && userRequests.length > 0">
           <div v-for="request in userRequests" 
-                :key="request.request_id" 
+                :key="request.request_id || request.id" 
                 class="history-card">
             <div class="history-card-header">
-              <h4>{{ request.topic }}</h4>
-              <span class="tag">{{ request.category }}</span>
+              <h4>{{ request.topic || 'İsimsiz Çalışma' }}</h4>
+              <span class="tag">{{ request.category || 'Kategori Yok' }}</span>
             </div>
-            <p>{{ request.note }}</p>
+            <p>{{ request.note || 'Not bulunmuyor' }}</p>
             <div class="history-card-footer">
               <div>
                 <span class="date">{{ formatDate(request.study_date) }}</span>
@@ -231,6 +231,7 @@
 import { ref, onMounted } from 'vue';
 import { useProfile } from '../composables/useProfile';
 import { useStudyRequests } from '../composables/useStudyRequests';
+import { useStudyRequestsStore } from '../stores/studyRequestsStore';
 import InterestTags from './InterestTags.vue';
 import AvatarUpload from './AvatarUpload.vue';
 import InterestModal from './InterestModal.vue';
@@ -271,7 +272,7 @@ export default {
     const isEditingProfile = ref(false);
     const isEditingBio = ref(false);
     // Study requests
-    const { getUserRequests, formatDate, formatDuration } = useStudyRequests();
+    const { fetchUserRequests } = useStudyRequests();
     const userRequests = ref([]);
     
     // UI state
@@ -280,6 +281,27 @@ export default {
     const showNotificationSettings = ref(false);
     const showDeleteConfirm = ref(false);
     const confirmDeleteText = ref('');
+    
+    // Helper functions for formatting
+    const formatDate = (dateString) => {
+      if (!dateString) return 'Tarih Yok';
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    };
+    
+    const formatDuration = (minutes) => {
+      if (!minutes) return 'Süre Belirtilmemiş';
+      
+      // Emin olmak için sayıya dönüştür
+      const mins = parseInt(minutes);
+      if (isNaN(mins)) return 'Geçersiz Süre';
+      
+      if (mins < 60) return `${mins} dakika`;
+      const hours = Math.floor(mins / 60);
+      const remainingMinutes = mins % 60;
+      if (remainingMinutes === 0) return `${hours} saat`;
+      return `${hours} saat ${remainingMinutes} dakika`;
+    };
     
     // Interest suggestions
     const interestSuggestions = [
@@ -290,13 +312,27 @@ export default {
     
     // Initialize
     onMounted(async () => {
-      await initialize();
-      await loadUserRequests();
+      try {
+        console.log('Profile page mounted - initializing...');
+        await initialize();
+        console.log('Profile initialized, loading user requests...');
+        await loadUserRequests();
+        console.log('User requests loaded successfully.');
+      } catch (err) {
+        console.error('Error during ProfilePage initialization:', err);
+      }
     });
     
     // Load user's study requests
     const loadUserRequests = async () => {
-      userRequests.value = await getUserRequests();
+      try {
+        await fetchUserRequests();
+        userRequests.value = useStudyRequestsStore().userRequests || [];
+        console.log("Kullanıcı istekleri yüklendi:", userRequests.value);
+      } catch (err) {
+        console.error("Kullanıcı istekleri yüklenirken hata:", err);
+        userRequests.value = []; // Hata durumunda boş array ile devam et
+      }
     };
     const handleSaveProfile = async () => {
     const result = await saveProfile();
@@ -307,13 +343,15 @@ export default {
   };
 
   const handleSaveBio = async () => {
-  const result = await updateBio()
-  if (result.data) {
-    isEditingBio.value = false
-  }
-}
-
-
+    try {
+      const result = await updateBio();
+      if (result && result.data) {
+        isEditingBio.value = false;
+      }
+    } catch (err) {
+      console.error("Biyografi güncellenirken hata:", err);
+    }
+  };
 
     // Handle interest submission from modal
     const handleAddInterest = async (interest) => {
