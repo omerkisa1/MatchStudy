@@ -373,7 +373,8 @@ function initializeDataTable(selector) {
             $(selector).DataTable({
                 responsive: true,
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json'
+                url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json'
+
                 },
                 columnDefs: [
                     { responsivePriority: 1, targets: 0 },
