@@ -257,6 +257,8 @@ socket.on('new_message', (msg) => {
       unreadMessages.value[msg.chat_id] = 0
     }
     unreadMessages.value[msg.chat_id]++
+    // Toplam okunmamış mesaj sayacını da artır
+    userStore.incrementUnreadMessages()
     // Son mesajı güncelle
     updateLastMessage(msg)
   }
@@ -304,11 +306,16 @@ async function fetchUnreadCounts() {
       }
       
       // Okunmamış mesaj sayılarını her eşleşme için ayarla
+      let totalUnread = 0
       for (const [chatId, count] of Object.entries(data.unread_counts)) {
         if (chatMatchMap[chatId]) {
           unreadMessages.value[chatMatchMap[chatId]] = count
+          totalUnread += count
         }
       }
+      
+      // Toplam okunmamış mesaj sayısını userStore'a kaydet
+      userStore.updateTotalUnreadMessages(totalUnread)
     }
   } catch (err) {
     console.error("Okunmamış mesaj sayıları alınamadı:", err)
@@ -348,7 +355,7 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    await fetch('http://127.0.0.1:8000/messages/mark_read_by_chat', {
+    const response = await fetch('http://127.0.0.1:8000/messages/mark_read_by_chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -359,8 +366,19 @@ async function markMessagesAsRead(chatId) {
       })
     })
     
+    const data = await response.json()
+    
     // Seçili eşleşmeye ait okunmamış mesajları sıfırla
     if (selectedMatchId.value) {
+      // Mevcut sayıyı al
+      const currentUnreadCount = unreadMessages.value[selectedMatchId.value] || 0
+      
+      // Toplam okunmamış mesaj sayısını güncelle
+      if (currentUnreadCount > 0) {
+        userStore.updateTotalUnreadMessages(userStore.totalUnreadMessages - currentUnreadCount)
+      }
+      
+      // Bu sohbetteki okunmamış mesaj sayısını sıfırla
       unreadMessages.value[selectedMatchId.value] = 0
     }
   } catch (err) {
