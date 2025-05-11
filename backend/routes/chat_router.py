@@ -29,10 +29,14 @@ async def create_chat_endpoint(
     try:
         user_1_id = request_data.get("user_1_id")
         user_2_id = request_data.get("user_2_id")
-        chat_id = request_data.get("chat_id")
         
-        if not all([user_1_id, user_2_id, chat_id]):
+        if not all([user_1_id, user_2_id]):
             return {"success": False, "message": "Missing required parameters"}
+        
+        # Kullanıcı ID'lerini küçükten büyüğe sıralayarak sabit bir chat_id oluştur
+        smaller_id = min(user_1_id, user_2_id)
+        larger_id = max(user_1_id, user_2_id)
+        chat_id = f"{smaller_id}_{larger_id}"
             
         # Check if either user has blocked the other
         if is_user_blocked(user_1_id, user_2_id) or is_user_blocked(user_2_id, user_1_id):
@@ -52,29 +56,32 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
         
-        # Try to get existing chat ID - check if it's not hidden for the requesting user
+        # Kullanıcı ID'lerini küçükten büyüğe sıralayarak sabit bir chat_id oluştur
+        smaller_id = min(user_1_id, user_2_id)
+        larger_id = max(user_1_id, user_2_id)
+        chat_id = f"{smaller_id}_{larger_id}"
+        
+        # Önce sohbetin var olup olmadığını kontrol et
         query = """
             SELECT chat_id FROM chats 
             WHERE 
+                chat_id = %s AND
                 ((user_1_id = %s AND user_2_id = %s AND hidden_for_user_1 = FALSE)
                 OR 
                 (user_1_id = %s AND user_2_id = %s AND hidden_for_user_2 = FALSE))
         """
-        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
+        cursor.execute(query, (chat_id, user_1_id, user_2_id, user_2_id, user_1_id))
         result = cursor.fetchone()
         
         # Make sure we consume all results
         if cursor.with_rows:
             cursor.fetchall()
-            
-        chat_id = result['chat_id'] if result else None
         
-        if chat_id:
-            # If chat exists, return it
+        if result:
+            # Sohbet varsa, ID'yi döndür
             return {"success": True, "chat_id": chat_id}
         else:
-            # If chat doesn't exist or is hidden, create one with an auto-generated ID
-            new_chat_id = f"chat_{user_1_id}_{user_2_id}_{int(time.time())}"
+            # Sohbet yoksa veya gizlenmişse, yeni bir sohbet oluştur
             
             # Öncelikle kullanıcıların birbirini engelleyip engellemediğini kontrol et
             if is_user_blocked(user_1_id, user_2_id) or is_user_blocked(user_2_id, user_1_id):
@@ -84,10 +91,10 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
                 INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at, hidden_for_user_1, hidden_for_user_2)
                 VALUES (%s, %s, %s, NOW(), FALSE, FALSE)
             """
-            cursor.execute(insert_query, (new_chat_id, user_1_id, user_2_id))
+            cursor.execute(insert_query, (chat_id, user_1_id, user_2_id))
             connection.commit()
             
-            return {"success": True, "chat_id": new_chat_id, "newly_created": True}
+            return {"success": True, "chat_id": chat_id, "newly_created": True}
     except Exception as e:
         if connection and connection.is_connected():
             connection.rollback()
@@ -106,9 +113,9 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
 @router.post("/messages/send")
 async def send_message_endpoint(chat_id: str = Body(...), sender_id: int = Body(...), content: str = Body(...)):
     try:
-        # Get the other user's ID from the chat_id
-        user1_id, user2_id = map(int, chat_id.split('_')[1:3])
-        receiver_id = user2_id if sender_id == user1_id else user1_id
+        # Chat ID'den alıcı ID'sini bul (format: smaller_id_larger_id)
+        user_ids = list(map(int, chat_id.split('_')))
+        receiver_id = user_ids[0] if sender_id == user_ids[1] else user_ids[1]
         
         # Check if either user has blocked the other
         if is_user_blocked(sender_id, receiver_id) or is_user_blocked(receiver_id, sender_id):

@@ -238,6 +238,13 @@ async function checkFriendshipStatus(userId) {
 
 // Yeni mesaj geldiğinde socket üzerinden ekle
 socket.on('new_message', (msg) => {
+  // Eğer bu mesajı kendimiz göndermişsek ve zaten UI'da gösteriyorsak, tekrar ekleme
+  if (msg.sender_id === currentUser.value) {
+    // Sadece son mesaj bilgilerini güncelleyelim
+    updateLastMessage(msg)
+    return;
+  }
+  
   if (msg.chat_id === selectedChatId.value) {
     messages.value.push(msg)
     markMessagesAsRead(msg.chat_id)
@@ -398,7 +405,7 @@ onMounted(async () => {
         userEntry.displayName = `${data.user.name} ${data.user.surname}`;
       }
 
-      // 2. Chat ID’yi al ve son mesajı getir
+      // 2. Chat ID'yi al ve son mesajı getir
       const chatRes = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${otherUserId}`);
       const chatData = await chatRes.json();
       if (chatData.success) {
@@ -494,7 +501,7 @@ async function selectUserAndLoadMessages(user) {
   await checkFriendshipStatus(user.userId);
   
   try {
-    // Chat ID yoksa backend'den al veya oluştur
+    // Chat ID'yi backend'den al veya oluştur
     const res = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${user.userId}`)
     const data = await res.json()
     
@@ -506,47 +513,14 @@ async function selectUserAndLoadMessages(user) {
       // Bu sohbetteki mesajları okundu olarak işaretle
       await markMessagesAsRead(data.chat_id)
     } else {
-      // Chat ID yoksa oluştur
-      await createNewChat(currentUser.value, user.userId)
+      messages.value = []
+      console.error("Chat bilgisi alınamadı:", data.message)
     }
   } catch (err) {
     console.error("Chat bilgisi alınamadı:", err)
+    messages.value = []
   } finally {
     isLoadingChat.value = false
-  }
-}
-
-// Yeni bir chat oluştur
-async function createNewChat(user1Id, user2Id) {
-  console.log("Chat oluşturuluyor:", user1Id, user2Id);
-  try {
-    // Benzersiz bir chat ID oluştur
-    const chatId = `chat_${user1Id}_${user2Id}_${Date.now()}`
-    
-    // Backend'e chat oluşturma isteği gönder
-    const response = await fetch('http://127.0.0.1:8000/chat/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        user_1_id: user1Id,
-        user_2_id: user2Id,
-        chat_id: chatId
-      })
-    })
-    
-    const data = await response.json()
-    console.log("Chat oluşturma cevabı:", data);
-    
-    if (data.success) {
-      selectedChatId.value = chatId
-      messages.value = []
-    } else {
-      console.error("Chat oluşturulamadı:", data.message)
-    }
-  } catch (err) {
-    console.error("Chat oluşturma hatası:", err)
   }
 }
 

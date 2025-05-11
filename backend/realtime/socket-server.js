@@ -36,12 +36,13 @@ io.on("connection", (socket) => {
       io.to(receiverSocket).emit("new_message", {
         chat_id,
         sender_id,
+        receiver_id,
         content,
         sent_at: new Date().toISOString()
       });
     }
 
-    // (isteğe bağlı) mesajı FastAPI'ye kaydet
+    // Mesajı FastAPI'ye kaydet
     fetch("http://127.0.0.1:8000/messages/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
