@@ -4,7 +4,10 @@ import { io } from "socket.io-client";
 let socket = null;
 
 export function initSocket(userId) {
-  if (socket) return socket;
+  if (socket && socket.connected) {
+    console.log("🔌 Socket zaten bağlı, yeniden bağlanmayacak");
+    return socket;
+  }
 
   socket = io("http://127.0.0.1:3000");
 
@@ -16,11 +19,12 @@ export function initSocket(userId) {
   });
 
   socket.on("disconnect", () => {
-    console.log("Socket.IO bağlantısı kesildi:", socket.id);
+    console.log("❌ Socket.IO bağlantısı kesildi:", socket.id);
   });
 
   return socket;
 }
+
 
 export function getSocket() {
   return socket;

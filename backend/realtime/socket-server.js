@@ -62,6 +62,13 @@ io.on("connection", (socket) => {
       }
     }
   });
+
+  socket.on("user_logout", (userId) => {
+    console.log(`Kullanıcı ${userId} çıkış yaptı.`);
+    delete connectedUsers[userId];
+  });
+  
+
 });
 
 server.listen(3000, () => {

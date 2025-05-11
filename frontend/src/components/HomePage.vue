@@ -54,7 +54,7 @@ import Notifications from './Notifications.vue';
 import HistoryPage from './HistoryPage.vue';
 import ProfilePage from './ProfilePage.vue';
 import FriendsPage from './FriendsPage.vue';
-
+import { initSocket, getSocket } from '@/socket'
 export default {
   name: "HomePage",
   components: {
@@ -115,6 +115,10 @@ export default {
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
       const userName = localStorage.getItem('userName');
+      const socket = getSocket();
+      if (!socket?.connected) {
+        initSocket(userStore.id); // 🔁 Bağlantıyı tekrar kur
+      }
 
       // Eğer localStorage'da kullanıcı bilgileri varsa store'a yükle
       if (userId && userEmail && userName) {

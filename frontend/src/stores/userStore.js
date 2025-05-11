@@ -79,7 +79,19 @@ export const useUserStore = defineStore('user', () => {
   /**
    * Logout user and clear data
    */
-  function logout() {
+  async function logout() {
+    try {
+      const { getSocket } = await import('@/socket');
+      const socket = getSocket();
+      if (socket && id.value) {
+        socket.emit('user_logout', id.value);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        socket.disconnect();
+      }
+    } catch (e) {
+      console.warn("Socket logout emit edilemedi:", e);
+    }
+  
     id.value = null
     email.value = null
     name.value = null
@@ -100,12 +112,13 @@ export const useUserStore = defineStore('user', () => {
       activeGroups: 0,
       interests: []
     }
-
-    // Clear user data from localStorage
+  
+    // Local storage temizle
     localStorage.removeItem('userId')
     localStorage.removeItem('userEmail')
     localStorage.removeItem('userName')
   }
+  
 
   /**
    * Check if user is authenticated from localStorage
