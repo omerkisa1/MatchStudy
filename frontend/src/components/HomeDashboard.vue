@@ -107,8 +107,8 @@ export default {
 
     // Fetch data on component mount
     onMounted(async () => {
-      // Ensure user profile is loaded
-      await userStore.fetchUserProfile();
+      // Skip user profile fetch since the basic info is already loaded during login
+      // If we still need profile data, we can add it here directly
       
       // Load data needed for stats
       await Promise.all([

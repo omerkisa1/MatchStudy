@@ -234,12 +234,22 @@ export default {
         const data = await response.json();
         
         if (response.ok && data.user_id) {
-          // Kullanıcı bilgilerini store'a kaydet
-          userStore.login({
+          // Kullanıcı bilgilerini store'a kaydet - Using setUser instead of login
+          userStore.setUser({
             id: data.user_id,
             email: email.value,
-            name: email.value.split('@')[0] // Geçici olarak email'den kullanıcı adı oluştur
+            name: email.value.split('@')[0], // Geçici olarak email'den kullanıcı adı oluştur
+            surname: '',
+            age: null,
+            gender: '',
+            education_level: '',
+            interests: []
           });
+          
+          // Store user info in localStorage for persistence
+          localStorage.setItem('userId', data.user_id);
+          localStorage.setItem('userEmail', email.value);
+          localStorage.setItem('userName', email.value.split('@')[0]);
           
           // Remember me seçeneği işaretliyse bilgileri localStorage'a kaydet
           if (rememberMe.value) {
