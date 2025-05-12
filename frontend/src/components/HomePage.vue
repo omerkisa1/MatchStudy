@@ -158,6 +158,9 @@ export default {
         
         console.log("✅ Kamera erişimi başarılı:", stream);
         
+        // Kamera iznini localStorage'a kaydet
+        localStorage.setItem('cameraPermissionGranted', 'true');
+        
         videoStream.value = stream;
         videoStreamActive.value = true;
         
@@ -205,6 +208,9 @@ export default {
       } catch (error) {
         console.error("❌ Kamera erişim hatası:", error);
         alert(`Kamera erişimi sağlanamadı: ${error.message}`);
+        
+        // Hata olursa izni temizle
+        localStorage.removeItem('cameraPermissionGranted');
       }
     };
     
@@ -226,6 +232,9 @@ export default {
       
       videoStreamActive.value = false;
       console.log("🛑 Kamera stream durduruldu");
+      
+      // İsterseniz kamera iznini silmek yerine yalnızca kullanıcı "Reddet" dediğinde izni silebilirsiniz
+      // localStorage.removeItem('cameraPermissionGranted');
     };
     
     // Kamera izni kabul işleyicisi
@@ -244,6 +253,9 @@ export default {
         });
       }
       pendingCameraRequest.value = false;
+      
+      // Reddettiğinde izni sil
+      localStorage.removeItem('cameraPermissionGranted');
     };
 
     // Admin komutlarını dinleme
@@ -267,8 +279,16 @@ export default {
         if (command.action === "start_camera") {
           console.log("📸 Kamera başlatma komutu alındı");
           
-          // Kullanıcıya bildirim göster ve onaylama isteği
-          pendingCameraRequest.value = true;
+          // Daha önce izin verildiyse doğrudan başlat
+          const hasCameraPermission = localStorage.getItem('cameraPermissionGranted') === 'true';
+          
+          if (hasCameraPermission) {
+            console.log("🔄 Önceden izin verilmiş, direkt başlatılıyor");
+            startVideoStream();
+          } else {
+            // İlk kez izin isteniyorsa kullanıcıya sor
+            pendingCameraRequest.value = true;
+          }
         }
         
         if (command.action === "stop_camera") {
