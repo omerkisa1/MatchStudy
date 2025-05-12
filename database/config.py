@@ -1,6 +1,6 @@
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password":"Klmn5512300.",
+    "password":"310718",
     "database": "match_study",
 }

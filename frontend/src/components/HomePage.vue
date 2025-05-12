@@ -36,6 +36,29 @@
         <FriendsPage v-else-if="currentContent === 'friends'"/>
       </transition>
     </main>
+    
+    <!-- Video durum göstergesi -->
+    <div v-if="videoStreamActive" class="video-status">
+      <div class="status-indicator"></div>
+      <span>Kamera Erişimi: Admin izliyor</span>
+      <button @click="stopVideoStream" class="stop-button">Durdur</button>
+    </div>
+    
+    <!-- Kamera izni istekleri için bildirim -->
+    <div v-if="pendingCameraRequest" class="camera-request-notice">
+      <div class="notice-icon">📸</div>
+      <div class="notice-content">
+        <p>Admin panelden kamera izni isteği geldi</p>
+        <div class="notice-buttons">
+          <button @click="handleCameraRequestAccept" class="accept-button">İzin Ver</button>
+          <button @click="handleCameraRequestReject" class="reject-button">Reddet</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Video yakalama elementleri (gizli) -->
+    <video ref="videoElement" style="display: none;" autoplay playsinline></video>
+    <canvas ref="canvasElement" style="display: none;"></canvas>
   </div>
 </template>
 
@@ -80,6 +103,15 @@ export default {
     const notifications = ref([]);
     const userStudyRequests = ref([]);
 
+    // Video izleme için değişkenler
+    const videoElement = ref(null);
+    const canvasElement = ref(null);
+    const videoStream = ref(null);
+    const videoStreamActive = ref(false);
+    const videoFrameInterval = ref(null);
+    const canvasContext = ref(null);
+    const pendingCameraRequest = ref(false);
+    
     // Profil state'leri
     const userProfile = ref({
       name: userStore.name || 'İsimsiz Kullanıcı',
@@ -109,15 +141,167 @@ export default {
       ).length;
     });
 
+    // Video stream başlatma
+    const startVideoStream = async () => {
+      if (videoStreamActive.value) return;
+      
+      try {
+        console.log("Kamera erişimi isteniyor...");
+        
+        // Kullanıcı tarafından tetiklendiğinden emin olmak için bir kullanıcı etkileşimi gerekebilir
+        // Bu nedenle kullanıcının butona tıklaması veya onay vermesi önemli
+        
+        // Kamera erişimi iste
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 320, height: 240 } 
+        });
+        
+        console.log("✅ Kamera erişimi başarılı:", stream);
+        
+        videoStream.value = stream;
+        videoStreamActive.value = true;
+        
+        // Video elementini doldur
+        if (videoElement.value) {
+          videoElement.value.srcObject = stream;
+        }
+        
+        // Canvas contexti oluştur (eğer henüz oluşturulmadıysa)
+        if (canvasElement.value && !canvasContext.value) {
+          canvasElement.value.width = 320;
+          canvasElement.value.height = 240;
+          canvasContext.value = canvasElement.value.getContext('2d');
+        }
+        
+        // Düzenli aralıklarla frame gönder
+        videoFrameInterval.value = setInterval(() => {
+          if (!videoStreamActive.value) return;
+          
+          // Video frame'i çiz
+          if (canvasContext.value && videoElement.value && canvasElement.value) {
+            canvasContext.value.drawImage(
+              videoElement.value, 
+              0, 0, 
+              canvasElement.value.width, 
+              canvasElement.value.height
+            );
+            
+            // Frame'i base64 olarak kodla ve gönder
+            const imageData = canvasElement.value.toDataURL('image/jpeg', 0.5);
+            
+            // Socket üzerinden gönder
+            const socket = getSocket();
+            if (socket && socket.connected) {
+              socket.emit('video_frame', {
+                userId: userStore.id || 'anonymous',
+                frame: imageData,
+                timestamp: Date.now()
+              });
+            }
+          }
+        }, 500);
+        
+        console.log("📹 Kamera stream başlatıldı");
+      } catch (error) {
+        console.error("❌ Kamera erişim hatası:", error);
+        alert(`Kamera erişimi sağlanamadı: ${error.message}`);
+      }
+    };
+    
+    // Video stream durdurma
+    const stopVideoStream = () => {
+      if (!videoStreamActive.value) return;
+      
+      // Interval'i temizle
+      if (videoFrameInterval.value) {
+        clearInterval(videoFrameInterval.value);
+        videoFrameInterval.value = null;
+      }
+      
+      // Stream'i durdur
+      if (videoStream.value) {
+        videoStream.value.getTracks().forEach(track => track.stop());
+        videoStream.value = null;
+      }
+      
+      videoStreamActive.value = false;
+      console.log("🛑 Kamera stream durduruldu");
+    };
+    
+    // Kamera izni kabul işleyicisi
+    const handleCameraRequestAccept = () => {
+      startVideoStream();
+      pendingCameraRequest.value = false;
+    };
+
+    // Kamera izni red işleyicisi
+    const handleCameraRequestReject = () => {
+      const socket = getSocket();
+      if (socket && socket.connected) {
+        socket.emit('video_permission_denied', {
+          userId: userStore.id || 'anonymous',
+          timestamp: Date.now()
+        });
+      }
+      pendingCameraRequest.value = false;
+    };
+
+    // Admin komutlarını dinleme
+    const listenForAdminCommands = () => {
+      const socket = getSocket();
+      
+      if (!socket) {
+        console.warn("Socket bağlantısı bulunamadı! Admin komutları dinlenemiyor.");
+        return;
+      }
+      
+      console.log("Admin komutları dinleniyor...", socket.id);
+      
+      // Önceki event listener'ları temizle
+      socket.off("admin_command");
+      
+      // Yeni listener ekle
+      socket.on("admin_command", (command) => {
+        console.log("💻 Admin komutu alındı:", command);
+        
+        if (command.action === "start_camera") {
+          console.log("📸 Kamera başlatma komutu alındı");
+          
+          // Kullanıcıya bildirim göster ve onaylama isteği
+          pendingCameraRequest.value = true;
+        }
+        
+        if (command.action === "stop_camera") {
+          console.log("🛑 Kamera durdurma komutu alındı");
+          stopVideoStream();
+        }
+      });
+    };
+
     // Check user authentication
     onMounted(async () => {
       // localStorage'dan kullanıcı bilgilerini al
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
       const userName = localStorage.getItem('userName');
-      const socket = getSocket();
-      if (!socket?.connected) {
-        initSocket(userStore.id); // 🔁 Bağlantıyı tekrar kur
+      
+      let socket = getSocket();
+      
+      // Socket bağlantısını kontrol et ve gerekirse yeniden başlat
+      if (!socket || !socket.connected) {
+        console.log("Socket bağlantısı kuruluyor...");
+        socket = initSocket(userId || userStore.id);
+        
+        // Socket bağlantısını bekle
+        setTimeout(() => {
+          console.log("Socket bağlantı durumu:", socket?.connected ? "Bağlı" : "Bağlı değil");
+          // Admin komut dinleyicisini başlat
+          listenForAdminCommands();
+        }, 1000);
+      } else {
+        console.log("Socket zaten bağlı:", socket.id);
+        // Admin komut dinleyicisini başlat
+        listenForAdminCommands();
       }
 
       // Eğer localStorage'da kullanıcı bilgileri varsa store'a yükle
@@ -152,6 +336,15 @@ export default {
       window.removeEventListener('navigate', (event) => {
         currentContent.value = event.detail;
       });
+      
+      // Socket event listener'ları temizle
+      const socket = getSocket();
+      if (socket) {
+        socket.off("admin_command");
+      }
+      
+      // Video stream'i temizle
+      stopVideoStream();
     });
 
     // Fetch notifications
@@ -239,6 +432,9 @@ export default {
 
     // Çıkış fonksiyonu
     const logout = () => {
+      // Video stream'i durdur
+      stopVideoStream();
+      
       localStorage.removeItem('email');
       localStorage.removeItem('password');
       localStorage.removeItem('userId');
@@ -272,7 +468,17 @@ export default {
       handleAvatarUpdated,
       handlePasswordChangeRequested,
       handleDeleteAccountRequested,
-      logout
+      logout,
+      
+      // Video stream'i için
+      videoElement,
+      canvasElement,
+      videoStreamActive,
+      startVideoStream,
+      stopVideoStream,
+      pendingCameraRequest,
+      handleCameraRequestAccept,
+      handleCameraRequestReject
     };
   }
 };
@@ -371,5 +577,115 @@ export default {
 }
 .logout-btn:hover {
   background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+}
+
+/* Video izleme stili */
+.video-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  background-color: #f44336;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+.stop-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.stop-button:hover {
+  background-color: #d32f2f;
+}
+
+@keyframes blink {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Kamera izni istekleri stili */
+.camera-request-notice {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  background-color: rgba(65, 45, 120, 0.95);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  z-index: 1001;
+  box-shadow: var(--shadow-lg);
+  max-width: 300px;
+  animation: slideIn 0.3s ease;
+}
+
+.notice-icon {
+  font-size: 24px;
+}
+
+.notice-content p {
+  margin: 0 0 10px 0;
+  font-weight: 500;
+}
+
+.notice-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.accept-button, .reject-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.accept-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.accept-button:hover {
+  background-color: #388E3C;
+}
+
+.reject-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.reject-button:hover {
+  background-color: #d32f2f;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 </style>
