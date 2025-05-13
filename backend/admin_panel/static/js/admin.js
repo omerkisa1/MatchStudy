@@ -845,8 +845,160 @@ function viewUser(userId) {
         return;
     }
     
-    // Gelecekte burada bir modal veya popup ile kullanıcı detaylarını gösterebiliriz
-    alert(`Kullanıcı detayları görüntüleme özelliği henüz geliştirilme aşamasındadır. Kullanıcı ID: ${userId}`);
+    // Modal hata mesajını gizle
+    const errorElement = document.getElementById('userDetailsError');
+    errorElement.classList.add('d-none');
+    
+    // Verileri yüklerken UI'ı hazırla
+    document.getElementById('userDetailsModalLabel').textContent = `Kullanıcı Detayları - ID: ${userId}`;
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editName').value = '';
+    document.getElementById('editSurname').value = '';
+    document.getElementById('editEmail').value = '';
+    document.getElementById('editAge').value = '';
+    document.getElementById('editEducationLevel').value = '';
+    document.getElementById('editBio').value = '';
+    document.getElementById('editInstitution').value = '';
+    document.getElementById('editCreatedAt').textContent = '-';
+    document.getElementById('editUpdatedAt').textContent = '-';
+    document.getElementById('editLastSeen').textContent = '-';
+    document.getElementById('editMessageCount').textContent = '-';
+    
+    // Modal'ı göster
+    const userDetailsModal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+    userDetailsModal.show();
+    
+    // Form alanlarını devre dışı bırak (yüklenene kadar)
+    const formElements = document.querySelectorAll('#userDetailsForm input, #userDetailsForm select, #userDetailsForm textarea');
+    formElements.forEach(element => {
+        element.disabled = true;
+    });
+    
+    // Kullanıcı verilerini al
+    getUserDetails(userId)
+        .then(userData => {
+            if (userData && userData.success) {
+                fillUserDetailsForm(userData.user);
+            } else {
+                showUserDetailsError(userData.message || 'Kullanıcı verileri alınamadı.');
+            }
+        })
+        .catch(error => {
+            showUserDetailsError('Kullanıcı verileri yüklenirken bir hata oluştu: ' + error.message);
+            console.error('Error loading user details:', error);
+        })
+        .finally(() => {
+            // Form alanlarını etkinleştir
+            formElements.forEach(element => {
+                element.disabled = false;
+            });
+        });
+}
+
+// Kullanıcı detayları API çağrısı
+function getUserDetails(userId) {
+    return safeFetch(`/admin/users/${userId}`)
+        .catch(error => {
+            console.error('Error fetching user details:', error);
+            throw error;
+        });
+}
+
+// Kullanıcı verilerini form alanlarına doldur
+function fillUserDetailsForm(user) {
+    // Ana kullanıcı bilgileri
+    document.getElementById('editName').value = user.name || '';
+    document.getElementById('editSurname').value = user.surname || '';
+    document.getElementById('editEmail').value = user.email || '';
+    document.getElementById('editAge').value = user.age || '';
+    document.getElementById('editEducationLevel').value = user.education_level || '';
+    
+    // Profil bilgileri (varsa)
+    if (user.profile) {
+        document.getElementById('editBio').value = user.profile.bio || '';
+        document.getElementById('editInstitution').value = user.profile.institution || '';
+    }
+    
+    // Sistem bilgileri
+    document.getElementById('editCreatedAt').textContent = formatDate(user.created_at) || '-';
+    document.getElementById('editUpdatedAt').textContent = formatDate(user.updated_at) || '-';
+    document.getElementById('editLastSeen').textContent = formatDate(user.last_seen) || 'Bilinmiyor';
+    document.getElementById('editMessageCount').textContent = user.message_count || '0';
+}
+
+// Hata mesajını göster
+function showUserDetailsError(message) {
+    const errorElement = document.getElementById('userDetailsError');
+    const errorTextElement = document.getElementById('userDetailsErrorText');
+    
+    errorTextElement.textContent = message;
+    errorElement.classList.remove('d-none');
+}
+
+// Tarih biçimlendirme yardımcı fonksiyonu
+function formatDate(dateString) {
+    if (!dateString) return null;
+    
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleString('tr-TR');
+    } catch (e) {
+        console.error('Date formatting error:', e);
+        return dateString;
+    }
+}
+
+// Kullanıcı güncelleme
+function updateUser(userId, userData) {
+    if (!userId) {
+        console.error('User ID is required for update');
+        return;
+    }
+    
+    // Yükleniyor durumunu göster
+    const saveButton = document.getElementById('saveUserButton');
+    const originalButtonText = saveButton.innerHTML;
+    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Kaydediliyor...';
+    saveButton.disabled = true;
+    
+    // Modal hata mesajını gizle
+    const errorElement = document.getElementById('userDetailsError');
+    errorElement.classList.add('d-none');
+    
+    // API çağrısı yap
+    fetch(`/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Modal'ı kapat
+            const userDetailsModal = bootstrap.Modal.getInstance(document.getElementById('userDetailsModal'));
+            userDetailsModal.hide();
+            
+            // Başarı mesajı göster
+            alert('✅ Kullanıcı bilgileri başarıyla güncellendi.');
+            
+            // Kullanıcı listesini yenile
+            loadUsers();
+        } else {
+            // Hata mesajı göster
+            showUserDetailsError(data.message || 'Kullanıcı güncellenirken bir hata oluştu.');
+        }
+    })
+    .catch(error => {
+        console.error('User update error:', error);
+        showUserDetailsError('API çağrısı başarısız oldu: ' + error.message);
+    })
+    .finally(() => {
+        // Buton durumunu geri al
+        saveButton.innerHTML = originalButtonText;
+        saveButton.disabled = false;
+    });
 }
 
 // jQuery yardımcı fonksiyonu - contains seçici - kullanıcı silme kısmı için

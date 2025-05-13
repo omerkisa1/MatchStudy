@@ -29,42 +29,6 @@
         .brand-highlight {
             color: #4285f4;
         }
-        .stat-icon-wrapper {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            margin-bottom: 15px;
-        }
-        .stat-icon-wrapper.blue {
-            background-color: rgba(66, 133, 244, 0.15);
-        }
-        .stat-icon-wrapper.green {
-            background-color: rgba(52, 168, 83, 0.15);
-        }
-        .stat-icon-wrapper.yellow {
-            background-color: rgba(251, 188, 5, 0.15);
-        }
-        .stat-icon-wrapper.red {
-            background-color: rgba(234, 67, 53, 0.15);
-        }
-        .stat-icon-wrapper i {
-            font-size: 1.8rem;
-        }
-        .stat-icon-wrapper i.blue {
-            color: #4285f4;
-        }
-        .stat-icon-wrapper i.green {
-            color: #34a853;
-        }
-        .stat-icon-wrapper i.yellow {
-            color: #fbbc05;
-        }
-        .stat-icon-wrapper i.red {
-            color: #ea4335;
-        }
     </style>
 </head>
 <body>
@@ -520,6 +484,91 @@
             </div>
         </div>
     </div>
+
+    <!-- User Details Modal -->
+    <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userDetailsModalLabel">Kullanıcı Detayları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="userDetailsError" class="alert alert-danger d-none">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <span id="userDetailsErrorText"></span>
+                    </div>
+                    
+                    <form id="userDetailsForm">
+                        <input type="hidden" id="editUserId">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="editName" class="form-label">Ad</label>
+                                <input type="text" class="form-control" id="editName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editSurname" class="form-label">Soyad</label>
+                                <input type="text" class="form-control" id="editSurname" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="editEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editAge" class="form-label">Yaş</label>
+                                <input type="number" class="form-control" id="editAge" min="0" max="120">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="editEducationLevel" class="form-label">Eğitim Seviyesi</label>
+                                <select class="form-select" id="editEducationLevel">
+                                    <option value="">Seçiniz</option>
+                                    <option value="Lise">Lise</option>
+                                    <option value="Önlisans">Önlisans</option>
+                                    <option value="Lisans">Lisans</option>
+                                    <option value="Yüksek Lisans">Yüksek Lisans</option>
+                                    <option value="Doktora">Doktora</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editInstitution" class="form-label">Kurum/Okul</label>
+                                <input type="text" class="form-control" id="editInstitution">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editBio" class="form-label">Hakkında/Biyografi</label>
+                            <textarea class="form-control" id="editBio" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Sistem Detayları</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Oluşturulma Tarihi:</strong> <span id="editCreatedAt"></span></p>
+                                    <p class="mb-1"><strong>Son Güncelleme:</strong> <span id="editUpdatedAt"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Son Erişim:</strong> <span id="editLastSeen"></span></p>
+                                    <p class="mb-1"><strong>Toplam Mesaj:</strong> <span id="editMessageCount"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" id="saveUserButton">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
@@ -670,6 +719,32 @@
             if (userChartDate) {
                 userChartDate.textContent = `Son güncelleme: ${new Date().toLocaleDateString('tr-TR')}`;
             }
+            
+            // Kaydet butonu tıklama olayı
+            document.getElementById('saveUserButton').addEventListener('click', function() {
+                // Form doğrulama
+                const form = document.getElementById('userDetailsForm');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                const userId = document.getElementById('editUserId').value;
+                
+                // Kullanıcı verilerini topla
+                const userData = {
+                    name: document.getElementById('editName').value,
+                    surname: document.getElementById('editSurname').value,
+                    email: document.getElementById('editEmail').value,
+                    age: document.getElementById('editAge').value,
+                    education_level: document.getElementById('editEducationLevel').value,
+                    bio: document.getElementById('editBio').value,
+                    institution: document.getElementById('editInstitution').value
+                };
+                
+                // API çağrısı için sende kullanıcı verileri
+                updateUser(userId, userData);
+            });
         });
     </script>
 </body>

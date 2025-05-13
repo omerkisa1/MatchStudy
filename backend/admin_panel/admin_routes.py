@@ -422,3 +422,156 @@ async def receive_client_log(log_data: dict):
     except Exception as e:
         logger.error(f"Client log hatası: {str(e)}")
         return {"success": False, "message": "Log kaydedilirken hata oluştu"}
+
+# Kullanıcı detaylarını görüntüleme
+@router.get("/users/{user_id}", response_class=JSONResponse)
+async def get_user_details(user_id: int, username: str = Depends(verify_admin)):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Kullanıcı bilgilerini al
+        cursor.execute("""
+            SELECT 
+                u.id, u.email, u.name, u.surname, u.age, u.education_level,
+                u.created_at, u.updated_at, u.last_seen,
+                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id) AS message_count
+            FROM users u
+            WHERE u.id = %s
+        """, (user_id,))
+        
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            connection.close()
+            return {"success": False, "message": f"Kullanıcı {user_id} bulunamadı."}
+        
+        # MySQL datetime objelerini seri hale getirilebilir formata dönüştür
+        for key, value in user.items():
+            if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
+                user[key] = value.isoformat()
+        
+        # Kullanıcının profil bilgilerini al
+        cursor.execute("""
+            SELECT bio, institution
+            FROM profiles
+            WHERE user_id = %s
+        """, (user_id,))
+        
+        profile = cursor.fetchone()
+        user["profile"] = profile or {}
+        
+        cursor.close()
+        connection.close()
+        
+        logger.info(f"Admin {username} kullanıcı detaylarını görüntüledi: {user_id}")
+        return {"success": True, "user": user}
+    except Exception as e:
+        error_details = traceback.format_exc()
+        logger.error(f"Kullanıcı detaylarını alma hatası {user_id}: {str(e)}\n{error_details}")
+        return {"success": False, "error": str(e), "message": f"Kullanıcı detayları alınırken bir hata oluştu."}
+
+# Kullanıcı güncelleme
+@router.put("/users/{user_id}", response_class=JSONResponse)
+async def update_user(user_id: int, user_data: dict, username: str = Depends(verify_admin)):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Kullanıcının varlığını kontrol et
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            connection.close()
+            return {"success": False, "message": f"Kullanıcı {user_id} bulunamadı."}
+        
+        # Transaction başlat
+        connection.start_transaction()
+        
+        try:
+            # Ana kullanıcı bilgilerini güncelle
+            update_fields = []
+            update_values = []
+            
+            if "name" in user_data:
+                update_fields.append("name = %s")
+                update_values.append(user_data["name"])
+            
+            if "surname" in user_data:
+                update_fields.append("surname = %s")
+                update_values.append(user_data["surname"])
+            
+            if "email" in user_data:
+                update_fields.append("email = %s")
+                update_values.append(user_data["email"])
+            
+            if "age" in user_data:
+                update_fields.append("age = %s")
+                update_values.append(user_data.get("age") or None)
+            
+            if "education_level" in user_data:
+                update_fields.append("education_level = %s")
+                update_values.append(user_data.get("education_level") or None)
+            
+            # Güncelleme zamanını ekle
+            update_fields.append("updated_at = %s")
+            update_values.append(datetime.datetime.now())
+            
+            # Kullanıcı kimliğini sorgu için ekle
+            update_values.append(user_id)
+            
+            if update_fields:
+                query = f"UPDATE users SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = %s"
+                cursor.execute(query, update_values)
+            
+            # Profil bilgilerini güncelle
+            if "bio" in user_data or "institution" in user_data:
+                # Önce profil var mı kontrol et
+                cursor.execute("SELECT user_id FROM profiles WHERE user_id = %s", (user_id,))
+                profile_exists = cursor.fetchone()
+                
+                if profile_exists:
+                    # Var olan profili güncelle
+                    profile_fields = []
+                    profile_values = []
+                    
+                    if "bio" in user_data:
+                        profile_fields.append("bio = %s")
+                        profile_values.append(user_data.get("bio") or None)
+                    
+                    if "institution" in user_data:
+                        profile_fields.append("institution = %s")
+                        profile_values.append(user_data.get("institution") or None)
+                    
+                    profile_values.append(user_id)
+                    
+                    if profile_fields:
+                        query = f"UPDATE profiles SET {', '.join(profile_fields)}, updated_at = NOW() WHERE user_id = %s"
+                        cursor.execute(query, profile_values)
+                else:
+                    # Yeni profil oluştur
+                    cursor.execute(
+                        "INSERT INTO profiles (user_id, bio, institution, created_at, updated_at) VALUES (%s, %s, %s, NOW(), NOW())",
+                        (user_id, user_data.get("bio"), user_data.get("institution"))
+                    )
+            
+            # İşlemi kaydet
+            connection.commit()
+            logger.info(f"Admin {username} tarafından kullanıcı güncellendi: {user_id}")
+            return {"success": True, "message": f"Kullanıcı {user_id} başarıyla güncellendi."}
+            
+        except Exception as inner_e:
+            # Hata durumunda geri al
+            connection.rollback()
+            error_details = traceback.format_exc()
+            logger.error(f"Kullanıcı güncelleme hatası {user_id}: {str(inner_e)}\n{error_details}")
+            return {"success": False, "error": str(inner_e), "message": f"Kullanıcı güncellenirken hata oluştu: {str(inner_e)}"}
+        finally:
+            cursor.close()
+            connection.close()
+            
+    except Exception as e:
+        error_details = traceback.format_exc()
+        logger.error(f"Kullanıcı güncelleme erişim hatası {user_id}: {str(e)}\n{error_details}")
+        return {"success": False, "error": str(e), "message": f"Kullanıcı güncellenirken erişim hatası oluştu."}
