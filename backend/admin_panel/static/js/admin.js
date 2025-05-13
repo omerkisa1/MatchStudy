@@ -479,17 +479,10 @@ function loadLogs() {
                     // Log girdilerini oluştur
                     let logsHtml = '';
                     logs.forEach(log => {
-                        let logClass = '';
+                        // Log düzenleme ve biçimlendirme
+                        const parsedLog = parseLogEntry(log);
                         
-                        if (log.includes('ERROR') || log.includes('error')) {
-                            logClass = 'text-danger';
-                        } else if (log.includes('WARNING') || log.includes('warning')) {
-                            logClass = 'text-warning';
-                        } else if (log.includes('INFO') || log.includes('info')) {
-                            logClass = 'text-info';
-                        }
-                        
-                        logsHtml += `<div class="log-entry ${logClass}">${escapeHtml(log)}</div>`;
+                        logsHtml += parsedLog.html;
                     });
                     
                     // Ana loglar sayfasını güncelle
@@ -502,21 +495,15 @@ function loadLogs() {
                     if (recentLogs) {
                         // Son 5 logu al
                         const recentLogsHtml = logs.slice(-5).reverse().map(log => {
-                            let logClass = '';
-                            let dotClass = 'activity-info';
+                            const parsedLog = parseLogEntry(log);
                             
-                            if (log.includes('ERROR') || log.includes('error')) {
-                                logClass = 'text-danger';
-                                dotClass = 'activity-error';
-                            } else if (log.includes('WARNING') || log.includes('warning')) {
-                                logClass = 'text-warning';
-                                dotClass = 'activity-warning';
-                            }
-                            
+                            // Dashboard için daha kompakt bir log formatı
                             return `
-                                <div class="log-entry">
-                                    <span class="activity-dot ${dotClass}"></span>
-                                    <span class="${logClass}">${escapeHtml(log.substring(0, 100))}${log.length > 100 ? '...' : ''}</span>
+                                <div class="log-entry ${parsedLog.logClass}">
+                                    <span class="activity-dot ${parsedLog.dotClass}"></span>
+                                    <small class="log-timestamp">${parsedLog.timestamp}</small>
+                                    <span class="log-level ${parsedLog.levelClass}">${parsedLog.level}</span>
+                                    <span>${escapeHtml(parsedLog.shortContent)}</span>
                                 </div>
                             `;
                         }).join('');
@@ -543,6 +530,140 @@ function loadLogs() {
         });
 }
 
+// Log girişini ayrıştırıp format verme
+function parseLogEntry(log) {
+    let logClass = '';
+    let dotClass = 'activity-info';
+    let level = 'INFO';
+    let levelClass = 'info';
+    let logType = 'system';
+    
+    // Log seviyesini belirle
+    if (log.includes('ERROR') || log.includes('error')) {
+        logClass = 'text-danger';
+        dotClass = 'activity-error';
+        level = 'ERROR';
+        levelClass = 'error';
+    } else if (log.includes('WARNING') || log.includes('warning')) {
+        logClass = 'text-warning';
+        dotClass = 'activity-warning';
+        level = 'WARNING';
+        levelClass = 'warning';
+    } else if (log.includes('INFO') || log.includes('info')) {
+        logClass = 'text-info';
+        level = 'INFO';
+        levelClass = 'info';
+    }
+    
+    // Zaman damgasını ayır (tipik log formatı: "2023-05-25 14:30:45,123 - ...")
+    let timestamp = '';
+    let content = log;
+    
+    const timestampMatch = log.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d{3}/);
+    if (timestampMatch && timestampMatch[1]) {
+        timestamp = timestampMatch[1];
+        // Zaman damgasından sonraki kısmı içerik olarak al
+        content = log.substring(log.indexOf(' - ') + 3);
+    }
+    
+    // Client log tipini belirle
+    if (log.includes('[CLIENT-INFO]') || log.includes('[CLIENT LOG]')) {
+        logType = 'client';
+        
+        // Alt kategorileri belirle
+        if (log.includes('video_stream')) logType = 'client_video';
+        else if (log.includes('mouse_move')) logType = 'client_mouse';
+        else if (log.includes('click')) logType = 'client_click';
+        else if (log.includes('user_input')) logType = 'client_input';
+        else if (log.includes('visibility_change')) logType = 'client_visibility';
+        else if (log.includes('battery_status')) logType = 'client_battery';
+    }
+    
+    // Modül adını (varsa) ayır (tipik format: "module_name - message")
+    let module = '';
+    let message = content;
+    
+    const moduleMatch = content.match(/^([a-zA-Z0-9_]+) - (.*)/);
+    if (moduleMatch) {
+        module = moduleMatch[1];
+        message = moduleMatch[2];
+    }
+    
+    // İçerik kısmını temizle ve kısalt
+    const shortContent = message.length > 100 ? message.substring(0, 100) + '...' : message;
+    
+    // Sadece tarihi ve saati ayır
+    let dateOnly = '';
+    let timeOnly = '';
+    if (timestamp) {
+        const timestampParts = timestamp.split(' ');
+        if (timestampParts.length === 2) {
+            dateOnly = timestampParts[0];
+            timeOnly = timestampParts[1];
+        }
+    }
+    
+    // İstemci log bilgilerini çıkart
+    let clientData = {};
+    if (logType.startsWith('client')) {
+        try {
+            // JSON içeriğini bul ve ayrıştır
+            const jsonMatch = message.match(/\{.*\}/);
+            if (jsonMatch) {
+                const jsonStr = jsonMatch[0];
+                clientData = JSON.parse(jsonStr);
+            }
+        } catch (e) {
+            console.warn('Client log JSON parsing failed:', e);
+        }
+    }
+    
+    // Log badge türünü belirle
+    let logBadge = '';
+    if (logType === 'client_video') {
+        logBadge = '<span class="badge bg-purple ms-2">Video</span>';
+    } else if (logType === 'client_mouse') {
+        logBadge = '<span class="badge bg-secondary ms-2">Mouse</span>';
+    } else if (logType === 'client_click') {
+        logBadge = '<span class="badge bg-success ms-2">Tıklama</span>';
+    } else if (logType === 'client_input') {
+        logBadge = '<span class="badge bg-warning text-dark ms-2">Giriş</span>';
+    } else if (logType.startsWith('client')) {
+        logBadge = '<span class="badge bg-info ms-2">İstemci</span>';
+    }
+    
+    // HTML formatında log girişi oluştur
+    const html = `
+        <div class="log-entry ${logClass}" data-level="${level.toLowerCase()}" data-timestamp="${timestamp}" data-module="${module}" data-type="${logType}">
+            <div class="d-flex align-items-center">
+                <span class="log-timestamp me-2">${timeOnly}</span>
+                <span class="log-level ${levelClass}">${level}</span>
+                ${module ? `<span class="badge bg-secondary ms-2">${module}</span>` : ''}
+                ${logBadge}
+            </div>
+            <span class="log-content">${escapeHtml(message)}</span>
+            <small class="text-muted d-block mt-1">${dateOnly}</small>
+        </div>
+    `;
+    
+    return {
+        html,
+        logClass,
+        dotClass,
+        level,
+        levelClass,
+        timestamp,
+        dateOnly,
+        timeOnly,
+        module,
+        content,
+        message,
+        shortContent,
+        logType,
+        clientData
+    };
+}
+
 // HTML karakterlerini escape etme yardımcı fonksiyonu
 function escapeHtml(unsafe) {
     if (unsafe === null || unsafe === undefined) {
@@ -561,6 +682,7 @@ function escapeHtml(unsafe) {
 function viewChatMessages(chatId, user1Name, user2Name) {
     const chatMessagesContainer = document.getElementById('chatMessagesContainer');
     const selectedChatTitle = document.getElementById('selectedChatTitle');
+    const messageCountElement = document.getElementById('messageCount');
     
     if (!chatId || !chatMessagesContainer) {
         console.error('Chat ID or container is missing');
@@ -586,21 +708,40 @@ function viewChatMessages(chatId, user1Name, user2Name) {
             if (data.success && Array.isArray(data.messages)) {
                 const messages = data.messages;
                 
+                // Mesaj sayısını güncelle
+                if (messageCountElement) {
+                    messageCountElement.textContent = `${messages.length} mesaj`;
+                }
+                
                 if (messages.length > 0) {
                     let messagesHtml = '';
+                    let currentDay = '';
                     
                     messages.forEach(message => {
                         try {
                             const sentDate = new Date(message.sent_at);
-                            const messageTime = sentDate.toLocaleString('tr-TR');
+                            const messageDate = sentDate.toLocaleDateString('tr-TR');
+                            const messageTime = sentDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                             const senderName = escapeHtml(message.sender_name || 'İsimsiz Kullanıcı');
                             const content = escapeHtml(message.content || '');
                             
+                            // Gün değişimini kontrol et ve tarih ayırıcısı ekle
+                            if (messageDate !== currentDay) {
+                                currentDay = messageDate;
+                                messagesHtml += `
+                                    <div class="message-date-separator">
+                                        <span>${messageDate}</span>
+                                    </div>
+                                `;
+                            }
+                            
                             messagesHtml += `
                                 <div class="message">
-                                    <div class="sender">${senderName}</div>
-                                    <div>${content}</div>
-                                    <div class="time">${messageTime}</div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="sender">${senderName}</div>
+                                        <div class="time badge bg-light text-dark">${messageTime}</div>
+                                    </div>
+                                    <div class="content">${content}</div>
                                 </div>
                             `;
                         } catch (err) {
@@ -617,6 +758,10 @@ function viewChatMessages(chatId, user1Name, user2Name) {
                             <p class="mt-3">Bu sohbette henüz mesaj bulunmuyor</p>
                         </div>
                     `;
+                    
+                    if (messageCountElement) {
+                        messageCountElement.textContent = '0 mesaj';
+                    }
                 }
             } else {
                 const errorMsg = data.message || 'Mesajlar yüklenirken bir hata oluştu';
@@ -626,6 +771,10 @@ function viewChatMessages(chatId, user1Name, user2Name) {
                         <p class="mt-3">${escapeHtml(errorMsg)}</p>
                     </div>
                 `;
+                
+                if (messageCountElement) {
+                    messageCountElement.textContent = 'Hata';
+                }
             }
         })
         .catch(error => {
@@ -636,6 +785,10 @@ function viewChatMessages(chatId, user1Name, user2Name) {
                     <p class="mt-3">Mesajlar yüklenirken bir bağlantı hatası oluştu</p>
                 </div>
             `;
+            
+            if (messageCountElement) {
+                messageCountElement.textContent = 'Bağlantı hatası';
+            }
         });
 }
 

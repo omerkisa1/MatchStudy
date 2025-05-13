@@ -13,45 +13,57 @@
     
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/admin/static/css/admin.css">
     
     <style>
-        .video-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+        body {
+            font-family: 'Inter', sans-serif;
         }
-        .video-feed {
-            position: relative;
-            width: 320px;
-            height: 240px;
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            overflow: hidden;
+        .brand-highlight {
+            color: #4285f4;
         }
-        .video-feed img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .stat-icon-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            margin-bottom: 15px;
         }
-        .video-label {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0,0,0,0.5);
-            color: white;
-            padding: 5px;
-            font-size: 12px;
+        .stat-icon-wrapper.blue {
+            background-color: rgba(66, 133, 244, 0.15);
         }
-        .video-controls {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
+        .stat-icon-wrapper.green {
+            background-color: rgba(52, 168, 83, 0.15);
+        }
+        .stat-icon-wrapper.yellow {
+            background-color: rgba(251, 188, 5, 0.15);
+        }
+        .stat-icon-wrapper.red {
+            background-color: rgba(234, 67, 53, 0.15);
+        }
+        .stat-icon-wrapper i {
+            font-size: 1.8rem;
+        }
+        .stat-icon-wrapper i.blue {
+            color: #4285f4;
+        }
+        .stat-icon-wrapper i.green {
+            color: #34a853;
+        }
+        .stat-icon-wrapper i.yellow {
+            color: #fbbc05;
+        }
+        .stat-icon-wrapper i.red {
+            color: #ea4335;
         }
     </style>
 </head>
@@ -66,7 +78,7 @@
     
     <!-- Sidebar -->
     <div class="sidebar col-md-2 col-lg-2 d-md-block" id="sidebar">
-        <div class="logo-text">Match<span>Study</span> Admin</div>
+        <div class="logo-text">Match<span>Study</span> <small>Admin</small></div>
         
         <ul class="nav flex-column">
             <li class="nav-item">
@@ -106,23 +118,33 @@
                 </a>
             </li>
         </ul>
+        
+        <div class="sidebar-footer mt-auto p-3">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-user-shield me-2"></i>
+                <small class="text-muted">{{ username }}</small>
+            </div>
+        </div>
     </div>
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-            <h1>Admin Paneli</h1>
-            <div class="d-flex align-items-center">
-                <span id="apiStatus" class="me-2">API Durumu: <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></span>
-                <span>Hoş geldiniz, {{ username }}</span>
+            <h1 class="h4 fw-bold">MatchStudy Admin Paneli</h1>
+            <div class="d-flex align-items-center gap-3">
+                <div id="apiStatus" class="badge bg-secondary">API Durumu <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></div>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                    <span class="fw-medium">{{ username }}</span>
+                </div>
             </div>
         </div>
         
         <!-- Dashboard Section -->
         <div id="dashboard" class="content-section active">
             <div class="welcome-box">
-                <h2>MatchStudy Admin Paneline Hoş Geldiniz</h2>
-                <p>Bu panelden sistem durumunu takip edebilir, kullanıcıları yönetebilir ve mesajları inceleyebilirsiniz.</p>
+                <h2 class="h3 mb-2 fw-bold">MatchStudy Admin Paneline Hoş Geldiniz</h2>
+                <p class="mb-0 opacity-75">Bu panelden sistem durumunu takip edebilir, kullanıcıları yönetebilir ve mesajları inceleyebilirsiniz.</p>
             </div>
             
             <h3 class="dashboard-title">Sistem Özeti</h3>
@@ -130,7 +152,9 @@
             <div class="row">
                 <div class="col-sm-6 col-md-6 col-lg-3">
                     <div class="card stat-card">
-                        <i class="fas fa-users"></i>
+                        <div class="stat-icon-wrapper blue">
+                            <i class="fas fa-users blue"></i>
+                        </div>
                         <div class="card-title">Toplam Kullanıcı</div>
                         <div class="stat-value" id="totalUsers">
                             <div class="loader"></div>
@@ -139,7 +163,9 @@
                 </div>
                 <div class="col-sm-6 col-md-6 col-lg-3">
                     <div class="card stat-card">
-                        <i class="fas fa-comments"></i>
+                        <div class="stat-icon-wrapper green">
+                            <i class="fas fa-comments green"></i>
+                        </div>
                         <div class="card-title">Aktif Sohbetler</div>
                         <div class="stat-value" id="totalChats">
                             <div class="loader"></div>
@@ -148,7 +174,9 @@
                 </div>
                 <div class="col-sm-6 col-md-6 col-lg-3">
                     <div class="card stat-card">
-                        <i class="fas fa-envelope"></i>
+                        <div class="stat-icon-wrapper yellow">
+                            <i class="fas fa-envelope yellow"></i>
+                        </div>
                         <div class="card-title">Toplam Mesaj</div>
                         <div class="stat-value" id="totalMessages">
                             <div class="loader"></div>
@@ -157,7 +185,9 @@
                 </div>
                 <div class="col-sm-6 col-md-6 col-lg-3">
                     <div class="card stat-card">
-                        <i class="fas fa-clock"></i>
+                        <div class="stat-icon-wrapper red">
+                            <i class="fas fa-clock red"></i>
+                        </div>
                         <div class="card-title">Son 7 Gün Mesaj</div>
                         <div class="stat-value" id="recentMessages">
                             <div class="loader"></div>
@@ -168,9 +198,12 @@
             
             <div class="row mt-4">
                 <div class="col-md-12 col-lg-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-list"></i> Son Sistem Logları
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-list me-2"></i> Son Sistem Logları</div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadLogs()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </div>
                         <div class="card-body user-activity" id="recentLogs">
                             <div class="text-center">
@@ -182,23 +215,47 @@
                     </div>
                 </div>
                 <div class="col-md-12 col-lg-6">
-                    <div class="card">
+                    <div class="card h-100">
                         <div class="card-header">
-                            <i class="fas fa-key"></i> Hızlı Erişim
+                            <i class="fas fa-key me-2"></i> Hızlı Erişim
                         </div>
                         <div class="card-body">
                             <div class="list-group">
-                                <a href="#users" data-section="users" class="list-group-item list-group-item-action">
-                                    <i class="fas fa-users me-2"></i> Kullanıcıları Yönet
+                                <a href="#users" data-section="users" class="list-group-item list-group-item-action d-flex align-items-center">
+                                    <div class="stat-icon-wrapper blue me-3" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-users blue"></i>
+                                    </div>
+                                    <div>
+                                        <strong>Kullanıcıları Yönet</strong>
+                                        <div class="small text-muted">Kullanıcı kayıtlarını incele ve düzenle</div>
+                                    </div>
                                 </a>
-                                <a href="#chats" data-section="chats" class="list-group-item list-group-item-action">
-                                    <i class="fas fa-comments me-2"></i> Sohbetleri İncele
+                                <a href="#chats" data-section="chats" class="list-group-item list-group-item-action d-flex align-items-center">
+                                    <div class="stat-icon-wrapper green me-3" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-comments green"></i>
+                                    </div>
+                                    <div>
+                                        <strong>Sohbetleri İncele</strong>
+                                        <div class="small text-muted">Aktif görüşmeleri ve mesajları gör</div>
+                                    </div>
                                 </a>
-                                <a href="#logs" data-section="logs" class="list-group-item list-group-item-action">
-                                    <i class="fas fa-file-alt me-2"></i> Sistem Loglarını Görüntüle
+                                <a href="#logs" data-section="logs" class="list-group-item list-group-item-action d-flex align-items-center">
+                                    <div class="stat-icon-wrapper yellow me-3" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-file-alt yellow"></i>
+                                    </div>
+                                    <div>
+                                        <strong>Sistem Loglarını Görüntüle</strong>
+                                        <div class="small text-muted">Detaylı log kayıtlarını incele</div>
+                                    </div>
                                 </a>
-                                <a href="#stats" data-section="stats" class="list-group-item list-group-item-action">
-                                    <i class="fas fa-chart-bar me-2"></i> İstatistikleri Görüntüle
+                                <a href="#stats" data-section="stats" class="list-group-item list-group-item-action d-flex align-items-center">
+                                    <div class="stat-icon-wrapper red me-3" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-chart-bar red"></i>
+                                    </div>
+                                    <div>
+                                        <strong>İstatistikleri Görüntüle</strong>
+                                        <div class="small text-muted">Detaylı analiz ve istatistikleri gör</div>
+                                    </div>
                                 </a>
                             </div>
                         </div>
@@ -212,12 +269,15 @@
             <h3 class="dashboard-title">Kullanıcı Yönetimi</h3>
             
             <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-users"></i> Tüm Kullanıcılar
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div><i class="fas fa-users me-2"></i> Tüm Kullanıcılar</div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadUsers()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="usersTable" class="table table-striped" style="width:100%">
+                        <table id="usersTable" class="table table-striped table-hover" style="width:100%">
                             <thead>
                                 <tr>
                                     <th>ID</th>
@@ -250,13 +310,16 @@
             
             <div class="row">
                 <div class="col-lg-5">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-comments"></i> Tüm Sohbetler
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-comments me-2"></i> Tüm Sohbetler</div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadChats()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table id="chatsTable" class="table table-striped" style="width:100%">
+                                <table id="chatsTable" class="table table-striped table-hover" style="width:100%">
                                     <thead>
                                         <tr>
                                             <th>Sohbet ID</th>
@@ -280,10 +343,13 @@
                     </div>
                 </div>
                 <div class="col-lg-7">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-envelope"></i> Sohbet Mesajları
-                            <span id="selectedChatTitle" class="ms-2 text-primary"></span>
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-envelope me-2"></i> Sohbet Mesajları
+                                <span id="selectedChatTitle" class="ms-2 text-primary"></span>
+                            </div>
+                            <div class="badge bg-secondary" id="messageCount">0 mesaj</div>
                         </div>
                         <div class="card-body chat-messages" id="chatMessagesContainer">
                             <div class="text-center p-5">
@@ -303,8 +369,9 @@
             <div class="row">
                 <div class="col-sm-12 col-md-6 col-lg-6">
                     <div class="card mb-4">
-                        <div class="card-header">
-                            <i class="fas fa-chart-pie"></i> Kullanıcı İstatistikleri
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-chart-pie me-2"></i> Kullanıcı İstatistikleri</div>
+                            <div class="badge bg-primary" id="userChartDate">Son güncelleme: Bugün</div>
                         </div>
                         <div class="card-body">
                             <canvas id="userStatsChart"></canvas>
@@ -312,24 +379,44 @@
                     </div>
                     <div class="card">
                         <div class="card-header">
-                            <i class="fas fa-info-circle"></i> İstatistik Detayları
+                            <i class="fas fa-info-circle me-2"></i> İstatistik Detayları
                         </div>
                         <div class="card-body">
                             <ul class="list-group">
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Toplam Kullanıcı
+                                    <div class="d-flex align-items-center">
+                                        <div class="stat-icon-wrapper blue me-3" style="width: 30px; height: 30px;">
+                                            <i class="fas fa-users blue"></i>
+                                        </div>
+                                        Toplam Kullanıcı
+                                    </div>
                                     <span class="badge bg-primary rounded-pill" id="statTotalUsers">0</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Aktif Sohbetler
+                                    <div class="d-flex align-items-center">
+                                        <div class="stat-icon-wrapper green me-3" style="width: 30px; height: 30px;">
+                                            <i class="fas fa-comments green"></i>
+                                        </div>
+                                        Aktif Sohbetler
+                                    </div>
                                     <span class="badge bg-primary rounded-pill" id="statTotalChats">0</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Toplam Mesaj
+                                    <div class="d-flex align-items-center">
+                                        <div class="stat-icon-wrapper yellow me-3" style="width: 30px; height: 30px;">
+                                            <i class="fas fa-envelope yellow"></i>
+                                        </div>
+                                        Toplam Mesaj
+                                    </div>
                                     <span class="badge bg-primary rounded-pill" id="statTotalMessages">0</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Son 7 Gün Mesaj
+                                    <div class="d-flex align-items-center">
+                                        <div class="stat-icon-wrapper red me-3" style="width: 30px; height: 30px;">
+                                            <i class="fas fa-clock red"></i>
+                                        </div>
+                                        Son 7 Gün Mesaj
+                                    </div>
                                     <span class="badge bg-primary rounded-pill" id="statRecentMessages">0</span>
                                 </li>
                             </ul>
@@ -338,8 +425,12 @@
                 </div>
                 <div class="col-sm-12 col-md-6 col-lg-6">
                     <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-chart-line"></i> Mesaj İstatistikleri
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-chart-line me-2"></i> Mesaj İstatistikleri</div>
+                            <select class="form-select form-select-sm" style="width: auto;" id="messageChartType">
+                                <option value="monthly">Aylık</option>
+                                <option value="weekly">Haftalık</option>
+                            </select>
                         </div>
                         <div class="card-body">
                             <canvas id="messageStatsChart"></canvas>
@@ -356,11 +447,32 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
-                        <i class="fas fa-file-alt"></i> Tüm Sistem Logları
+                        <i class="fas fa-file-alt me-2"></i> Tüm Sistem Logları
                     </div>
-                    <button class="btn btn-sm btn-primary" id="refreshLogsBtn">
-                        <i class="fas fa-sync-alt"></i> Yenile
-                    </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <!-- Log filtreleme seçenekleri -->
+                        <div class="d-flex me-2">
+                            <span class="log-filter-badge badge bg-primary active" data-filter="all">Tümü</span>
+                            <span class="log-filter-badge badge bg-danger" data-filter="error">Hata</span>
+                            <span class="log-filter-badge badge bg-warning text-dark" data-filter="warning">Uyarı</span>
+                            <span class="log-filter-badge badge bg-info" data-filter="info">Bilgi</span>
+                        </div>
+                        
+                        <!-- Client log filtreleme -->
+                        <select class="form-select form-select-sm me-2" id="logSourceFilter">
+                            <option value="all">Tüm Kaynaklar</option>
+                            <option value="system">Sistem</option>
+                            <option value="client">İstemci</option>
+                            <option value="client_video">Video</option>
+                            <option value="client_mouse">Mouse</option>
+                            <option value="client_click">Tıklama</option>
+                            <option value="client_input">Giriş</option>
+                        </select>
+                        
+                        <button class="btn btn-sm btn-primary" id="refreshLogsBtn">
+                            <i class="fas fa-sync-alt"></i> Yenile
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body user-activity" id="logsContainer">
                     <div class="text-center">
@@ -378,7 +490,7 @@
             
             <div class="card">
                 <div class="card-header">
-                    <i class="fas fa-video"></i> Bağlı Kullanıcılar
+                    <i class="fas fa-video me-2"></i> Bağlı Kullanıcılar
                 </div>
                 <div class="card-body">
                     <div id="active-users">
@@ -386,13 +498,18 @@
                             <div class="col-md-6">
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="userIdInput" placeholder="Kullanıcı ID">
-                                    <button class="btn btn-primary" id="requestVideoBtn">Kamera İste</button>
-                                    <button class="btn btn-danger" id="stopVideoBtn">Kamerayı Kapat</button>
+                                    <button class="btn btn-primary" id="requestVideoBtn">
+                                        <i class="fas fa-video me-1"></i> Kamera İste
+                                    </button>
+                                    <button class="btn btn-danger" id="stopVideoBtn">
+                                        <i class="fas fa-video-slash me-1"></i> Kapat
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="alert alert-info">
-                            Kullanıcı ID'sini girin ve "Kamera İste" butonuna tıklayarak kullanıcıdan kamera erişimi isteyebilirsiniz.
+                        <div class="alert alert-info d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>Kullanıcı ID'sini girin ve "Kamera İste" butonuna tıklayarak kullanıcıdan kamera erişimi isteyebilirsiniz.</div>
                         </div>
                     </div>
                     
@@ -424,7 +541,60 @@
     <script src="/admin/static/js/admin.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // ... existing code ...
+            // Log filtreleme işlevi - seçim değişince
+            document.getElementById('logSourceFilter').addEventListener('change', function() {
+                filterLogs();
+            });
+            
+            // Badge ile log filtreleme
+            document.querySelectorAll('.log-filter-badge').forEach(badge => {
+                badge.addEventListener('click', function() {
+                    // Aktif sınıfını kaldır
+                    document.querySelectorAll('.log-filter-badge').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    
+                    // Tıklanan badge'e aktif sınıfı ekle
+                    this.classList.add('active');
+                    
+                    // Logları filtrele
+                    filterLogs();
+                });
+            });
+            
+            // Log filtreleme fonksiyonu
+            function filterLogs() {
+                const sourceFilter = document.getElementById('logSourceFilter').value;
+                const levelFilter = document.querySelector('.log-filter-badge.active').dataset.filter;
+                const logEntries = document.querySelectorAll('#logsContainer .log-entry');
+                
+                logEntries.forEach(entry => {
+                    // Önce gizle
+                    entry.style.display = 'none';
+                    
+                    // Seviye kontrolü
+                    let levelMatch = levelFilter === 'all';
+                    if (levelFilter === 'error' && entry.classList.contains('text-danger')) levelMatch = true;
+                    if (levelFilter === 'warning' && entry.classList.contains('text-warning')) levelMatch = true;
+                    if (levelFilter === 'info' && entry.classList.contains('text-info')) levelMatch = true;
+                    
+                    // Kaynak kontrolü
+                    let sourceMatch = sourceFilter === 'all';
+                    const content = entry.querySelector('.log-content').textContent.toLowerCase();
+                    
+                    if (sourceFilter === 'system' && !content.includes('client')) sourceMatch = true;
+                    if (sourceFilter === 'client' && content.includes('client')) sourceMatch = true;
+                    if (sourceFilter === 'client_video' && content.includes('video_stream')) sourceMatch = true;
+                    if (sourceFilter === 'client_mouse' && content.includes('mouse_move')) sourceMatch = true;
+                    if (sourceFilter === 'client_click' && content.includes('click')) sourceMatch = true;
+                    if (sourceFilter === 'client_input' && content.includes('user_input')) sourceMatch = true;
+                    
+                    // İki koşul da sağlanıyorsa göster
+                    if (levelMatch && sourceMatch) {
+                        entry.style.display = 'block';
+                    }
+                });
+            }
             
             // Socket.IO bağlantısı
             const socket = io("http://localhost:3000");
@@ -495,49 +665,11 @@
                 }
             });
             
-            // Sayfa sekmeleri arası geçiş
-            const navLinks = document.querySelectorAll(".nav-link");
-            const contentSections = document.querySelectorAll(".content-section");
-            
-            navLinks.forEach(link => {
-                link.addEventListener("click", e => {
-                    e.preventDefault();
-                    
-                    const targetSectionId = link.getAttribute("data-section");
-                    
-                    // Aktif linki güncelle
-                    navLinks.forEach(navLink => navLink.classList.remove("active"));
-                    link.classList.add("active");
-                    
-                    // İçerik bölümünü göster
-                    contentSections.forEach(section => {
-                        if (section.id === targetSectionId) {
-                            section.classList.add("active");
-                        } else {
-                            section.classList.remove("active");
-                        }
-                    });
-                    
-                    // Mobilde menüyü kapat
-                    if (window.innerWidth < 768) {
-                        document.getElementById("sidebar").classList.remove("show");
-                        document.getElementById("sidebarOverlay").classList.remove("show");
-                    }
-                });
-            });
-            
-            // Mobil menü toggle
-            document.getElementById("menuToggle").addEventListener("click", () => {
-                document.getElementById("sidebar").classList.toggle("show");
-                document.getElementById("sidebarOverlay").classList.toggle("show");
-            });
-            
-            document.getElementById("sidebarOverlay").addEventListener("click", () => {
-                document.getElementById("sidebar").classList.remove("show");
-                document.getElementById("sidebarOverlay").classList.remove("show");
-            });
-            
-            // ... other existing code ...
+            // Tarih bilgisini güncelle
+            const userChartDate = document.getElementById('userChartDate');
+            if (userChartDate) {
+                userChartDate.textContent = `Son güncelleme: ${new Date().toLocaleDateString('tr-TR')}`;
+            }
         });
     </script>
 </body>
