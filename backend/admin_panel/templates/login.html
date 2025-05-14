@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatchStudy Admin Panel - Giriş</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/admin/static/css/admin.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        
+        .login-card {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            border: none;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #4285f4 0%, #2d66cc 100%);
+            padding: 30px 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .logo-text {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+        
+        .logo-text span {
+            font-weight: 800;
+        }
+        
+        .login-body {
+            padding: 30px;
+        }
+        
+        .form-floating {
+            margin-bottom: 20px;
+        }
+        
+        .form-floating > .form-control:focus {
+            border-color: #4285f4;
+            box-shadow: 0 0 0 0.25rem rgba(66, 133, 244, 0.25);
+        }
+        
+        .form-floating > label {
+            color: #6c757d;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #4285f4 0%, #2d66cc 100%);
+            border: none;
+            box-shadow: 0 4px 10px rgba(66, 133, 244, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(66, 133, 244, 0.4);
+        }
+        
+        .login-footer {
+            text-align: center;
+            padding: 10px;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .error-alert {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ea4335;
+            animation: shakeX 0.5s;
+        }
+        
+        @keyframes shakeX {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .login-icon {
+            background: rgba(255, 255, 255, 0.2);
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-icon i {
+            font-size: 40px;
+            color: white;
+        }
+        
+        .form-floating .icon-wrapper {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles-js"></div>
+    
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h1 class="logo-text">Match<span>Study</span></h1>
+                <p class="mb-0">Admin Panel</p>
+            </div>
+            
+            <div class="login-body">
+                {% if error %}
+                <div class="alert alert-danger d-flex align-items-center error-alert" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <div>{{ error }}</div>
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="/admin/login">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Kullanıcı adı" required>
+                        <label for="username">Kullanıcı Adı</label>
+                        <div class="icon-wrapper">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Şifre" required>
+                        <label for="password">Şifre</label>
+                        <div class="icon-wrapper">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary login-btn mt-4">
+                        <i class="fas fa-sign-in-alt me-2"></i> Giriş Yap
+                    </button>
+                </form>
+            </div>
+            
+            <div class="login-footer">
+                &copy; 2023 MatchStudy - Tüm Hakları Saklıdır
+            </div>
+        </div>
+    </div>
+    
+    <!-- jQuery and Bootstrap dependencies -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Particles.js -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configure particles
+            particlesJS('particles-js', {
+                particles: {
+                    number: {
+                        value: 80,
+                        density: {
+                            enable: true,
+                            value_area: 800
+                        }
+                    },
+                    color: {
+                        value: "#4285f4"
+                    },
+                    shape: {
+                        type: "circle",
+                        stroke: {
+                            width: 0,
+                            color: "#000000"
+                        },
+                    },
+                    opacity: {
+                        value: 0.3,
+                        random: false,
+                        anim: {
+                            enable: false
+                        }
+                    },
+                    size: {
+                        value: 3,
+                        random: true,
+                        anim: {
+                            enable: false
+                        }
+                    },
+                    line_linked: {
+                        enable: true,
+                        distance: 150,
+                        color: "#4285f4",
+                        opacity: 0.2,
+                        width: 1
+                    },
+                    move: {
+                        enable: true,
+                        speed: 2,
+                        direction: "none",
+                        random: false,
+                        straight: false,
+                        out_mode: "out",
+                        bounce: false,
+                        attract: {
+                            enable: false
+                        }
+                    }
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: {
+                        onhover: {
+                            enable: true,
+                            mode: "grab"
+                        },
+                        onclick: {
+                            enable: true,
+                            mode: "push"
+                        },
+                        resize: true
+                    },
+                    modes: {
+                        grab: {
+                            distance: 140,
+                            line_linked: {
+                                opacity: 1
+                            }
+                        },
+                        push: {
+                            particles_nb: 4
+                        }
+                    }
+                },
+                retina_detect: true
+            });
+            
+            // Add show/hide password functionality
+            document.querySelector('.icon-wrapper:last-child').addEventListener('click', function() {
+                const passwordField = document.getElementById('password');
+                const passwordIcon = this.querySelector('i');
+                
+                if (passwordField.type === 'password') {
+                    passwordField.type = 'text';
+                    passwordIcon.classList.remove('fa-lock');
+                    passwordIcon.classList.add('fa-lock-open');
+                } else {
+                    passwordField.type = 'password';
+                    passwordIcon.classList.remove('fa-lock-open');
+                    passwordIcon.classList.add('fa-lock');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

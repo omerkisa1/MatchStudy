@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -13,6 +13,7 @@ import logging
 import datetime
 import json
 import traceback
+from starlette.middleware.sessions import SessionMiddleware
 
 # Temel güvenlik için
 security = HTTPBasic()
@@ -51,30 +52,59 @@ def get_db_connection():
         logger.error(f"Database connection error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
 
-# Güvenlik kontrolü için fonksiyon
-def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
-    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
-    
-    if not (correct_username and correct_password):
-        logger.warning(f"Failed login attempt with username: {credentials.username}")
+# Güvenlik kontrolü için yardımcı fonksiyon
+def verify_admin_cookie(request: Request):
+    admin_auth = request.cookies.get("admin_auth")
+    if not admin_auth or admin_auth != f"{ADMIN_USERNAME}_logged_in":
+        logger.warning("Unauthorized API access attempt")
         raise HTTPException(
             status_code=401,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
+            detail="Unauthorized access"
         )
-    logger.info(f"Admin login successful: {credentials.username}")
-    return credentials.username
+    return ADMIN_USERNAME
 
-# Ana admin paneli
+# Login sayfası
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+# Login işlemi
+@router.post("/login", response_class=HTMLResponse)
+async def login_process(request: Request, username: str = Form(...), password: str = Form(...)):
+    # Kullanıcı adı ve şifre kontrolü
+    correct_username = secrets.compare_digest(username, ADMIN_USERNAME)
+    correct_password = secrets.compare_digest(password, ADMIN_PASSWORD)
+    
+    if not (correct_username and correct_password):
+        logger.warning(f"Failed login attempt with username: {username}")
+        return templates.TemplateResponse("login.html", 
+                                         {"request": request, 
+                                          "error": "Kullanıcı adı veya şifre hatalı!"})
+    
+    # Başarılı giriş
+    logger.info(f"Admin login successful: {username}")
+    response = RedirectResponse(url="/admin", status_code=303)
+    
+    # Çerez ile kimlik doğrulama (basit güvenlik - gerçek uygulamada daha güçlü bir yöntem kullanılmalı)
+    response.set_cookie(key="admin_auth", value=f"{username}_logged_in", httponly=True)
+    
+    return response
+
+# Ana admin paneli - güncellendi
 @router.get("/", response_class=HTMLResponse)
-async def admin_panel(request: Request, username: str = Depends(verify_admin)):
-    logger.info(f"Admin panel accessed by: {username}")
-    return templates.TemplateResponse("admin.html", {"request": request, "username": username})
+async def admin_panel(request: Request):
+    # Çerez kontrolü
+    admin_auth = request.cookies.get("admin_auth")
+    if not admin_auth or admin_auth != f"{ADMIN_USERNAME}_logged_in":
+        logger.warning("Unauthorized access attempt to admin panel")
+        return RedirectResponse(url="/admin/login", status_code=303)
+    
+    logger.info(f"Admin panel accessed by: {ADMIN_USERNAME}")
+    return templates.TemplateResponse("admin.html", {"request": request, "username": ADMIN_USERNAME})
 
 # Kullanıcılar listesi
 @router.get("/users", response_class=JSONResponse)
-async def get_users(username: str = Depends(verify_admin)):
+async def get_users(request: Request, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -120,7 +150,7 @@ async def get_users(username: str = Depends(verify_admin)):
 
 # Sohbetler listesi
 @router.get("/chats", response_class=JSONResponse)
-async def get_chats(username: str = Depends(verify_admin)):
+async def get_chats(request: Request, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -157,7 +187,7 @@ async def get_chats(username: str = Depends(verify_admin)):
 
 # Belirli bir sohbetin mesajları
 @router.get("/messages/{chat_id}", response_class=JSONResponse)
-async def get_chat_messages(chat_id: str, username: str = Depends(verify_admin)):
+async def get_chat_messages(chat_id: str, request: Request, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -191,7 +221,7 @@ async def get_chat_messages(chat_id: str, username: str = Depends(verify_admin))
 
 # Sistem genel istatistikleri
 @router.get("/stats", response_class=JSONResponse)
-async def get_system_stats(username: str = Depends(verify_admin)):
+async def get_system_stats(request: Request, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -265,9 +295,9 @@ async def get_system_stats(username: str = Depends(verify_admin)):
         logger.error(f"Error fetching system stats: {str(e)}\n{error_details}")
         return {"success": False, "error": str(e), "message": "Sistem istatistikleri alınırken bir hata oluştu."}
 
-# Sistem loglarını görüntüleme
+# Sistem logları
 @router.get("/logs", response_class=JSONResponse)
-async def get_system_logs(limit: int = 100, username: str = Depends(verify_admin)):
+async def get_system_logs(limit: int = 100, request: Request = None, username: str = Depends(verify_admin_cookie)):
     try:
         log_file = os.path.join(log_directory, 'admin_panel.log')
         if not os.path.exists(log_file):
@@ -289,7 +319,7 @@ async def get_system_logs(limit: int = 100, username: str = Depends(verify_admin
 
 # Kullanıcı silme
 @router.delete("/users/{user_id}", response_class=JSONResponse)
-async def delete_user(user_id: int, username: str = Depends(verify_admin)):
+async def delete_user(user_id: int, request: Request = None, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -356,9 +386,9 @@ async def delete_user(user_id: int, username: str = Depends(verify_admin)):
         logger.error(f"Error deleting user {user_id}: {str(e)}\n{error_details}")
         return {"success": False, "error": str(e), "message": f"Kullanıcı {user_id} silinirken bir hata oluştu."}
 
-# Yeni admin paneli için API durumunu kontrol et
+# API durumu
 @router.get("/api-status", response_class=JSONResponse)
-async def get_api_status(username: str = Depends(verify_admin)):
+async def get_api_status(request: Request = None, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -423,9 +453,9 @@ async def receive_client_log(log_data: dict):
         logger.error(f"Client log hatası: {str(e)}")
         return {"success": False, "message": "Log kaydedilirken hata oluştu"}
 
-# Kullanıcı detaylarını görüntüleme
+# Kullanıcı detayları
 @router.get("/users/{user_id}", response_class=JSONResponse)
-async def get_user_details(user_id: int, username: str = Depends(verify_admin)):
+async def get_user_details(user_id: int, request: Request = None, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -475,7 +505,7 @@ async def get_user_details(user_id: int, username: str = Depends(verify_admin)):
 
 # Kullanıcı güncelleme
 @router.put("/users/{user_id}", response_class=JSONResponse)
-async def update_user(user_id: int, user_data: dict, username: str = Depends(verify_admin)):
+async def update_user(user_id: int, user_data: dict, request: Request = None, username: str = Depends(verify_admin_cookie)):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -576,3 +606,13 @@ async def update_user(user_id: int, user_data: dict, username: str = Depends(ver
         error_details = traceback.format_exc()
         logger.error(f"Kullanıcı güncelleme erişim hatası {user_id}: {str(e)}\n{error_details}")
         return {"success": False, "error": str(e), "message": f"Kullanıcı güncellenirken erişim hatası oluştu."}
+
+# Çıkış yapma
+@router.get("/logout", response_class=RedirectResponse)
+async def logout(request: Request):
+    # Çerez ile kimlik doğrulamayı kaldır
+    response = RedirectResponse(url="/admin/login", status_code=303)
+    response.delete_cookie(key="admin_auth")
+    
+    logger.info("Admin user logged out")
+    return response
