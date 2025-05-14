@@ -9,4 +9,5 @@
     uvicorn backend.main:app --reload yazıcaksın.
 
 
+
 ---npm install pinia---
