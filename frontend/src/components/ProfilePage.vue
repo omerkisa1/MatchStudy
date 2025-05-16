@@ -93,10 +93,10 @@
               <label>Education Level</label>
               <select v-model="profileForm.education_level" class="form-input">
                 <option value="">Select Education Level</option>
-                <option value="High School">High School</option>
-                <option value="Bachelor">Bachelor</option>
-                <option value="Master">Master</option>
-                <option value="PhD">PhD</option>
+                <option value="Ön Lisans">Ön Lisans</option>
+                <option value="Lisans">Lisans</option>
+                <option value="Yüksek Lisans">Yüksek Lisans</option>
+                <option value="Doktora">PhD</option>
               </select>
             </div>
             <div class="form-group">

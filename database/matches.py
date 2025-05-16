@@ -94,7 +94,7 @@ def delete_match(match_id):
         return
     try:
         cursor = connection.cursor()
-        query = "DELETE FROM matches WHERE id = %s"
+        query = "DELETE FROM matches WHERE match_id = %s"
         cursor.execute(query, (match_id,))
         connection.commit()
         print(f"Eşleşme {match_id} başarıyla silindi.")
