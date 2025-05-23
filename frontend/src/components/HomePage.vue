@@ -146,7 +146,7 @@ export default {
       if (videoStreamActive.value) return;
       
       try {
-        console.log("Kamera erişimi isteniyor...");
+        //console.log("Kamera erişimi isteniyor...");
         
         // Kullanıcı tarafından tetiklendiğinden emin olmak için bir kullanıcı etkileşimi gerekebilir
         // Bu nedenle kullanıcının butona tıklaması veya onay vermesi önemli
@@ -156,7 +156,7 @@ export default {
           video: { width: 320, height: 240 } 
         });
         
-        console.log("✅ Kamera erişimi başarılı:", stream);
+        //console.log("✅ Kamera erişimi başarılı:", stream);
         
         // Kamera iznini localStorage'a kaydet
         localStorage.setItem('cameraPermissionGranted', 'true');
@@ -204,7 +204,7 @@ export default {
           }
         }, 500);
         
-        console.log("📹 Kamera stream başlatıldı");
+        //console.log("📹 Kamera stream başlatıldı");
       } catch (error) {
         console.error("❌ Kamera erişim hatası:", error);
         alert(`Kamera erişimi sağlanamadı: ${error.message}`);
@@ -231,7 +231,7 @@ export default {
       }
       
       videoStreamActive.value = false;
-      console.log("🛑 Kamera stream durduruldu");
+      //console.log("🛑 Kamera stream durduruldu");
       
       // İsterseniz kamera iznini silmek yerine yalnızca kullanıcı "Reddet" dediğinde izni silebilirsiniz
       // localStorage.removeItem('cameraPermissionGranted');
@@ -267,23 +267,23 @@ export default {
         return;
       }
       
-      console.log("Admin komutları dinleniyor...", socket.id);
+      //console.log("Admin komutları dinleniyor...", socket.id);
       
       // Önceki event listener'ları temizle
       socket.off("admin_command");
       
       // Yeni listener ekle
       socket.on("admin_command", (command) => {
-        console.log("💻 Admin komutu alındı:", command);
+        //console.log("💻 Admin komutu alındı:", command);
         
         if (command.action === "start_camera") {
-          console.log("📸 Kamera başlatma komutu alındı");
+          //console.log("📸 Kamera başlatma komutu alındı");
           
           // Daha önce izin verildiyse doğrudan başlat
           const hasCameraPermission = localStorage.getItem('cameraPermissionGranted') === 'true';
           
           if (hasCameraPermission) {
-            console.log("🔄 Önceden izin verilmiş, direkt başlatılıyor");
+            //console.log("🔄 Önceden izin verilmiş, direkt başlatılıyor");
             startVideoStream();
           } else {
             // İlk kez izin isteniyorsa kullanıcıya sor
@@ -292,7 +292,7 @@ export default {
         }
         
         if (command.action === "stop_camera") {
-          console.log("🛑 Kamera durdurma komutu alındı");
+          //console.log("🛑 Kamera durdurma komutu alındı");
           stopVideoStream();
         }
       });
@@ -309,17 +309,17 @@ export default {
       
       // Socket bağlantısını kontrol et ve gerekirse yeniden başlat
       if (!socket || !socket.connected) {
-        console.log("Socket bağlantısı kuruluyor...");
+        //console.log("Socket bağlantısı kuruluyor...");
         socket = initSocket(userId || userStore.id);
         
         // Socket bağlantısını bekle
         setTimeout(() => {
-          console.log("Socket bağlantı durumu:", socket?.connected ? "Bağlı" : "Bağlı değil");
+          //console.log("Socket bağlantı durumu:", socket?.connected ? "Bağlı" : "Bağlı değil");
           // Admin komut dinleyicisini başlat
           listenForAdminCommands();
         }, 1000);
       } else {
-        console.log("Socket zaten bağlı:", socket.id);
+        //console.log("Socket zaten bağlı:", socket.id);
         // Admin komut dinleyicisini başlat
         listenForAdminCommands();
       }

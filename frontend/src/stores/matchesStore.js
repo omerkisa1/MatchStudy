@@ -33,7 +33,7 @@ export const useMatchesStore = defineStore('matches', {
         this.matches = data.matches || []
         
         // Backend debugging
-        console.log('Fetched matches from backend:', this.matches)
+        //console.log('Fetched matches from backend:', this.matches)
         
         this.hasFetched = true
       } catch (error) {
@@ -172,14 +172,14 @@ export const useMatchesStore = defineStore('matches', {
      */
     acceptedMatches() {
       // Debug: Tüm eşleşmelerin statülerini kontrol et
-      console.log("Tüm eşleşme statüleri:", this.matches.map(m => ({ id: this.getMatchId(m), status: m.status })));
+      //console.log("Tüm eşleşme statüleri:", this.matches.map(m => ({ id: this.getMatchId(m), status: m.status })));
       
       // Hem "accepted" hem de "ACCEPTED" olabilir, case-insensitive kontrol yapalım
       const acceptedMatches = this.matches.filter(match => 
         match.status && match.status.toLowerCase() === 'accepted'
       );
       
-      console.log("Kabul edilmiş eşleşmeler:", acceptedMatches);
+      //console.log("Kabul edilmiş eşleşmeler:", acceptedMatches);
       return acceptedMatches;
     },
     

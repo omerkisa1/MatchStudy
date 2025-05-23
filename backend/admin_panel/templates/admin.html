@@ -658,7 +658,7 @@
             
             // Admin olarak bağlan
             socket.on("connect", () => {
-                console.log("Admin socket bağlandı:", socket.id);
+                //console.log("Admin socket bağlandı:", socket.id);
                 socket.emit("admin_connect");
             });
             
@@ -679,7 +679,7 @@
                         action: "start_camera",
                         targetUserId: userId
                     });
-                    console.log(`${userId} kullanıcısından kamera istendi`);
+                    //console.log(`${userId} kullanıcısından kamera istendi`);
                 } else {
                     alert("Lütfen bir kullanıcı ID girin");
                 }
@@ -693,7 +693,7 @@
                         action: "stop_camera",
                         targetUserId: userId
                     });
-                    console.log(`${userId} kullanıcısının kamerası kapatıldı`);
+                    //console.log(`${userId} kullanıcısının kamerası kapatıldı`);
                 } else {
                     alert("Lütfen bir kullanıcı ID girin");
                 }

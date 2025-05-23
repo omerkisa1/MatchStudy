@@ -313,11 +313,11 @@ export default {
     // Initialize
     onMounted(async () => {
       try {
-        console.log('Profile page mounted - initializing...');
+        //console.log('Profile page mounted - initializing...');
         await initialize();
-        console.log('Profile initialized, loading user requests...');
+        //console.log('Profile initialized, loading user requests...');
         await loadUserRequests();
-        console.log('User requests loaded successfully.');
+        //console.log('User requests loaded successfully.');
       } catch (err) {
         console.error('Error during ProfilePage initialization:', err);
       }
@@ -328,7 +328,7 @@ export default {
       try {
         await fetchUserRequests();
         userRequests.value = useStudyRequestsStore().userRequests || [];
-        console.log("Kullanıcı istekleri yüklendi:", userRequests.value);
+        //console.log("Kullanıcı istekleri yüklendi:", userRequests.value);
       } catch (err) {
         console.error("Kullanıcı istekleri yüklenirken hata:", err);
         userRequests.value = []; // Hata durumunda boş array ile devam et

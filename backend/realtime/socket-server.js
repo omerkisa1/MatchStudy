@@ -29,12 +29,12 @@ const connectedUsers = {};
 const adminConnections = [];
 
 io.on("connection", (socket) => {
-  console.log("Bir kullanıcı bağlandı:", socket.id);
+  //console.log("Bir kullanıcı bağlandı:", socket.id);
   logToFile(`Kullanıcı ${socket.id} bağlantıyı açtı.`);
   
   // Admin bağlantıları için
   socket.on("admin_connect", () => {
-    console.log(`Admin bağlandı: ${socket.id}`);
+    //console.log(`Admin bağlandı: ${socket.id}`);
     logToFile(`Admin bağlandı: ${socket.id}`, "INFO", "SOCKET");
     adminConnections.push(socket.id);
     socket.join("admin-room");
@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
   // Kullanıcı login olduysa bağlandığında user_id bilgisini yollamalı
   socket.on("user_login", (userId) => {
     connectedUsers[userId] = socket.id;
-    console.log(`Kullanıcı ${userId} giriş yaptı.`);
+    //console.log(`Kullanıcı ${userId} giriş yaptı.`);
     logToFile(`Kullanıcı ${userId} giriş yaptı.`, "INFO", "SOCKET");
   });
 
@@ -58,12 +58,12 @@ io.on("connection", (socket) => {
     });
     
     // Console'a log yazma - çok fazla log oluşturacağı için kapatıldı
-    // console.log(`Video frame alındı: ${frameData.userId || socket.id}`);
+    // //console.log(`Video frame alındı: ${frameData.userId || socket.id}`);
   });
 
   // Mesaj gönderme
   socket.on("send_message", ({ chat_id, sender_id, receiver_id, content }) => {
-    console.log(`[SOCKET] Mesaj geldi: ${content} (${sender_id} ➝ ${receiver_id})`);
+    //console.log(`[SOCKET] Mesaj geldi: ${content} (${sender_id} ➝ ${receiver_id})`);
 
     // Alıcıya mesaj iletiliyor
     const receiverSocket = connectedUsers[receiver_id];
@@ -83,12 +83,12 @@ io.on("connection", (socket) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id, sender_id, content })
     }).then(res => res.json()).then(data => {
-      console.log("Mesaj API'ye kaydedildi:", data);
+      //console.log("Mesaj API'ye kaydedildi:", data);
     });
   });
 
   socket.on("disconnect", () => {
-    console.log("Bir kullanıcı ayrıldı:", socket.id);
+    //console.log("Bir kullanıcı ayrıldı:", socket.id);
     logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`, "INFO", "SOCKET");
 
     // Admin bağlantılarından çıkar
@@ -107,7 +107,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("user_logout", (userId) => {
-    console.log(`Kullanıcı ${userId} çıkış yaptı.`);
+    //console.log(`Kullanıcı ${userId} çıkış yaptı.`);
     logToFile(`Kullanıcı ${userId} çıkış yaptı.`, "INFO", "SOCKET");
     delete connectedUsers[userId];
   });
@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
   // Admin komutları
   socket.on("admin_command", (command) => {
     if (adminConnections.includes(socket.id)) {
-      console.log(`Admin komutu alındı: ${command.action}`);
+      //console.log(`Admin komutu alındı: ${command.action}`);
       
       // Kamera başlatma komutu
       if (command.action === "start_camera" && command.targetUserId) {
@@ -139,5 +139,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(3000, () => {
-  console.log("Socket.IO server is running on port 3000");
+  //console.log("Socket.IO server is running on port 3000");
 });

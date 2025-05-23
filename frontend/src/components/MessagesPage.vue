@@ -389,12 +389,12 @@ async function markMessagesAsRead(chatId) {
 
 // İlk açılışta eşleşmeleri ve okunmamış mesaj sayılarını getir
 onMounted(async () => {
-  console.log("Mesaj sayfası yükleniyor, kullanıcı ID:", currentUser.value);
+  //console.log("Mesaj sayfası yükleniyor, kullanıcı ID:", currentUser.value);
 
   // Eşleşmeleri çek
   await matchesStore.fetchMatches();
-  console.log("Tüm eşleşmeler:", matchesStore.matches);
-  console.log("Kabul edilmiş eşleşmeler:", acceptedMatches.value);
+  //console.log("Tüm eşleşmeler:", matchesStore.matches);
+  //console.log("Kabul edilmiş eşleşmeler:", acceptedMatches.value);
 
   const usersMap = new Map();
 
@@ -466,7 +466,7 @@ onMounted(async () => {
     console.error("Arkadaşlık durumları alınamadı:", error);
   }
 
-  console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
+  //console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
 
   // URL'de bir userId varsa doğrudan o kullanıcıyı aç
   const urlParams = new URLSearchParams(window.location.search)
@@ -505,7 +505,7 @@ function scrollToBottom() {
 
 // Kullanıcıya tıklanınca yapılacaklar - yeni metot
 async function selectUserAndLoadMessages(user) {
-  console.log("Kullanıcı seçildi:", user);
+  //console.log("Kullanıcı seçildi:", user);
   
   // Seçilen kullanıcıyı ayarla
   selectedUserId.value = user.userId;

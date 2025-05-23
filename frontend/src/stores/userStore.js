@@ -63,7 +63,7 @@ export const useUserStore = defineStore('user', () => {
    * @param {number} count - Number of unread messages 
    */
   function updateTotalUnreadMessages(count) {
-    console.log("Toplam okunmamış mesaj sayısı güncelleniyor:", count);
+    //console.log("Toplam okunmamış mesaj sayısı güncelleniyor:", count);
     totalUnreadMessages.value = count;
   }
   
@@ -71,9 +71,9 @@ export const useUserStore = defineStore('user', () => {
    * Increment unread messages count by 1
    */
   function incrementUnreadMessages() {
-    console.log("Okunmamış mesaj sayısı artırılıyor, şu anki değer:", totalUnreadMessages.value);
+    //console.log("Okunmamış mesaj sayısı artırılıyor, şu anki değer:", totalUnreadMessages.value);
     totalUnreadMessages.value++;
-    console.log("Artırıldıktan sonraki değer:", totalUnreadMessages.value);
+    //console.log("Artırıldıktan sonraki değer:", totalUnreadMessages.value);
   }
   
   /**

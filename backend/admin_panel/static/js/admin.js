@@ -137,7 +137,7 @@ function checkApiStatus() {
                 
                 // Tablo sayılarını konsola yazdır - hata ayıklama için
                 if (data.table_counts) {
-                    console.log('Tablo sayıları:', data.table_counts);
+                    //console.log('Tablo sayıları:', data.table_counts);
                 }
             } else {
                 apiStatus.innerHTML = 'API Durumu: <span class="badge bg-danger">Çevrimdışı</span>';

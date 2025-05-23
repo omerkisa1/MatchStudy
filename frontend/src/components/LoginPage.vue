@@ -273,7 +273,7 @@ export default {
     const socialLogin = (provider) => {
       isLoading.value = true;
       setTimeout(() => {
-        console.log(`${provider} ile giriş yapılıyor...`);
+        //console.log(`${provider} ile giriş yapılıyor...`);
         loginSuccess.value = true;
         setTimeout(() => {
           window.location.href = "/home";

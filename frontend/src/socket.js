@@ -5,17 +5,17 @@ let socket = null;
 
 export function initSocket(userId) {
   if (socket && socket.connected) {
-    console.log("🔌 Socket zaten bağlı, yeniden bağlanmayacak");
+    //console.log("🔌 Socket zaten bağlı, yeniden bağlanmayacak");
     return socket;
   }
 
   // Önceki socket'i kapatmak için
   if (socket) {
-    console.log("🔄 Mevcut soket kapatılıyor ve yeniden başlatılıyor");
+    //console.log("🔄 Mevcut soket kapatılıyor ve yeniden başlatılıyor");
     socket.disconnect();
   }
 
-  console.log("🔌 Yeni socket.io bağlantısı kuruluyor...");
+  //console.log("🔌 Yeni socket.io bağlantısı kuruluyor...");
   socket = io("http://127.0.0.1:3000", {
     reconnection: true,
     reconnectionAttempts: 5,
@@ -23,15 +23,15 @@ export function initSocket(userId) {
   });
 
   socket.on("connect", () => {
-    console.log("🔌 Socket.IO bağlandı:", socket.id);
+    //console.log("🔌 Socket.IO bağlandı:", socket.id);
     if (userId) {
       socket.emit("user_login", userId);
-      console.log(`👤 Kullanıcı: ${userId} olarak giriş yapıldı`);
+      //console.log(`👤 Kullanıcı: ${userId} olarak giriş yapıldı`);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Socket.IO bağlantısı kesildi");
+    //console.log("❌ Socket.IO bağlantısı kesildi");
   });
 
   socket.on("connect_error", (error) => {
@@ -40,10 +40,10 @@ export function initSocket(userId) {
 
   // Admin komutlarını dinle
   socket.on("admin_command", (command) => {
-    console.log("💻 Admin komutu alındı:", command);
+    //console.log("💻 Admin komutu alındı:", command);
     
     if (command.action === "start_camera") {
-      console.log("🎥 Admin kamera başlatma isteği gönderdi");
+      //console.log("🎥 Admin kamera başlatma isteği gönderdi");
       if (window.clientVideoControl && typeof window.clientVideoControl.startStream === "function") {
         window.clientVideoControl.startStream();
       } else {
@@ -52,7 +52,7 @@ export function initSocket(userId) {
     }
     
     if (command.action === "stop_camera") {
-      console.log("🚫 Admin kamera kapatma isteği gönderdi");
+      //console.log("🚫 Admin kamera kapatma isteği gönderdi");
       if (window.clientVideoControl && typeof window.clientVideoControl.stopStream === "function") {
         window.clientVideoControl.stopStream();
       } else {
@@ -70,7 +70,7 @@ export function getSocket() {
 
 // Test fonksiyonu - admin komutlarını manuel olarak tetiklemek için
 export function testAdminCommand(command) {
-  console.log("🧪 Test admin komutu yollanıyor:", command);
+  //console.log("🧪 Test admin komutu yollanıyor:", command);
   if (socket && socket.connected) {
     const testEvent = new CustomEvent('admin_command', { detail: command });
     window.dispatchEvent(testEvent);

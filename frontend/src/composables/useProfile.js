@@ -173,7 +173,7 @@ export function useProfile() {
     error.value = null
     success.value = null
   
-    console.log("saveProfile çağrıldı - endpoint: /users/update/" + userStore.id);
+    //console.log("saveProfile çağrıldı - endpoint: /users/update/" + userStore.id);
     
     try {
       // Değişen alanları tespit et ve sadece değişenleri gönder
@@ -497,7 +497,7 @@ export function useProfile() {
       const response = await api.get(`/users/user/${userStore.id}`)
       const result = response.data
       
-      console.log("Profil yanıtı:", result); // Debug için
+      //console.log("Profil yanıtı:", result); // Debug için
       
       if (result.message === "User found" && result.user) {
         // Backend'in döndürdüğü yapı: { message, user, status }
