@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import os
 import logging
 from user_agents import parse
@@ -51,6 +52,16 @@ async def log_device_info(request: Request, call_next):
 
     logging.info(f"[GELEN TALEP] IP: {ip} | Cihaz: {device_type} | OS: {os_family} | Tarayıcı: {browser_family} | Path: {path}")
     response = await call_next(request)
+    return response
+
+@app.middleware("http")
+async def add_utf8_charset(request: Request, call_next):
+    response = await call_next(request)
+    
+    # JSON yanıtlar için UTF-8 karakter kodlamasını ayarla
+    if isinstance(response, JSONResponse):
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+    
     return response
 
 app.include_router(users_router, prefix="/users", tags=["Users"])

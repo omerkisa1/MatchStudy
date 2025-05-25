@@ -55,13 +55,39 @@ def get_db_connection():
 # Güvenlik kontrolü için yardımcı fonksiyon
 def verify_admin_cookie(request: Request):
     admin_auth = request.cookies.get("admin_auth")
-    if not admin_auth or admin_auth != f"{ADMIN_USERNAME}_logged_in":
+    if not admin_auth or not admin_auth.endswith("_logged_in"):
         logger.warning("Unauthorized API access attempt")
         raise HTTPException(
             status_code=401,
             detail="Unauthorized access"
         )
-    return ADMIN_USERNAME
+    
+    # Kullanıcı adını çerezden al
+    username = admin_auth.split("_logged_in")[0]
+    
+    # Veritabanından admin kullanıcı kontrolü (opsiyonel ek güvenlik)
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        query = "SELECT id FROM admin_users WHERE username = %s AND is_active = TRUE"
+        cursor.execute(query, (username,))
+        
+        admin_user = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        if not admin_user:
+            logger.warning(f"Unauthorized API access attempt with invalid admin: {username}")
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized access - Invalid admin user"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying admin user: {str(e)}")
+        # Veritabanı hatası durumunda çerez kontrolü yeterli olabilir
+    
+    return username
 
 # Login sayfası
 @router.get("/login", response_class=HTMLResponse)
@@ -71,36 +97,67 @@ async def login_page(request: Request):
 # Login işlemi
 @router.post("/login", response_class=HTMLResponse)
 async def login_process(request: Request, username: str = Form(...), password: str = Form(...)):
-    # Kullanıcı adı ve şifre kontrolü
-    correct_username = secrets.compare_digest(username, ADMIN_USERNAME)
-    correct_password = secrets.compare_digest(password, ADMIN_PASSWORD)
-    
-    if not (correct_username and correct_password):
-        logger.warning(f"Failed login attempt with username: {username}")
+    try:
+        # Veritabanı bağlantısı
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Kullanıcı bilgilerini veritabanından sorgula
+        # NOT: Gerçek uygulamada şifre hash'lerini karşılaştırmak daha güvenli olacaktır
+        query = "SELECT * FROM admin_users WHERE username = %s AND is_active = TRUE"
+        cursor.execute(query, (username,))
+        
+        admin_user = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        if not admin_user or admin_user['password_hash'] != password:
+            logger.warning(f"Failed login attempt with username: {username}")
+            return templates.TemplateResponse("login.html", 
+                                           {"request": request, 
+                                            "error": "Kullanıcı adı veya şifre hatalı!"})
+        
+        # Başarılı giriş
+        logger.info(f"Admin login successful: {username}")
+        
+        # Giriş zamanını güncelle
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            update_query = "UPDATE admin_users SET last_login = NOW() WHERE username = %s"
+            cursor.execute(update_query, (username,))
+            connection.commit()
+            cursor.close()
+            connection.close()
+        except Exception as e:
+            logger.error(f"Error updating last_login: {str(e)}")
+        
+        response = RedirectResponse(url="/admin", status_code=303)
+        
+        # Çerez ile kimlik doğrulama (basit güvenlik - gerçek uygulamada daha güçlü bir yöntem kullanılmalı)
+        response.set_cookie(key="admin_auth", value=f"{username}_logged_in", httponly=True)
+        
+        return response
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return templates.TemplateResponse("login.html", 
-                                         {"request": request, 
-                                          "error": "Kullanıcı adı veya şifre hatalı!"})
-    
-    # Başarılı giriş
-    logger.info(f"Admin login successful: {username}")
-    response = RedirectResponse(url="/admin", status_code=303)
-    
-    # Çerez ile kimlik doğrulama (basit güvenlik - gerçek uygulamada daha güçlü bir yöntem kullanılmalı)
-    response.set_cookie(key="admin_auth", value=f"{username}_logged_in", httponly=True)
-    
-    return response
+                                       {"request": request, 
+                                        "error": "Giriş işlemi sırasında bir hata oluştu!"})
 
 # Ana admin paneli - güncellendi
 @router.get("/", response_class=HTMLResponse)
 async def admin_panel(request: Request):
     # Çerez kontrolü
     admin_auth = request.cookies.get("admin_auth")
-    if not admin_auth or admin_auth != f"{ADMIN_USERNAME}_logged_in":
+    if not admin_auth or not admin_auth.endswith("_logged_in"):
         logger.warning("Unauthorized access attempt to admin panel")
         return RedirectResponse(url="/admin/login", status_code=303)
     
-    logger.info(f"Admin panel accessed by: {ADMIN_USERNAME}")
-    return templates.TemplateResponse("admin.html", {"request": request, "username": ADMIN_USERNAME})
+    # Kullanıcı adını çerezden al
+    username = admin_auth.split("_logged_in")[0]
+    
+    logger.info(f"Admin panel accessed by: {username}")
+    return templates.TemplateResponse("admin.html", {"request": request, "username": username})
 
 # Kullanıcılar listesi
 @router.get("/users", response_class=JSONResponse)
