@@ -156,11 +156,11 @@ def get_old_matches_for_responder(user_id):
             m.status,
             m.updated_at,
             sr.topic,
-            p.name,
-            p.surname
+            u.name,
+            u.surname
         FROM matches m
         JOIN study_requests sr ON m.request_id = sr.request_id
-        JOIN profiles p ON m.requester_id = p.user_id
+        JOIN users u ON m.requester_id = u.id
         WHERE m.responder_id = %s AND m.status IN ('accepted', 'rejected')
         ORDER BY m.updated_at DESC
         LIMIT 10

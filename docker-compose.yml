@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3'
 
 services:
   frontend:
@@ -8,29 +8,45 @@ services:
     depends_on:
       - backend
       - socket
-    env_file:
-      - ./frontend/.env
+    environment:
+      - VITE_APP_API_URL=/api
+      - VITE_APP_SOCKET_URL=''
     restart: always
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    env_file:
-      - .env
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=match_study_user
+      - DB_PASSWORD=Klmn5512300.
+      - DB_NAME=match_study
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     restart: always
 
   socket:
     build: ./backend/realtime
-    env_file:
-      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - socket_logs:/app/logs
+    environment:
+      - DB_HOST=db
+      - DB_USER=match_study_user
+      - DB_PASSWORD=Klmn5512300.
+      - DB_NAME=match_study
+      - CORS_ORIGINS=http://localhost,http://frontend,*
+      - NODE_ENV=production
+      - DEBUG=socket.io*
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     restart: always
+    networks:
+      - default
 
   db:
     image: mysql:8
@@ -38,10 +54,10 @@ services:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
-      - MYSQL_ROOT_PASSWORD=root_secure_password
+      - MYSQL_ROOT_PASSWORD=root_password123
       - MYSQL_DATABASE=match_study
       - MYSQL_USER=match_study_user
-      - MYSQL_PASSWORD=secure_password123
+      - MYSQL_PASSWORD=Klmn5512300.
     ports:
       - "3307:3306"
     restart: always
@@ -55,3 +71,7 @@ services:
 
 volumes:
   mysql_data:
+  socket_logs:
+
+networks:
+  default:

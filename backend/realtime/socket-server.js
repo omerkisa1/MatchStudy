@@ -7,34 +7,57 @@ const express = require("express");
 //this is for logging
 const fs = require("fs");
 const path = require("path");
-const logFilePath = path.join(__dirname, "..", "logs", "admin_panel.log");
+const logDir = path.join(__dirname, "logs");
+const logFilePath = path.join(logDir, "admin_panel.log");
+
+// Log klasörünü oluştur (yoksa)
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 const app = express();
 app.use(cors());
 
+// CORS origin'leri çevresel değişkenlerden al
+const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ["*"];
+console.log("CORS origins:", corsOrigins);
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Gerekirse buraya frontend URL'ini yaz
-    methods: ["GET", "POST"]
-  }
+    origin: corsOrigins, // CORS ayarları
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["*"]
+  },
+  path: "/socket.io/", // Path doğru ayarlandığından emin oluyoruz
+  serveClient: false,
+  transports: ["websocket", "polling"],
+  pingTimeout: 10000,
+  pingInterval: 25000,
+  connectTimeout: 5000,
+  allowEIO3: true // Socket.IO v3 uyumluluğu için
 });
 
 function logToFile(message, level = "INFO", source = "SOCKET") {
-  const logEntry = `${new Date().toISOString()} [${source}] [${level}] ${message}\n`;
-  fs.appendFileSync(logFilePath, logEntry);
+  try {
+    const logEntry = `${new Date().toISOString()} [${source}] [${level}] ${message}\n`;
+    fs.appendFileSync(logFilePath, logEntry);
+  } catch (err) {
+    console.error("Log yazma hatası:", err.message);
+  }
 }
 
 const connectedUsers = {};
 const adminConnections = [];
 
 io.on("connection", (socket) => {
-  //console.log("Bir kullanıcı bağlandı:", socket.id);
+  console.log("Bir kullanıcı bağlandı:", socket.id);
   logToFile(`Kullanıcı ${socket.id} bağlantıyı açtı.`);
   
   // Admin bağlantıları için
   socket.on("admin_connect", () => {
-    //console.log(`Admin bağlandı: ${socket.id}`);
+    console.log(`Admin bağlandı: ${socket.id}`);
     logToFile(`Admin bağlandı: ${socket.id}`, "INFO", "SOCKET");
     adminConnections.push(socket.id);
     socket.join("admin-room");
@@ -43,7 +66,7 @@ io.on("connection", (socket) => {
   // Kullanıcı login olduysa bağlandığında user_id bilgisini yollamalı
   socket.on("user_login", (userId) => {
     connectedUsers[userId] = socket.id;
-    //console.log(`Kullanıcı ${userId} giriş yaptı.`);
+    console.log(`Kullanıcı ${userId} giriş yaptı.`);
     logToFile(`Kullanıcı ${userId} giriş yaptı.`, "INFO", "SOCKET");
   });
 
@@ -58,12 +81,12 @@ io.on("connection", (socket) => {
     });
     
     // Console'a log yazma - çok fazla log oluşturacağı için kapatıldı
-    // //console.log(`Video frame alındı: ${frameData.userId || socket.id}`);
+    // console.log(`Video frame alındı: ${frameData.userId || socket.id}`);
   });
 
   // Mesaj gönderme
   socket.on("send_message", ({ chat_id, sender_id, receiver_id, content }) => {
-    //console.log(`[SOCKET] Mesaj geldi: ${content} (${sender_id} ➝ ${receiver_id})`);
+    console.log(`[SOCKET] Mesaj geldi: ${content} (${sender_id} ➝ ${receiver_id})`);
 
     // Alıcıya mesaj iletiliyor
     const receiverSocket = connectedUsers[receiver_id];
@@ -78,17 +101,17 @@ io.on("connection", (socket) => {
     }
 
     // Mesajı FastAPI'ye kaydet
-    fetch("${import.meta.env.VITE_APP_API_URL}/messages/send", {
+    fetch("http://backend:8000/messages/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id, sender_id, content })
     }).then(res => res.json()).then(data => {
-      //console.log("Mesaj API'ye kaydedildi:", data);
+      console.log("Mesaj API'ye kaydedildi:", data);
     });
   });
 
   socket.on("disconnect", () => {
-    //console.log("Bir kullanıcı ayrıldı:", socket.id);
+    console.log("Bir kullanıcı ayrıldı:", socket.id);
     logToFile(`Kullanıcı ${socket.id} bağlantıyı kapattı.`, "INFO", "SOCKET");
 
     // Admin bağlantılarından çıkar
@@ -107,7 +130,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("user_logout", (userId) => {
-    //console.log(`Kullanıcı ${userId} çıkış yaptı.`);
+    console.log(`Kullanıcı ${userId} çıkış yaptı.`);
     logToFile(`Kullanıcı ${userId} çıkış yaptı.`, "INFO", "SOCKET");
     delete connectedUsers[userId];
   });
@@ -115,7 +138,7 @@ io.on("connection", (socket) => {
   // Admin komutları
   socket.on("admin_command", (command) => {
     if (adminConnections.includes(socket.id)) {
-      //console.log(`Admin komutu alındı: ${command.action}`);
+      console.log(`Admin komutu alındı: ${command.action}`);
       
       // Kamera başlatma komutu
       if (command.action === "start_camera" && command.targetUserId) {
@@ -138,6 +161,11 @@ io.on("connection", (socket) => {
   });
 });
 
+// Debug bilgisi
+app.get("/", (req, res) => {
+  res.send("Socket.IO sunucusu çalışıyor");
+});
+
 server.listen(3000, () => {
-  //console.log("Socket.IO server is running on port 3000");
+  console.log("Socket.IO server is running on port 3000");
 });

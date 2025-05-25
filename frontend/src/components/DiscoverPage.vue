@@ -249,11 +249,27 @@ export default {
         // Add event listener
         window.addEventListener('click', closeDropdowns);
         
-        // Fetch data from stores
-        await Promise.all([
-          studyRequestsStore.fetchAllRequests(),
-          matchesStore.fetchMatches()
-        ]);
+        // Fetch matches directly
+        await matchesStore.fetchMatches();
+        
+        // Fetch study requests manually instead of using store - temporary fix
+        const fetchStudyRequests = async () => {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/all`);
+            
+            if (!response.ok) {
+              throw new Error(`API yanıt hatası: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            studyRequestsStore.allRequests = data.requests || [];
+          } catch (error) {
+            console.error('Study requests alınırken hata oluştu:', error);
+            toast.value?.error('Çalışma isteklerini almada hata oluştu. Lütfen daha sonra tekrar deneyin.');
+          }
+        };
+        
+        await fetchStudyRequests();
       } catch (error) {
         console.error('Error initializing discover page:', error);
       }

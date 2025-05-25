@@ -25,11 +25,12 @@
       <!-- İstekler Listesi -->
       <div class="requests-list">
         <h3>Mevcut İstekler</h3>
-        <ul>
-          <li v-for="request in requests" :key="request.id">
+        <div v-if="isLoading">Yükleniyor...</div>
+        <ul v-else>
+          <li v-for="request in userRequests" :key="request.request_id">
             <strong>{{ request.topic }}</strong> - {{ request.category }} 
             ({{ request.study_date }}) 
-            <button @click="deleteRequest(request.id)">Sil</button>
+            <button @click="deleteRequest(request.request_id)">Sil</button>
           </li>
         </ul>
       </div>
@@ -37,66 +38,82 @@
   </template>
   
   <script>
-  import axios from "axios";
+  import { useStudyRequestsStore } from '../stores/studyRequestsStore';
+  import { useUserStore } from '../stores/userStore';
+  import { computed } from 'vue';
   
   export default {
     name: "StudyRequestsPage",
-    data() {
-      return {
-        form: {
-          user_id: 0, // Giriş yapan kullanıcının ID'si (token'dan çözülebilir)
-          category: "",
-          duration: "",
-          studyDate: "",
-          topic: "",
-          note: "",
-        },
-        requests: [],
+    setup() {
+      const studyRequestsStore = useStudyRequestsStore();
+      const userStore = useUserStore();
+      
+      const form = {
+        category: "",
+        duration: "",
+        studyDate: "",
+        topic: "",
+        note: "",
       };
-    },
-    async created() {
-      await this.fetchRequests();
-    },
-    methods: {
-      async createRequest() {
-        try {
-          // Örnek user_id = 1 (gerçekte login kullanıcıdan çekilmeli)
-          this.form.user_id = 1;
-          const response = await axios.post("${import.meta.env.VITE_APP_API_URL}/study-requests/create", {
-            user_id: this.form.user_id,
-            category: this.form.category,
-            duration: this.form.duration,
-            study_date: this.form.studyDate,
-            topic: this.form.topic,
-            note: this.form.note,
-          });
-          alert(response.data.message);
-          await this.fetchRequests();
-        } catch (error) {
-          console.error(error);
-          alert("İstek oluşturulamadı.");
+      
+      // Fetch user requests when component is created
+      studyRequestsStore.fetchUserRequests();
+      
+      const userRequests = computed(() => studyRequestsStore.userRequests);
+      const isLoading = computed(() => studyRequestsStore.isLoading);
+      
+      async function createRequest() {
+        const result = await studyRequestsStore.createRequest({
+          user_id: userStore.id,
+          category: form.category,
+          duration: form.duration,
+          study_date: form.studyDate,
+          topic: form.topic,
+          note: form.note,
+        });
+        
+        if (result.success) {
+          alert("Çalışma isteği başarıyla oluşturuldu!");
+          // Form alanlarını temizle
+          form.category = "";
+          form.duration = "";
+          form.studyDate = "";
+          form.topic = "";
+          form.note = "";
+        } else {
+          alert("İstek oluşturulamadı: " + (result.error || "Bilinmeyen bir hata oluştu."));
         }
-      },
-      async fetchRequests() {
-        try {
-          const response = await axios.get("${import.meta.env.VITE_APP_API_URL}/study-requests/list");
-          this.requests = response.data.requests || [];
-        } catch (error) {
-          console.error(error);
-        }
-      },
-      async deleteRequest(requestId) {
+      }
+      
+      async function deleteRequest(requestId) {
         if (!confirm("Bu isteği silmek istediğinize emin misiniz?")) return;
+        
         try {
-          const response = await axios.delete(`${import.meta.env.VITE_APP_API_URL}/study-requests/delete/${requestId}`);
-          alert(response.data.message);
-          await this.fetchRequests();
+          const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/delete/${requestId}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            // Başarılıysa, kullanıcı isteklerini yeniden yükle
+            await studyRequestsStore.fetchUserRequests();
+            alert("İstek başarıyla silindi.");
+          } else {
+            alert("İstek silinemedi.");
+          }
         } catch (error) {
           console.error(error);
           alert("İstek silinemedi.");
         }
-      },
-    },
+      }
+      
+      return {
+        form,
+        userRequests,
+        isLoading,
+        createRequest,
+        deleteRequest
+      };
+    }
   };
   </script>
   

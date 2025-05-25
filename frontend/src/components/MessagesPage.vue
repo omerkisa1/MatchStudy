@@ -356,7 +356,7 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    const response = await fetch('${import.meta.env.VITE_APP_API_URL}/messages/mark_read_by_chat', {
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/mark_read_by_chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

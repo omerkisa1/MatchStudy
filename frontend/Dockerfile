@@ -8,6 +8,10 @@ RUN npm install
 
 COPY . .
 
+# Set API URL for the build
+ENV VITE_APP_API_URL=/api
+ENV VITE_APP_SOCKET_URL=/socket.io
+
 RUN npm run build
 
 FROM nginx:alpine

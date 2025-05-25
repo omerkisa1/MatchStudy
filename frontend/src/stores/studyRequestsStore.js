@@ -30,14 +30,32 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
     async fetchAllRequests() {
       this.isLoading = true
       try {
-        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/all')
+        const apiUrl = `${import.meta.env.VITE_APP_API_URL}/study_requests/all`;
+        console.log('Fetching study requests from:', apiUrl);
+        
+        const response = await fetch(apiUrl);
+        
         if (!response.ok) {
-          throw new Error('Çalışma istekleri getirilemedi')
+          const errorText = await response.text();
+          console.error('API error response:', errorText);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
-        const data = await response.json()
-        this.allRequests = data.requests || []
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('Invalid content type. Response:', text.substring(0, 500));
+          throw new Error('Invalid content type, expected JSON');
+        }
+        
+        const data = await response.json();
+        console.log('Study requests data received:', data);
+        
+        this.allRequests = data.requests || [];
       } catch (error) {
-        console.error('Error fetching study requests:', error)
+        console.error('Error fetching study requests:', error);
+        // Reset allRequests to empty array on error to prevent further issues
+        this.allRequests = [];
       } finally {
         this.isLoading = false
       }
@@ -105,7 +123,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
       }
 
       try {
-        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/create', {
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

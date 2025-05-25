@@ -133,7 +133,6 @@ async def get_messages(chat_id: str):
     connection = None
     cursor = None
     try:
-        print(f"Fetching messages for chat: {chat_id}")
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor(dictionary=True)
         
@@ -148,10 +147,8 @@ async def get_messages(chat_id: str):
                 if isinstance(msg['sent_at'], datetime):
                     msg['sent_at'] = msg['sent_at'].isoformat()
                 
-        print(f"Found {len(messages)} messages for chat: {chat_id}")
         return {"success": True, "messages": messages}
     except Exception as e:
-        print(f"Error fetching messages: {str(e)}")
         return {"success": False, "message": str(e)}
     finally:
         if cursor and cursor.with_rows:
