@@ -25,7 +25,7 @@ export const useNotificationsStore = defineStore('notifications', {
       
       this.isLoading = true
       try {
-        const response = await fetch(`http://127.0.0.1:8000/matches/notifications/${userStore.id}`)
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`)
         if (!response.ok) throw new Error('Bildirimler getirilemedi')
         
         const data = await response.json()
@@ -42,7 +42,7 @@ export const useNotificationsStore = defineStore('notifications', {
       if (!userStore.id) return
     
       try {
-        const res = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${userStore.id}`)
+        const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
         if (!res.ok) throw new Error("Arkadaşlık istekleri alınamadı")
         const data = await res.json()
         this.friendRequests = data.requests || []
@@ -58,7 +58,7 @@ export const useNotificationsStore = defineStore('notifications', {
     async markAsRead(notificationId) {
       try {
         // In a real app, this would send a request to the API
-        // const response = await fetch(`http://127.0.0.1:8000/notifications/${notificationId}/read`, {
+        // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/notifications/${notificationId}/read`, {
         //   method: 'PUT'
         // })
         
@@ -82,7 +82,7 @@ export const useNotificationsStore = defineStore('notifications', {
       try {
         // In a real app, this would send a request to the API
         // const userStore = useUserStore()
-        // const response = await fetch(`http://127.0.0.1:8000/users/${userStore.id}/notifications/read-all`, {
+        // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/${userStore.id}/notifications/read-all`, {
         //   method: 'PUT'
         // })
         

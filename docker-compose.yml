@@ -9,7 +9,7 @@ services:
       - backend
       - socket
     env_file:
-      - .env
+      - ./frontend/.env
     restart: always
 
   backend:

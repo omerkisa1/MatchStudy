@@ -269,7 +269,7 @@ const createStudyRequest = async () => {
 
   isLoading.value = true;
   try {
-    const response = await fetch('http://127.0.0.1:8000/study_requests/create', {
+    const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

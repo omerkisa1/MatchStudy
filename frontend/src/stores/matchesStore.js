@@ -26,7 +26,7 @@ export const useMatchesStore = defineStore('matches', {
       
       this.isLoading = true
       try {
-        const response = await fetch(`http://127.0.0.1:8000/matches/user/${userStore.id}`)
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/user/${userStore.id}`)
         if (!response.ok) throw new Error('Eşleşmeler getirilemedi')
         
         const data = await response.json()
@@ -57,7 +57,7 @@ export const useMatchesStore = defineStore('matches', {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/matches/create?user1_id=${userStore.id}&user2_id=${requestData.user2_id}&request_id=${requestData.request_id}`,
+          `${import.meta.env.VITE_APP_API_URL}/matches/create?user1_id=${userStore.id}&user2_id=${requestData.user2_id}&request_id=${requestData.request_id}`,
           { method: 'POST' }
         )
 
@@ -83,7 +83,7 @@ export const useMatchesStore = defineStore('matches', {
      */
     async respondToMatch(matchId, accept) {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/matches/${matchId}/respond`, {
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/${matchId}/respond`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'

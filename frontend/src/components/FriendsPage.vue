@@ -66,7 +66,7 @@ export default {
 
     const fetchFriendRequests = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/friend_requests/get_friend_requests?user_id=${userStore.id}`);
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`);
         friends.value = response.data.requests.filter(r => r.status === 'accepted');
       } catch (error) {
         console.error("Arkadaşlar alınamadı:", error);
@@ -92,7 +92,7 @@ export default {
       if (!confirm('Bu kullanıcıyı engellemek istediğinize emin misiniz?')) return;
       
       try {
-        await axios.post('http://localhost:8000/friend_requests/manage', null, {
+        await axios.post('${import.meta.env.VITE_APP_API_URL}/friend_requests/manage', null, {
           params: {
             sender_id: userId,
             receiver_id: userStore.id,
@@ -112,7 +112,7 @@ export default {
       if (!confirm('Bu kullanıcıyı arkadaş listenizden çıkarmak istediğinize emin misiniz?')) return;
       
       try {
-        await axios.post('http://localhost:8000/friend_requests/manage', null, {
+        await axios.post('${import.meta.env.VITE_APP_API_URL}/friend_requests/manage', null, {
           params: {
             sender_id: userId,
             receiver_id: userStore.id,

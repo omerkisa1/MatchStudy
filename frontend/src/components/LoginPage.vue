@@ -222,7 +222,7 @@ export default {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`
+          `${import.meta.env.VITE_APP_API_URL}/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`
         );
         const data = await response.json();
 

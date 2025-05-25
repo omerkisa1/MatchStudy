@@ -196,7 +196,7 @@ async function fetchUserInfo(userId) {
   if (userInfoCache.value[userId]) return;
   
   try {
-    const response = await fetch(`http://127.0.0.1:8000/users/user/${userId}`);
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/user/${userId}`);
     const data = await response.json();
     
     if (data.user) {
@@ -216,7 +216,7 @@ async function fetchUserInfo(userId) {
 // Arkadaşlık durumunu kontrol et
 async function checkFriendshipStatus(userId) {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
     const data = await response.json();
     
     if (data.requests && data.requests.length > 0) {
@@ -288,7 +288,7 @@ async function fetchUnreadCounts() {
   if (!currentUser.value) return
   
   try {
-    const res = await fetch(`http://127.0.0.1:8000/messages/unread/${currentUser.value}`)
+    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/unread/${currentUser.value}`)
     const data = await res.json()
     
     if (data.success) {
@@ -298,7 +298,7 @@ async function fetchUnreadCounts() {
       for (const match of acceptedMatches.value) {
         // requester_id ve responder_id kullanarak karşı tarafı belirle
         const otherId = currentUser.value === match.requester_id ? match.responder_id : match.requester_id
-        const res = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${otherId}`)
+        const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${otherId}`)
         const chatData = await res.json()
         
         if (chatData.success) {
@@ -328,7 +328,7 @@ async function sendFriendRequest() {
   try {
     const senderId = currentUser.value
     const receiverId = selectedUserId.value
-    const res = await fetch(`http://127.0.0.1:8000/friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
+    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -356,7 +356,7 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    const response = await fetch('http://127.0.0.1:8000/messages/mark_read_by_chat', {
+    const response = await fetch('${import.meta.env.VITE_APP_API_URL}/messages/mark_read_by_chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -418,19 +418,19 @@ onMounted(async () => {
 
     try {
       // 1. Kullanıcı adını getir
-      const res = await fetch(`http://127.0.0.1:8000/users/user/${otherUserId}`);
+      const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/user/${otherUserId}`);
       const data = await res.json();
       if (data.user) {
         userEntry.displayName = `${data.user.name} ${data.user.surname}`;
       }
 
       // 2. Chat ID'yi al ve son mesajı getir
-      const chatRes = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${otherUserId}`);
+      const chatRes = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${otherUserId}`);
       const chatData = await chatRes.json();
       if (chatData.success) {
         const chatId = chatData.chat_id;
 
-        const msgRes = await fetch(`http://127.0.0.1:8000/messages/last/${chatId}`);
+        const msgRes = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/last/${chatId}`);
         const msgData = await msgRes.json();
 
         if (msgData.success && msgData.message) {
@@ -453,7 +453,7 @@ onMounted(async () => {
 
   // Arkadaşlık durumlarını getir
   try {
-    const response = await fetch(`http://127.0.0.1:8000/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
     const data = await response.json();
 
     if (data.requests && data.requests.length > 0) {
@@ -521,7 +521,7 @@ async function selectUserAndLoadMessages(user) {
   
   try {
     // Chat ID'yi backend'den al veya oluştur
-    const res = await fetch(`http://127.0.0.1:8000/chat/${currentUser.value}/${user.userId}`)
+    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${user.userId}`)
     const data = await res.json()
     
     if (data.success) {
@@ -546,7 +546,7 @@ async function selectUserAndLoadMessages(user) {
 // Mesajları backend'den al
 async function fetchMessages(chatId) {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/messages/${chatId}`)
+    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/${chatId}`)
     const data = await res.json()
     
     if (data.success) {
@@ -628,7 +628,7 @@ async function hideChat() {
   if (!selectedChatId.value) return;
   
   try {
-    const response = await fetch(`http://127.0.0.1:8000/chat/hide`, {
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/hide`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

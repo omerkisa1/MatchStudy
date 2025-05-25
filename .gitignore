@@ -8,3 +8,5 @@ node_modules
 # Logs
 /backend/logs/*.log
 backend/logs/admin_panel.log
+.env
+frontend/.env

@@ -145,7 +145,7 @@
     const userId = userStore.id;
     if (!userId) return;
     try {
-      const response = await fetch(`http://127.0.0.1:8000/users/user/${userId}`);
+      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/user/${userId}`);
       const data = await response.json();
       if (data && data.user) {
         userProfile.value = {
@@ -190,7 +190,7 @@
       }
       
       // API isteği gönder, sadece değişen alanları içeren nesneyi gönder
-      const response = await fetch(`http://127.0.0.1:8000/users/update/${userProfile.value.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/update/${userProfile.value.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

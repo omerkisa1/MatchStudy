@@ -147,7 +147,7 @@ export const useUserStore = defineStore('user', () => {
   async function updateProfile(profileData) {
     try {
       // Here you would typically make an API call to update the user profile
-      // const response = await fetch(`http://127.0.0.1:8000/users/${id.value}`, {
+      // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/${id.value}`, {
       //   method: 'PUT',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(profileData)
@@ -194,7 +194,7 @@ export const useUserStore = defineStore('user', () => {
     
     try {
       // In a real app, fetch from API
-      // const response = await fetch(`http://127.0.0.1:8000/users/${id.value}/profile`)
+      // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/${id.value}/profile`)
       // if (!response.ok) throw new Error('Failed to fetch profile')
       // const data = await response.json()
       // profile.value = data

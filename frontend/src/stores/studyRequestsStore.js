@@ -30,7 +30,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
     async fetchAllRequests() {
       this.isLoading = true
       try {
-        const response = await fetch('http://127.0.0.1:8000/study_requests/all')
+        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/all')
         if (!response.ok) {
           throw new Error('Çalışma istekleri getirilemedi')
         }
@@ -52,7 +52,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
       
       this.isLoading = true
       try {
-        const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}`)
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}`)
         if (!response.ok) {
           throw new Error('İstekler getirilemedi')
         }
@@ -79,7 +79,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
       
       this.isLoading = true
       try {
-        const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}/history`)
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}/history`)
         if (!response.ok) {
           throw new Error('Geçmiş istekler getirilemedi')
         }
@@ -105,7 +105,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', {
       }
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/study_requests/create', {
+        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

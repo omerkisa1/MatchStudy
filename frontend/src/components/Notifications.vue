@@ -168,7 +168,7 @@ export default {
 
     const fetchNotifications = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/matches/notifications/${userStore.id}`);
+        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`);
         notifications.value = response.data.notifications.map(n => ({ ...n, read: false }));
       } catch (error) {
         console.error('Bildirimler alınamadı:', error);
@@ -177,7 +177,7 @@ export default {
 
     const fetchRecentActivities = async () => {
   try {
-    const response = await axios.get(`http://localhost:8000/matches/history/${userStore.id}`);
+    const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/matches/history/${userStore.id}`);
     recentActivities.value = response.data.history.map(n => ({ ...n, read: true })); 
   } catch (error) {
     console.error("Son aktiviteler alınamadı:", error);
@@ -211,7 +211,7 @@ const formatTime = (timestamp) => {
 
     const respondToMatch = async (matchId, status) => {
       try {
-        await axios.put(`http://localhost:8000/matches/update/${matchId}?status=${status}`);
+        await axios.put(`${import.meta.env.VITE_APP_API_URL}/matches/update/${matchId}?status=${status}`);
         notifications.value = notifications.value.map(n => n.match_id === matchId ? { ...n, read: true } : n);
       } catch (error) {
         console.error('Durum güncellenemedi:', error);
@@ -222,7 +222,7 @@ const formatTime = (timestamp) => {
     const friendRequests = ref([])
     const fetchFriendRequests = async () => {
       try {
-        const res = await axios.get(`http://localhost:8000/friend_requests/get_friend_requests?user_id=${userStore.id}`)
+        const res = await axios.get(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
         friendRequests.value = res.data.requests
       } catch (error) {
         console.error("Arkadaşlık istekleri alınamadı:", error)
@@ -231,7 +231,7 @@ const formatTime = (timestamp) => {
 
     const respondToFriendRequest = async (senderId, status) => {
   try {
-    await axios.post(`http://localhost:8000/friend_requests/manage?sender_id=${senderId}&receiver_id=${userStore.id}&status=${status}`);
+    await axios.post(`${import.meta.env.VITE_APP_API_URL}/friend_requests/manage?sender_id=${senderId}&receiver_id=${userStore.id}&status=${status}`);
     
     // güncel listeyi yeniden al
     await fetchFriendRequests();
@@ -256,7 +256,7 @@ const myRequests = ref([]);
 
 const fetchMyRequests = async () => {
   try {
-    const response = await axios.get(`http://localhost:8000/study_requests/user/${userStore.id}`);
+    const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}`);
     myRequests.value = response.data.requests;
   } catch (error) {
     console.error("Kullanıcı istekleri alınamadı:", error);

@@ -370,7 +370,7 @@ export default {
     // Fetch notifications
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/matches/notifications/${userStore.id}`);
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`);
         if (!response.ok) throw new Error('Bildirimler getirilemedi');
         const data = await response.json();
         notifications.value = data.notifications;
@@ -382,7 +382,7 @@ export default {
     // Fetch user study requests
     const fetchUserStudyRequests = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/study_requests/user/${userStore.id}`);
+        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}`);
         if (!response.ok) throw new Error('İstekler getirilemedi');
         const data = await response.json();
         // Her istek için varsayılan status değeri ekle
@@ -400,7 +400,7 @@ export default {
     const fetchStudyRequests = async () => {
       isLoadingRequests.value = true;
       try {
-        const response = await fetch('http://127.0.0.1:8000/study_requests/all');
+        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/all');
         if (!response.ok) {
           throw new Error('Çalışma istekleri getirilemedi');
         }

@@ -62,7 +62,7 @@
         try {
           // Örnek user_id = 1 (gerçekte login kullanıcıdan çekilmeli)
           this.form.user_id = 1;
-          const response = await axios.post("http://127.0.0.1:8000/study-requests/create", {
+          const response = await axios.post("${import.meta.env.VITE_APP_API_URL}/study-requests/create", {
             user_id: this.form.user_id,
             category: this.form.category,
             duration: this.form.duration,
@@ -79,7 +79,7 @@
       },
       async fetchRequests() {
         try {
-          const response = await axios.get("http://127.0.0.1:8000/study-requests/list");
+          const response = await axios.get("${import.meta.env.VITE_APP_API_URL}/study-requests/list");
           this.requests = response.data.requests || [];
         } catch (error) {
           console.error(error);
@@ -88,7 +88,7 @@
       async deleteRequest(requestId) {
         if (!confirm("Bu isteği silmek istediğinize emin misiniz?")) return;
         try {
-          const response = await axios.delete(`http://127.0.0.1:8000/study-requests/delete/${requestId}`);
+          const response = await axios.delete(`${import.meta.env.VITE_APP_API_URL}/study-requests/delete/${requestId}`);
           alert(response.data.message);
           await this.fetchRequests();
         } catch (error) {

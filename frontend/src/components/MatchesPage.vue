@@ -47,7 +47,7 @@
     methods: {
       async createMatch() {
         try {
-          const response = await axios.post("http://127.0.0.1:8000/matches/create", {
+          const response = await axios.post("${import.meta.env.VITE_APP_API_URL}/matches/create", {
             user1_id: this.matchForm.user1_id,
             user2_id: this.matchForm.user2_id,
             request_id: this.matchForm.request_id,
@@ -61,7 +61,7 @@
       },
       async fetchMatches() {
         try {
-          const response = await axios.get("http://127.0.0.1:8000/matches/list");
+          const response = await axios.get("${import.meta.env.VITE_APP_API_URL}/matches/list");
           this.matches = response.data.matches || [];
         } catch (error) {
           console.error(error);
@@ -70,7 +70,7 @@
       async deleteMatch(matchId) {
         if (!confirm("Bu eşleşmeyi silmek istediğinize emin misiniz?")) return;
         try {
-          const response = await axios.delete(`http://127.0.0.1:8000/matches/delete/${matchId}`);
+          const response = await axios.delete(`${import.meta.env.VITE_APP_API_URL}/matches/delete/${matchId}`);
           alert(response.data.message);
           await this.fetchMatches();
         } catch (error) {

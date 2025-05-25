@@ -53,14 +53,14 @@ async def log_device_info(request: Request, call_next):
     response = await call_next(request)
     return response
 
-app.include_router(users_router, prefix="/users", tags=["Users"])
-app.include_router(profiles_router, prefix="/profiles", tags=["Profiles"])
-app.include_router(study_requests_router, prefix="/study_requests", tags=["Study Requests"])
-app.include_router(matches_router, prefix="/matches", tags=["Matches"])
-app.include_router(user_interests_router, prefix="/user_interests", tags=["User Interests"])
+app.include_router(users_router, prefix="/api/users", tags=["Users"])
+app.include_router(profiles_router, prefix="/api/profiles", tags=["Profiles"])
+app.include_router(study_requests_router, prefix="/api/study_requests", tags=["Study Requests"])
+app.include_router(matches_router, prefix="/api/matches", tags=["Matches"])
+app.include_router(user_interests_router, prefix="/api/user_interests", tags=["User Interests"])
 app.include_router(chat_router, tags=["Chat"])
-app.include_router(friend_requests_router, prefix="/friend_requests", tags=["Friend Requests"])
-app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(friend_requests_router, prefix="/api/friend_requests", tags=["Friend Requests"])
+app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 
 static_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin_panel", "static")
 app.mount("/admin/static", StaticFiles(directory=static_directory), name="admin_static")

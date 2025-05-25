@@ -78,7 +78,7 @@ io.on("connection", (socket) => {
     }
 
     // Mesajı FastAPI'ye kaydet
-    fetch("http://127.0.0.1:8000/messages/send", {
+    fetch("${import.meta.env.VITE_APP_API_URL}/messages/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id, sender_id, content })
