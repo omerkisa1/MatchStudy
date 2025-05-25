@@ -38,21 +38,6 @@
           <div v-if="!isEditingProfile">
             <p class="profile-bio">{{ profile.bio || 'Henüz biyografi eklenmemiş.' }}</p>
             
-            <div class="profile-stats">
-              <div class="stat-item">
-                <span class="stat-value">{{ profile.completedStudies }}</span>
-                <span class="stat-label">Completed Studies</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-value">{{ profile.rating }}</span>
-                <span class="stat-label">Average Rating</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-value">{{ profile.activeGroups }}</span>
-                <span class="stat-label">Active Groups</span>
-              </div>
-            </div>
-
             <div class="interests-section">
               <h3>Interests</h3>
               <div class="interests-container">
@@ -550,38 +535,6 @@ export default {
 .edit-profile-btn svg {
   width: 16px;
   height: 16px;
-}
-
-.profile-stats {
-  display: flex;
-  margin-bottom: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem 0;
-  gap: 1rem;
-}
-
-.stat-item {
-  flex: 1;
-  text-align: center;
-  padding: 1rem;
-  background: rgba(45, 35, 75, 0.3);
-  border-radius: 8px;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-  color: var(--text-primary);
-}
-
-.stat-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
 }
 
 .interests-section {
