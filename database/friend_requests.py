@@ -1,10 +1,6 @@
 from database.config import DB_CONFIG
 import mysql.connector
 
-
-from database.config import DB_CONFIG
-import mysql.connector
-
 def send_friend_request(sender_id, receiver_id):
     connection = mysql.connector.connect(**DB_CONFIG)
     if not connection:
@@ -129,7 +125,7 @@ def get_friend_list_by_id(user_id):
             )
         WHERE fr.status = 'accepted'
         ORDER BY fr.created_at DESC;
-        """
+        """
 
         cursor.execute(query, (user_id, user_id))
         results = cursor.fetchall()
@@ -141,4 +137,3 @@ def get_friend_list_by_id(user_id):
     finally:
         cursor.close()
         connection.close()
-print(get_friend_list_by_id(1))

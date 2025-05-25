@@ -75,9 +75,6 @@ def get_bio_by_user_id(user_id):
         if connection.is_connected():
             connection.close()
 
-print(get_bio_by_user_id(1))
-
-
 def update_bio(user_id, new_bio):
     """Update an existing biography"""
     if not isinstance(user_id, int):
@@ -119,9 +116,6 @@ def update_bio(user_id, new_bio):
             cursor.close()
         if connection.is_connected():
             connection.close()
-print(update_bio(1, "Selam"))
-
-
 
 def update_profile(user_id, name, surname, age, education_level, institution):
     """Update an existing profile"""

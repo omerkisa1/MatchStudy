@@ -170,5 +170,3 @@ def get_old_matches_for_responder(user_id):
     cursor.close()
     conn.close()
     return result
-
-print(get_matches_for_responder(1))

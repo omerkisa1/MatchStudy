@@ -160,5 +160,3 @@ def get_past_study_requests_by_user(user_id):
     finally:
         cursor.close()
         connection.close()
-
-list_user_requests(1)

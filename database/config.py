@@ -1,6 +1,8 @@
+import os
+
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password":"Klmn5512300.",
-    "database": "match_study",
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", "Klmn5512300."),
+    "database": os.environ.get("DB_NAME", "match_study"),
 }
