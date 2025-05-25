@@ -397,21 +397,22 @@ export default {
     };
 
     // Fetch study requests
-    const fetchStudyRequests = async () => {
-      isLoadingRequests.value = true;
-      try {
-        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/all');
-        if (!response.ok) {
-          throw new Error('Çalışma istekleri getirilemedi');
-        }
-        const data = await response.json();
-        studyRequests.value = data.requests;
-      } catch (error) {
-        console.error('Error fetching study requests:', error);
-      } finally {
-        isLoadingRequests.value = false;
-      }
-    };
+const fetchStudyRequests = async () => {
+  isLoadingRequests.value = true;
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/all`);
+    if (!response.ok) {
+      throw new Error('Çalışma istekleri getirilemedi');
+    }
+    const data = await response.json();
+    studyRequests.value = data.requests;
+  } catch (error) {
+    console.error('Error fetching study requests:', error);
+  } finally {
+    isLoadingRequests.value = false;
+  }
+};
+
 
     // Watch for content changes to load appropriate data
     watch(() => currentContent.value, (newContent) => {
