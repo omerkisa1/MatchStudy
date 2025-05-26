@@ -1,13 +1,5 @@
--- init.sql
-CREATE DATABASE IF NOT EXISTS match_study;
 
-CREATE USER IF NOT EXISTS 'match_study_user'@'%' IDENTIFIED BY 'Klmn5512300.';
-
-GRANT ALL PRIVILEGES ON match_study.* TO 'match_study_user'@'%';
-
-FLUSH PRIVILEGES;
-
-USE match_study;
+USE railway;
 
 -- 2. USERS TABLOSU
 CREATE TABLE users (

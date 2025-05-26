@@ -5,11 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend directory
 COPY backend/ /app/
-
-# Copy database directory to the same level as in the original project
-COPY database/ /app/database/
 
 ENV PYTHONPATH=/app
 
