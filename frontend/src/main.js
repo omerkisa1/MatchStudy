@@ -2,6 +2,10 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router"; 
+import axios from 'axios';
+
+// Global axios configuration
+axios.defaults.baseURL = 'https://matchstudy-production.up.railway.app';
 
 const app = createApp(App);
 const pinia = createPinia();

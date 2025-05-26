@@ -89,7 +89,7 @@
         if (!confirm("Bu isteği silmek istediğinize emin misiniz?")) return;
         
         try {
-          const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/delete/${requestId}`, {
+          const response = await fetch(`https://matchstudy-production.up.railway.app/study_requests/delete/${requestId}`, {
             method: 'DELETE'
           });
           
