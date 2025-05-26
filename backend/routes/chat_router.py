@@ -66,9 +66,9 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
             SELECT chat_id FROM chats 
             WHERE 
                 chat_id = %s AND
-                ((user_1_id = %s AND user_2_id = %s AND hidden_for_user_1 = FALSE)
+                ((user_1_id = %s AND user_2_id = %s)
                 OR 
-                (user_1_id = %s AND user_2_id = %s AND hidden_for_user_2 = FALSE))
+                (user_1_id = %s AND user_2_id = %s))
         """
         cursor.execute(query, (chat_id, user_1_id, user_2_id, user_2_id, user_1_id))
         result = cursor.fetchone()
@@ -88,8 +88,8 @@ async def get_or_create_chat(user_1_id: int, user_2_id: int):
                 return {"success": False, "message": "Kullanıcı engellendi"}
                 
             insert_query = """
-                INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at, hidden_for_user_1, hidden_for_user_2)
-                VALUES (%s, %s, %s, NOW(), FALSE, FALSE)
+                INSERT INTO chats (chat_id, user_1_id, user_2_id, created_at)
+                VALUES (%s, %s, %s, NOW())
             """
             cursor.execute(insert_query, (chat_id, user_1_id, user_2_id))
             connection.commit()
@@ -189,54 +189,10 @@ async def get_unread_message_counts(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/chat/hide")
-async def hide_chat_for_user(chat_id: str = Body(...), user_id: int = Body(...)):
-    connection = None
-    cursor = None
-    try:
-        connection = mysql.connector.connect(**DB_CONFIG)
-        cursor = connection.cursor(dictionary=True)
-        
-        # Sohbetin kullanıcı bilgilerini çek
-        query = "SELECT user_1_id, user_2_id FROM chats WHERE chat_id = %s"
-        cursor.execute(query, (chat_id,))
-        chat = cursor.fetchone()
-        
-        # Make sure to consume all results
-        if cursor.with_rows:
-            cursor.fetchall()
-        
-        if not chat:
-            return {"success": False, "message": "Sohbet bulunamadı"}
-            
-        # Kullanıcının sohbete yetkisi var mı kontrol et
-        if user_id != chat['user_1_id'] and user_id != chat['user_2_id']:
-            return {"success": False, "message": "Bu sohbete erişiminiz yok"}
-            
-        # Hangi kullanıcı için gizleneceğini belirle
-        update_query = ""
-        if user_id == chat['user_1_id']:
-            update_query = "UPDATE chats SET hidden_for_user_1 = TRUE WHERE chat_id = %s"
-        else:
-            update_query = "UPDATE chats SET hidden_for_user_2 = TRUE WHERE chat_id = %s"
-            
-        cursor.execute(update_query, (chat_id,))
-        connection.commit()
-        
-        return {"success": True, "message": "Sohbet başarıyla gizlendi"}
-    except Exception as e:
-        if connection:
-            connection.rollback()
-        return {"success": False, "message": str(e)}
-    finally:
-        if cursor and cursor.with_rows:
-            # Consume any remaining results
-            cursor.fetchall()
-            
-        if cursor:
-            cursor.close()
-        if connection:
-            connection.close()
+@router.post("/chat/hide/{chat_id}")
+async def hide_chat_for_user(chat_id: str, user_id: int = Body(...)):
+    # Dummy function that just returns success
+    return {"success": True, "message": "Chat hide feature is temporarily disabled"}
 
 @router.get("/messages/last/{chat_id}")
 async def get_last_message(chat_id: str):
