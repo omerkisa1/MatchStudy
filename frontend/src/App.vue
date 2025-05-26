@@ -1,5 +1,6 @@
 <template>
   <div>
+    <ApiStatus />
     <header>
     </header>
 
@@ -11,11 +12,13 @@
 
 <script>
 import LoginPage from "./components/LoginPage.vue";
+import ApiStatus from "./components/ApiStatus.vue";
 
 export default {
   name: "App",
   components: {
     LoginPage,
+    ApiStatus,
   },
 };
 </script>

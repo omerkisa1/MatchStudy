@@ -7,6 +7,9 @@ const BACKEND_URL = 'https://matchstudy-production.up.railway.app';
 // Socket URL
 const SOCKET_URL = 'https://socket-production-8bf7.up.railway.app';
 
+// API URL prefix - add /api/ prefix for Railway deployment
+const API_PREFIX = '/api';
+
 /**
  * Generic API call function with improved error handling
  * @param {string} endpoint - API endpoint (without leading slash)
@@ -15,15 +18,23 @@ const SOCKET_URL = 'https://socket-production-8bf7.up.railway.app';
  */
 export async function apiCall(endpoint, options = {}) {
   try {
-    const url = `${BACKEND_URL}/${endpoint}`;
+    // Determine if we should use the API_PREFIX
+    // If the endpoint already has an absolute URL, use it as is
+    const url = endpoint.startsWith('http') 
+      ? endpoint 
+      : `${BACKEND_URL}${API_PREFIX}/${endpoint}`;
+    
+    console.log(`API Request to: ${url}`);
     
     // 5 second timeout for fetch requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increase to 10 seconds
     
     const fetchOptions = {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
+      // Add credentials to handle cookies if needed
+      credentials: 'include'
     };
     
     const response = await fetch(url, fetchOptions);
@@ -32,8 +43,10 @@ export async function apiCall(endpoint, options = {}) {
     if (!response.ok) {
       // Handle specific error status codes
       if (response.status === 502) {
+        console.error(`502 Bad Gateway error for ${url}`);
         throw new Error(`Sunucu bağlantı hatası (502 Bad Gateway)`);
       } else {
+        console.error(`API error: ${response.status} for ${url}`);
         throw new Error(`API error: ${response.status}`);
       }
     }
@@ -63,6 +76,16 @@ export async function apiCall(endpoint, options = {}) {
 }
 
 /**
+ * Safely get a value with a default if it's undefined
+ * @param {any} value - The value to check
+ * @param {any} defaultValue - Default value to return if value is undefined
+ * @returns {any} - The value or default value
+ */
+export function safeValue(value, defaultValue = []) {
+  return value !== undefined ? value : defaultValue;
+}
+
+/**
  * User related API calls
  */
 export const userApi = {
@@ -88,12 +111,23 @@ export const studyRequestsApi = {
     apiCall(`study_requests/user/${userId}`).catch(error => {
       console.error("Error fetching user study requests:", error);
       throw new Error("İstekler getirilemedi");
+    }).then(response => {
+      // Ensure we always return an object with requests array
+      return {
+        ...response,
+        requests: safeValue(response?.requests, [])
+      };
     }),
   
   getAllRequests: () => 
     apiCall('study_requests/all').catch(error => {
       console.error("Error fetching all study requests:", error);
       throw new Error("Tüm istekler getirilemedi");
+    }).then(response => {
+      return {
+        ...response,
+        requests: safeValue(response?.requests, [])
+      };
     }),
   
   createRequest: (requestData) => 
@@ -114,19 +148,42 @@ export const studyRequestsApi = {
  */
 export const matchesApi = {
   getUserMatches: (userId) => 
-    apiCall(`matches/user/${userId}`),
+    apiCall(`matches/user/${userId}`).then(response => {
+      return {
+        ...response,
+        matches: safeValue(response?.matches, [])
+      };
+    }).catch(error => {
+      console.error("Error fetching matches:", error);
+      throw new Error("Eşleşmeler getirilemedi");
+    }),
   
   getAllMatches: () => 
-    apiCall('matches/all'),
+    apiCall('matches/all').then(response => {
+      return {
+        ...response,
+        matches: safeValue(response?.matches, [])
+      };
+    }),
   
   getNotifications: (userId) => 
-    apiCall(`matches/notifications/${userId}`).catch(error => {
+    apiCall(`matches/notifications/${userId}`).then(response => {
+      return {
+        ...response,
+        notifications: safeValue(response?.notifications, [])
+      };
+    }).catch(error => {
       console.error("Error fetching notifications:", error);
       throw new Error("Bildirimler getirilemedi");
     }),
     
   getHistory: (userId) => 
-    apiCall(`matches/history/${userId}`),
+    apiCall(`matches/history/${userId}`).then(response => {
+      return {
+        ...response,
+        history: safeValue(response?.history, [])
+      };
+    }),
   
   createMatch: (matchData) => 
     apiCall('matches/create', {
@@ -151,7 +208,12 @@ export const matchesApi = {
  */
 export const friendRequestsApi = {
   getFriendRequests: (userId) => 
-    apiCall(`friend_requests/get_friend_requests?user_id=${userId}`),
+    apiCall(`friend_requests/get_friend_requests?user_id=${userId}`).then(response => {
+      return {
+        ...response,
+        requests: safeValue(response?.requests, [])
+      };
+    }),
   
   sendFriendRequest: (senderId, receiverId) => 
     apiCall(`friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
@@ -172,13 +234,23 @@ export const chatApi = {
     apiCall(`chat/${userId1}/${userId2}`),
   
   getMessages: (chatId) => 
-    apiCall(`messages/${chatId}`),
+    apiCall(`messages/${chatId}`).then(response => {
+      return {
+        ...response,
+        messages: safeValue(response?.messages, [])
+      };
+    }),
   
   getLastMessage: (chatId) => 
     apiCall(`messages/last/${chatId}`),
     
   getUnreadMessages: (userId) => 
-    apiCall(`messages/unread/${userId}`),
+    apiCall(`messages/unread/${userId}`).then(response => {
+      return {
+        ...response,
+        unread_counts: response?.unread_counts || {}
+      };
+    }),
   
   markRead: (chatId) => 
     apiCall(`messages/mark_read_by_chat`, {
