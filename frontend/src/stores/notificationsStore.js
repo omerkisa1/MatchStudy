@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { useUserStore } from './userStore'
 
+// Backend URL (hardcoded for consistent API calls)
+const BACKEND_URL = 'https://matchstudy-production.up.railway.app';
+
 /**
  * Safe array accessor to prevent "Cannot read properties of undefined (reading 'length')" errors
  * @param {Array|undefined|null} arr - The array to check
@@ -38,7 +41,7 @@ export const useNotificationsStore = defineStore('notifications', {
       this.error = null
       
       try {
-        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`)
+        const response = await fetch(`${BACKEND_URL}/matches/notifications/${userStore.id}`)
         if (!response.ok) throw new Error('Bildirimler getirilemedi')
         
         const data = await response.json()
@@ -61,7 +64,7 @@ export const useNotificationsStore = defineStore('notifications', {
       this.error = null
       
       try {
-        const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
+        const res = await fetch(`${BACKEND_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
         if (!res.ok) throw new Error("Arkadaşlık istekleri alınamadı")
         const data = await res.json()
         this.friendRequests = Array.isArray(data.requests) ? data.requests : []
@@ -83,7 +86,7 @@ export const useNotificationsStore = defineStore('notifications', {
       
       try {
         // In a real app, this would send a request to the API
-        // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/notifications/${notificationId}/read`, {
+        // const response = await fetch(`${BACKEND_URL}/notifications/${notificationId}/read`, {
         //   method: 'PUT'
         // })
         
@@ -107,7 +110,7 @@ export const useNotificationsStore = defineStore('notifications', {
       try {
         // In a real app, this would send a request to the API
         // const userStore = useUserStore()
-        // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/${userStore.id}/notifications/read-all`, {
+        // const response = await fetch(`${BACKEND_URL}/users/${userStore.id}/notifications/read-all`, {
         //   method: 'PUT'
         // })
         
