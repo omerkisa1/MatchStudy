@@ -2,13 +2,13 @@
  * API Service - Direct backend communication
  */
 
-// Backend base URL
+// Backend base URL - remove API prefix and use direct endpoint that we know works
 const BACKEND_URL = 'https://matchstudy-production.up.railway.app';
 // Socket URL
 const SOCKET_URL = 'https://socket-production-8bf7.up.railway.app';
 
-// API URL prefix - add /api/ prefix for Railway deployment
-const API_PREFIX = '/api';
+// API URL prefix - EMPTY PREFIX FOR DEMO - Our API doesn't have this prefix in deployment
+const API_PREFIX = '';
 
 // Global API state
 export const apiState = {
@@ -352,38 +352,23 @@ export function getSocketUrl() {
 }
 
 /**
- * Helper function to detect if the API is available
- * @returns {Promise<boolean>} True if API is available, false otherwise
+ * Check if API is available
+ * @returns {Promise<boolean>}
  */
 export async function isApiAvailable() {
   try {
-    // Try hitting a simple endpoint first
-    const response = await fetch(`${BACKEND_URL}/health`, { 
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-cache',
-      timeout: 3000
-    });
+    // Use a known working endpoint for health check
+    const response = await fetch(`${BACKEND_URL}/users/list`);
     
-    // If health endpoint fails, try with the API prefix
-    if (!response.ok) {
-      const apiResponse = await fetch(`${BACKEND_URL}${API_PREFIX}/health`, { 
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-cache',
-        timeout: 3000
-      });
-      
-      apiState.isAvailable = apiResponse.ok;
-      apiState.lastCheck = Date.now();
-      return apiResponse.ok;
-    }
-    
-    apiState.isAvailable = true;
+    apiState.isAvailable = response.ok;
+    apiState.lastError = response.ok ? null : `API error: ${response.status}`;
     apiState.lastCheck = Date.now();
-    return true;
+    
+    console.log(`API availability check: ${apiState.isAvailable ? 'ONLINE' : 'OFFLINE'}`);
+    
+    return apiState.isAvailable;
   } catch (error) {
-    console.error('API health check failed:', error);
+    console.error('API health check error:', error);
     apiState.isAvailable = false;
     apiState.lastError = error.message;
     apiState.lastCheck = Date.now();

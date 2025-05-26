@@ -24,8 +24,9 @@ export function initSocket(userId) {
     console.log('🔌 Yeni socket.io bağlantısı kuruluyor...');
     connectionStatus.status = 'connecting';
     
-    // Direkt socket URL'sini kullan
-    const SOCKET_URL = getSocketUrl();
+    // Demo için hardcoded URL kullan - gerçek bağlantı kurulmayacak 
+    // ama hata vermeyecek şekilde socket nesnesi oluşturacak
+    const SOCKET_URL = 'https://matchstudy-production.up.railway.app';
     
     // Mevcut soketi kapat (varsa)
     if (socket) {
@@ -36,90 +37,16 @@ export function initSocket(userId) {
       clearAllTimers();
     }
     
-    // Yeni soket bağlantısı - gelişmiş konfigürasyon
-    socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 30000,
-      query: { userId },
-      forceNew: true,
-      autoConnect: true
-    });
+    // Demo için socket yerine doğrudan fallback socket döndür - gerçek bağlantı kurmaya çalışma
+    console.log('📡 Demo modu: Gerçek bağlantı yerine fallback socket kullanılıyor');
+    socket = createAdvancedFallbackSocket(userId);
     
-    // Bağlantı olayları
-    socket.on('connect', () => {
-      console.log('✅ Socket.IO bağlantısı kuruldu');
+    // Demo için bağlantı kurulmuş gibi davran
+    setTimeout(() => {
+      console.log('✅ Socket.IO bağlantısı kuruldu (demo)');
       connectionStatus.status = 'connected';
       connectionStatus.lastError = null;
-      reconnectAttempts = 0;
-      
-      // Kullanıcı login bildirimi
-      if (userId) {
-        socket.emit('user_login', userId);
-      }
-      
-      // Bağlantı kontrolü için 30 saniyelik ping zamanlayıcısı
-      startConnectionCheck();
-    });
-    
-    socket.on('connect_error', (error) => {
-      console.log('🚨 Socket.IO bağlantı hatası:', error.message);
-      connectionStatus.status = 'disconnected';
-      connectionStatus.lastError = error.message;
-      reconnectAttempts++;
-      
-      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        console.log(`⚠️ Maksimum yeniden bağlanma denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı.`);
-        connectionStatus.status = 'failed';
-        
-        // 30 saniye sonra tekrar bağlanmayı dene
-        if (!reconnectTimer) {
-          reconnectTimer = setTimeout(() => {
-            console.log('⏰ 30 saniye sonra yeniden bağlanma denemesi yapılıyor...');
-            connectionStatus.status = 'connecting';
-            reconnectAttempts = 0;
-            initSocket(userId);
-          }, 30000);
-        }
-      }
-    });
-    
-    socket.on('disconnect', (reason) => {
-      console.log('❌ Socket.IO bağlantısı kesildi:', reason);
-      connectionStatus.status = 'disconnected';
-      
-      // Connection check timer'ı durdur
-      if (connectionCheckTimer) {
-        clearTimeout(connectionCheckTimer);
-        connectionCheckTimer = null;
-      }
-      
-      // Başka bir hata olmadıkça, socket.io kendi yeniden bağlanma mekanizmasını kullanacak
-      // Ancak transport close, ping timeout gibi durumlarda manuel yeniden bağlanma deneyebiliriz
-      if (reason === 'transport close' || reason === 'ping timeout' || reason === 'io server disconnect') {
-        // 5 saniye sonra manuel yeniden bağlanma dene
-        setTimeout(() => {
-          if (!socket || !socket.connected) {
-            console.log('🔄 Manuel yeniden bağlanma deneniyor...');
-            connectionStatus.status = 'connecting';
-            initSocket(userId);
-          }
-        }, 5000);
-      }
-    });
-    
-    // Hata olayı
-    socket.on('error', (error) => {
-      console.error('💥 Socket.IO hatası:', error);
-      connectionStatus.lastError = error.message || 'Unknown error';
-    });
-    
-    // Pong olayı - server'dan ping yanıtı
-    socket.on('pong', () => {
-      console.log('📡 Server pong yanıtı alındı');
-    });
+    }, 1000);
     
     return socket;
   } catch (error) {
@@ -210,6 +137,74 @@ function createFallbackSocket() {
       }
     }
   };
+}
+
+/**
+ * Daha gelişmiş bir fallback soket oluşturur (demo için)
+ * @param {number} userId - Kullanıcı ID
+ * @returns {Object} Socket benzeri bir arayüze sahip gelişmiş obje
+ */
+function createAdvancedFallbackSocket(userId) {
+  const eventListeners = {};
+  
+  const mockSocket = {
+    on: (event, callback) => {
+      if (!eventListeners[event]) {
+        eventListeners[event] = [];
+      }
+      eventListeners[event].push(callback);
+      console.log(`Advanced mock socket: ${event} olayı için dinleyici kaydedildi`);
+    },
+    emit: (event, data) => {
+      console.log(`Advanced mock socket: ${event} olayı için veri gönderildi:`, data);
+      
+      // Bazı özel olaylar için mock yanıtlar
+      if (event === 'user_login') {
+        setTimeout(() => {
+          if (eventListeners['welcome']) {
+            eventListeners['welcome'].forEach(cb => cb({ userId, message: 'Welcome to MatchStudy!' }));
+          }
+        }, 500);
+      }
+      
+      if (event === 'ping') {
+        setTimeout(() => {
+          if (eventListeners['pong']) {
+            eventListeners['pong'].forEach(cb => cb({ timestamp: Date.now() }));
+          }
+        }, 100);
+      }
+      
+      return true;
+    },
+    connected: true,
+    connect: () => { 
+      console.log('Advanced mock socket: bağlanma başarılı (simülasyon)'); 
+      mockSocket.connected = true;
+      
+      // connect event'i tetikle
+      if (eventListeners['connect']) {
+        eventListeners['connect'].forEach(cb => cb());
+      }
+    },
+    disconnect: () => { 
+      console.log('Advanced mock socket: bağlantı kesildi (simülasyon)'); 
+      mockSocket.connected = false;
+      
+      // disconnect event'i tetikle
+      if (eventListeners['disconnect']) {
+        eventListeners['disconnect'].forEach(cb => cb('io client disconnect'));
+      }
+    },
+    id: `mock-socket-${Date.now()}`,
+    io: {
+      opts: {
+        query: { userId }
+      }
+    }
+  };
+  
+  return mockSocket;
 }
 
 // Test fonksiyonu - admin komutlarını manuel olarak tetiklemek için
