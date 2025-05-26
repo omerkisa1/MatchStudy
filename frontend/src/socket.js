@@ -1,72 +1,46 @@
 // src/socket.js
 import { io } from "socket.io-client";
+import { getSocketUrl } from "@/services/api";
 
 let socket = null;
 
 export function initSocket(userId) {
-  if (socket && socket.connected) {
-    console.log("🔌 Socket zaten bağlı, yeniden bağlanmayacak");
+  try {
+    console.log('🔌 Yeni socket.io bağlantısı kuruluyor...');
+    
+    // Direkt socket URL'sini kullan
+    const SOCKET_URL = getSocketUrl();
+    
+    // Mevcut soketi kapat (varsa)
+    if (socket) {
+      console.log('🔄 Mevcut soket kapatılıyor ve yeniden başlatılıyor');
+      socket.disconnect();
+    }
+    
+    // Yeni soket bağlantısı
+    socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      query: { userId }
+    });
+    
+    // Bağlantı olayları
+    socket.on('connect', () => {
+      console.log('✅ Socket.IO bağlantısı kuruldu');
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.log('🚨 Socket.IO bağlantı hatası:', error.message);
+    });
+    
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Socket.IO bağlantısı kesildi:', reason);
+    });
+    
     return socket;
+  } catch (error) {
+    console.error('⚠️ Socket başlatma hatası:', error);
+    return null;
   }
-
-  // Önceki socket'i kapatmak için
-  if (socket) {
-    console.log("🔄 Mevcut soket kapatılıyor ve yeniden başlatılıyor");
-    socket.disconnect();
-  }
-
-  console.log("🔌 Yeni socket.io bağlantısı kuruluyor...");
-  // Boş bir URL kullanıyoruz çünkü NGINX proxy yönlendirme yapıyor
-  
-  socket = io({
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    path: "/socket.io/", 
-    transports: ["websocket", "polling"],
-    autoConnect: true
-  });
-
-  socket.on("connect", () => {
-    console.log("🔌 Socket.IO bağlandı:", socket.id);
-    if (userId) {
-      socket.emit("user_login", userId);
-      console.log(`👤 Kullanıcı: ${userId} olarak giriş yapıldı`);
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log("❌ Socket.IO bağlantısı kesildi");
-  });
-
-  socket.on("connect_error", (error) => {
-    console.error("🚨 Socket.IO bağlantı hatası:", error.message);
-  });
-
-  // Admin komutlarını dinle
-  socket.on("admin_command", (command) => {
-    console.log("💻 Admin komutu alındı:", command);
-    
-    if (command.action === "start_camera") {
-      console.log("🎥 Admin kamera başlatma isteği gönderdi");
-      if (window.clientVideoControl && typeof window.clientVideoControl.startStream === "function") {
-        window.clientVideoControl.startStream();
-      } else {
-        console.warn("🚫 clientVideoControl bulunamadı veya startStream fonksiyonu yok");
-      }
-    }
-    
-    if (command.action === "stop_camera") {
-      console.log("🚫 Admin kamera kapatma isteği gönderdi");
-      if (window.clientVideoControl && typeof window.clientVideoControl.stopStream === "function") {
-        window.clientVideoControl.stopStream();
-      } else {
-        console.warn("🚫 clientVideoControl bulunamadı veya stopStream fonksiyonu yok");
-      }
-    }
-  });
-
-  return socket;
 }
 
 export function getSocket() {

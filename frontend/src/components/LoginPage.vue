@@ -153,6 +153,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { useUserStore } from "@/stores/userStore";
 import { useRouter } from "vue-router";
 import { initSocket } from "@/socket";
+import { userApi } from "@/services/api";
 
 export default {
   name: "EnhancedLoginPage",
@@ -228,30 +229,10 @@ export default {
           url: `https://matchstudy-production.up.railway.app/users/get_id`
         });
         
-        // URLSearchParams kullanarak parametreleri daha güvenli bir şekilde ekle
-        const params = new URLSearchParams();
-        params.append('email', email.value);
-        params.append('password', password.value);
-        
-        // API URL'sini doğrudan backend URL'si olarak değiştir (api prefix'i olmadan)
-        const url = `https://matchstudy-production.up.railway.app/users/get_id?${params.toString()}`;
-        console.log("Request URL:", url);
-        
-        const response = await fetch(url);
-        
-        // Yanıt tipini kontrol et
-        const contentType = response.headers.get("content-type");
-        let data;
-        
-        if (contentType && contentType.includes("application/json")) {
-          data = await response.json();
-        } else {
-          const text = await response.text();
-          console.error("Non-JSON response:", text);
-          throw new Error("API geçersiz yanıt döndürdü");
-        }
+        // API servisini kullan
+        const data = await userApi.login(email.value, password.value);
 
-        if (response.ok && data.user_id) {
+        if (data.user_id) {
           // Kullanıcı bilgilerini store'a yaz
           userStore.setUser({
             id: data.user_id,
