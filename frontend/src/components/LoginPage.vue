@@ -221,10 +221,34 @@ export default {
       isLoading.value = true;
 
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_APP_API_URL}/users/get_id?email=${encodeURIComponent(email.value)}&password=${encodeURIComponent(password.value)}`
-        );
-        const data = await response.json();
+        // Parametreleri debug için konsola yazdır
+        console.log("Login attempt with:", { 
+          email: email.value,
+          password: password.value,
+          url: `${import.meta.env.VITE_APP_API_URL}/users/get_id`
+        });
+        
+        // URLSearchParams kullanarak parametreleri daha güvenli bir şekilde ekle
+        const params = new URLSearchParams();
+        params.append('email', email.value);
+        params.append('password', password.value);
+        
+        const url = `${import.meta.env.VITE_APP_API_URL}/users/get_id?${params.toString()}`;
+        console.log("Request URL:", url);
+        
+        const response = await fetch(url);
+        
+        // Yanıt tipini kontrol et
+        const contentType = response.headers.get("content-type");
+        let data;
+        
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON response:", text);
+          throw new Error("API geçersiz yanıt döndürdü");
+        }
 
         if (response.ok && data.user_id) {
           // Kullanıcı bilgilerini store'a yaz

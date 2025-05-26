@@ -90,12 +90,22 @@ async def delete_user_by_id_enpoint(user_id: int):
 @router.get("/get_id")
 async def get_user_id_endpoint(email: str, password: str):
     try:
+        # Debug için gelen parametreleri loglayalım
+        print(f"Login attempt with email: {email}, password: {password}")
+        
         user_id = get_user_id(email, password)
         if user_id is None:
+            print(f"User not found for email: {email}")
             return {"message": "User not found", "status": 404}
+            
+        print(f"User found with ID: {user_id}")
         return {"message": "User found", "user_id": user_id, "status": 200}
     except ValueError as ve:
+        print(f"Validation error: {str(ve)}")
         raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.put("/update/{user_id}")
 async def update_user_endpoint(user_id: int, user: UpdateUser):
