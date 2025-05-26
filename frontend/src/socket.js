@@ -151,6 +151,20 @@ function createFallbackSocket() {
 function createAdvancedFallbackSocket(userId) {
   const eventListeners = {};
   
+  // Global mock message storage (window scope to persist between user switches)
+  // Make sure we're in a browser environment
+  if (typeof window !== 'undefined') {
+    if (!window.mockMessageStorage) {
+      window.mockMessageStorage = [];
+    }
+  } else {
+    // Fallback for non-browser environments
+    globalThis.mockMessageStorage = globalThis.mockMessageStorage || [];
+  }
+  
+  // Use the correct storage based on environment
+  const messageStorage = typeof window !== 'undefined' ? window.mockMessageStorage : globalThis.mockMessageStorage;
+  
   const mockSocket = {
     on: (event, callback) => {
       if (!eventListeners[event]) {
@@ -158,9 +172,74 @@ function createAdvancedFallbackSocket(userId) {
       }
       eventListeners[event].push(callback);
       console.log(`Advanced mock socket: ${event} olayı için dinleyici kaydedildi`);
+      
+      // If this is a new_message listener, immediately deliver any pending messages for this user
+      if (event === 'new_message' && messageStorage.length > 0) {
+        setTimeout(() => {
+          const userMessages = messageStorage.filter(msg => 
+            msg.receiver_id == userId || msg.sender_id == userId
+          );
+          
+          if (userMessages.length > 0) {
+            console.log(`Delivering ${userMessages.length} cached messages for user ${userId}`);
+            userMessages.forEach(msg => {
+              callback(msg);
+            });
+          }
+        }, 1000);
+      }
     },
     emit: (event, data) => {
       console.log(`Advanced mock socket: ${event} olayı için veri gönderildi:`, data);
+      
+      // Handle message sending
+      if (event === 'send_message') {
+        // Store the message in the mock storage
+        messageStorage.push(data);
+        
+        // Create a unique ID for the message (for demo purposes)
+        const messageId = Date.now() + Math.floor(Math.random() * 1000);
+        
+        // Add additional fields that would normally come from the server
+        const enhancedMessage = {
+          ...data,
+          message_id: messageId,
+          read: false,
+          delivered: true
+        };
+        
+        // Replace the basic message with the enhanced one
+        const msgIndex = messageStorage.findIndex(m => 
+          m.chat_id === data.chat_id && 
+          m.sender_id === data.sender_id && 
+          m.content === data.content && 
+          m.sent_at === data.sent_at
+        );
+        
+        if (msgIndex !== -1) {
+          messageStorage[msgIndex] = enhancedMessage;
+        }
+        
+        // Notify self about message sent (for UI updates)
+        setTimeout(() => {
+          if (eventListeners['message_sent']) {
+            eventListeners['message_sent'].forEach(cb => cb({
+              success: true,
+              message_id: messageId,
+              chat_id: data.chat_id,
+              timestamp: new Date().toISOString()
+            }));
+          }
+          
+          // Simulate message delivery to receiver (demo purposes)
+          setTimeout(() => {
+            // We're simulating both sides since we're in demo mode
+            if (eventListeners['new_message']) {
+              eventListeners['new_message'].forEach(cb => cb(enhancedMessage));
+            }
+          }, 500);
+        }, 200);
+      }
       
       // Bazı özel olaylar için mock yanıtlar
       if (event === 'user_login') {

@@ -197,11 +197,25 @@ const friendshipStatus = ref({});
 
 // Socket yönetimi - başlatma ve yeniden bağlanma
 function setupSocket() {
+  // Make sure currentUser is available
+  if (!currentUser.value) {
+    console.warn('Socket kurulumu için kullanıcı ID gerekli');
+    return;
+  }
+  
   socket = getSocket();
   
   if (!socket.connected) {
     // Socket bağlantısı yoksa, yeniden bağlanmayı dene
     socket = initSocket(currentUser.value);
+    
+    // Demo modunda bir kez login olayı göndermemiz gerekiyor
+    // (Gerçek socket ile login_confirmed olayı otomatik tetiklenir)
+    setTimeout(() => {
+      if (socket && socket.connected) {
+        socket.emit('user_login', currentUser.value);
+      }
+    }, 500);
   }
   
   // Yeni mesaj geldiğinde socket üzerinden ekle
@@ -379,7 +393,13 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    await chatApi.markRead(chatId, currentUser.value);
+    // API call to mark messages as read
+    try {
+      await chatApi.markRead(chatId, currentUser.value);
+    } catch (apiError) {
+      console.warn("API mesajları okundu işaretleyemedi (demo modunda normal):", apiError);
+      // Demo mode - continue even if API fails
+    }
     
     // Seçili eşleşmeye ait okunmamış mesajları sıfırla
     if (selectedMatchId.value) {
@@ -396,6 +416,7 @@ async function markMessagesAsRead(chatId) {
     }
   } catch (err) {
     console.error("Mesajlar okundu olarak işaretlenemedi:", err)
+    // Demo modunda devam et - hata gösterme
   }
 }
 
@@ -530,47 +551,82 @@ async function selectUserAndLoadMessages(user) {
   
   try {
     // Chat ID'yi backend'den al veya oluştur
-    const data = await chatApi.getChat(currentUser.value, user.userId);
+    let chatId = null;
     
-    if (data.success) {
-      // Varolan chat ID'yi kullan
-      selectedChatId.value = data.chat_id
-      await fetchMessages(data.chat_id)
+    try {
+      const data = await chatApi.getChat(currentUser.value, user.userId);
       
-      // Bu sohbetteki mesajları okundu olarak işaretle
-      await markMessagesAsRead(data.chat_id)
-    } else {
-      messages.value = []
-      console.error("Chat bilgisi alınamadı:", data.message)
+      if (data.success) {
+        // Varolan chat ID'yi kullan
+        chatId = data.chat_id;
+      }
+    } catch (apiError) {
+      console.warn("Chat bilgisi API'den alınamadı:", apiError);
     }
+    
+    // API çalışmadıysa demo modu için chat ID oluştur
+    if (!chatId) {
+      const smaller = Math.min(currentUser.value, user.userId);
+      const larger = Math.max(currentUser.value, user.userId);
+      chatId = `${smaller}_${larger}`;
+      console.log("Demo modu için chat ID oluşturuldu:", chatId);
+    }
+    
+    // Chat ID'yi kaydet ve mesajları getir
+    selectedChatId.value = chatId;
+    await fetchMessages(chatId);
+    
+    // Bu sohbetteki mesajları okundu olarak işaretle
+    await markMessagesAsRead(chatId);
   } catch (err) {
-    console.error("Chat bilgisi alınamadı:", err)
-    messages.value = []
+    console.error("Chat bilgisi alınamadı:", err);
+    messages.value = [];
   } finally {
-    isLoadingChat.value = false
+    isLoadingChat.value = false;
   }
 }
 
 // Mesajları backend'den al
 async function fetchMessages(chatId) {
   try {
-    const data = await chatApi.getMessages(chatId);
+    let messagesLoaded = false;
     
-    if (data.success) {
-      messages.value = data.messages || []
-      markMessagesAsRead(chatId)
+    try {
+      const data = await chatApi.getMessages(chatId);
       
-      // Son mesajları güncelle
-      if (messages.value.length > 0) {
-        const lastMsg = messages.value[messages.value.length - 1];
-        updateLastMessage(lastMsg);
+      if (data.success) {
+        messages.value = data.messages || [];
+        messagesLoaded = true;
       }
-    } else {
-      messages.value = []
+    } catch (apiError) {
+      console.warn("API üzerinden mesajlar alınamadı:", apiError);
+      // Demo modunda devam et
+    }
+    
+    // API başarısız olduysa veya mesaj yoksa ve demo modundaysak, 
+    // global mockMessageStorage'dan mesajları al
+    if (!messagesLoaded && typeof window !== 'undefined' && window.mockMessageStorage && window.mockMessageStorage.length > 0) {
+      console.log("Demo modunda mesajlar mockMessageStorage'dan alınıyor");
+      const chatMessages = window.mockMessageStorage.filter(msg => msg.chat_id === chatId);
+      
+      if (chatMessages.length > 0) {
+        messages.value = chatMessages;
+        messagesLoaded = true;
+      }
+    }
+    
+    // Her durumda mesajları okundu olarak işaretle
+    await markMessagesAsRead(chatId);
+    
+    // Son mesajları güncelle
+    if (messages.value.length > 0) {
+      const lastMsg = messages.value[messages.value.length - 1];
+      updateLastMessage(lastMsg);
     }
   } catch (err) {
-    console.error("Mesajlar yüklenemedi:", err)
-    messages.value = []
+    console.error("Mesajlar yüklenemedi:", err);
+    messages.value = [];
+    // Demo modunda hata gösterme
   }
 }
 
@@ -611,13 +667,20 @@ async function sendMessage() {
     // Socket bağlantımız varsa, socket üzerinden mesaj gönder
     if (socket && socket.connected) {
       socket.emit("send_message", msg);
-    } else {
-      // Socket bağlantısı yoksa, REST API üzerinden mesaj gönder
-      await chatApi.sendMessage(selectedChatId.value, msg);
-      
-      // Socket bağlantısını yeniden kurmayı dene
-      setupSocket();
     }
+    
+    // Her durumda REST API üzerinden de mesaj gönder
+    // (Socket demo modundayken veritabanına kaydedilmesi için)
+    try {
+      await chatApi.sendMessage(selectedChatId.value, msg);
+    } catch (apiError) {
+      console.warn("API üzerinden mesaj kaydedilemedi (demo modunda bu normal):", apiError);
+      // Demo modunda API hataları uygulama akışını bozmaz
+    }
+    
+    // Mesajı gönderen olarak kendimize ekleyelim
+    updateLastMessage(msg);
+    
   } catch (error) {
     console.error("Mesaj gönderilirken hata:", error);
     toast.value.error("Mesaj gönderilemedi. Lütfen daha sonra tekrar deneyin.");
