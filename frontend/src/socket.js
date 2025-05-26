@@ -122,6 +122,10 @@ function createFallbackSocket() {
       // Event listener'ı kaydet ama hiçbir şey yapma
       console.log(`Mock socket: ${event} olayı için dinleyici kaydedildi`);
     },
+    off: (event, callback) => {
+      // Event listener'ı kaldırmaya çalışıyor gibi davran
+      console.log(`Mock socket: ${event} olayı için dinleyici kaldırıldı`);
+    },
     emit: (event, data) => {
       // Emit işlemi olduğunu logla ama gerçekten veri gönderme
       console.log(`Mock socket: ${event} olayı için veri gönderilmeye çalışıldı:`, data);
@@ -177,12 +181,25 @@ function createAdvancedFallbackSocket(userId) {
       
       return true;
     },
+    off: (event, callback) => {
+      console.log(`Advanced mock socket: ${event} olayı için dinleyici kaldırıldı`);
+      
+      if (!eventListeners[event]) return;
+      
+      if (callback) {
+        const index = eventListeners[event].indexOf(callback);
+        if (index !== -1) {
+          eventListeners[event].splice(index, 1);
+        }
+      } else {
+        delete eventListeners[event];
+      }
+    },
     connected: true,
     connect: () => { 
       console.log('Advanced mock socket: bağlanma başarılı (simülasyon)'); 
       mockSocket.connected = true;
       
-      // connect event'i tetikle
       if (eventListeners['connect']) {
         eventListeners['connect'].forEach(cb => cb());
       }
@@ -191,7 +208,6 @@ function createAdvancedFallbackSocket(userId) {
       console.log('Advanced mock socket: bağlantı kesildi (simülasyon)'); 
       mockSocket.connected = false;
       
-      // disconnect event'i tetikle
       if (eventListeners['disconnect']) {
         eventListeners['disconnect'].forEach(cb => cb('io client disconnect'));
       }
