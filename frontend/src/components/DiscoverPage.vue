@@ -104,6 +104,15 @@ import { useStudyRequestsStore } from '../stores/studyRequestsStore';
 import { useMatchesStore } from '../stores/matchesStore';
 import ToastNotification from './ToastNotification.vue';
 
+/**
+ * Safe array accessor to prevent "Cannot read properties of undefined (reading 'length')" errors
+ * @param {Array|undefined|null} arr - The array to check
+ * @returns {Array} - The original array or an empty array if undefined/null
+ */
+function safeArray(arr) {
+  return Array.isArray(arr) ? arr : [];
+}
+
 export default {
   name: "DiscoverPage",
   components: {
@@ -252,10 +261,11 @@ export default {
         // Fetch matches directly
         await matchesStore.fetchMatches();
         
-        // Fetch study requests manually instead of using store - temporary fix
+        // Fetch study requests directly from API
         const fetchStudyRequests = async () => {
           try {
-            // Doğrudan API'yi çağır
+            console.log("Fetching study requests...");
+            // Direkt olarak çalışma isteklerini API'dan al
             const response = await fetch('https://matchstudy-production.up.railway.app/study_requests/all');
             
             if (!response.ok) {
@@ -263,11 +273,59 @@ export default {
             }
             
             const data = await response.json();
-            console.log("API study requests loaded:", data);
-            studyRequestsStore.allRequests = data.requests || [];
+            console.log("Study requests loaded:", data);
+            // Direkt olarak store'a aktar - burada request_id'lerin id olarak store'a konulmasını sağlıyoruz
+            const formattedRequests = safeArray(data.requests).map(req => ({
+              ...req,
+              id: req.request_id // id alanını da ekle
+            }));
+            studyRequestsStore.allRequests = formattedRequests;
           } catch (error) {
             console.error('Study requests alınırken hata oluştu:', error);
             toast.value?.error('Çalışma isteklerini almada hata oluştu. Lütfen daha sonra tekrar deneyin.');
+            
+            // Hata durumunda demo verileri kullan
+            studyRequestsStore.allRequests = [
+              {
+                id: 1,
+                request_id: 1,
+                user_id: 1,
+                category: "Matematik",
+                duration: "1-2 saat",
+                study_date: "2025-05-10",
+                topic: "Türev Uygulamaları",
+                note: "Lütfen grafik çizmeyi de tekrar edelim.",
+                status: "pending",
+                created_at: "2025-05-25T21:00:24",
+                updated_at: "2025-05-25T21:00:24"
+              },
+              {
+                id: 2,
+                request_id: 2,
+                user_id: 2,
+                category: "Fizik",
+                duration: "3-4 saat",
+                study_date: "2025-05-11",
+                topic: "Kuvvet ve Hareket",
+                note: "Soru çözümü ağırlıklı çalışalım.",
+                status: "pending",
+                created_at: "2025-05-25T21:00:24",
+                updated_at: "2025-05-25T21:00:24"
+              },
+              {
+                id: 3,
+                request_id: 3,
+                user_id: 3,
+                category: "Yazılım",
+                duration: "5-6 saat",
+                study_date: "2025-05-12",
+                topic: "Python ile OOP",
+                note: "Mini proje geliştirmek istiyorum.",
+                status: "pending",
+                created_at: "2025-05-25T21:00:24",
+                updated_at: "2025-05-25T21:00:24"
+              }
+            ];
           }
         };
         

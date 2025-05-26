@@ -223,6 +223,53 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     });
   })
 
+  // Filtreleme için state
+  const filters = ref({
+    category: null,
+    duration: null, 
+    date: null
+  })
+
+  // Filtreleri güncelleme fonksiyonu
+  const setFilters = (newFilters) => {
+    filters.value = { ...filters.value, ...newFilters }
+  }
+
+  // Filtrelenmiş istekleri hesapla
+  const filteredRequests = computed(() => {
+    // Debug için loglama
+    console.log('Filtering requests:', { allRequests: allRequests.value.length, filters: filters.value })
+    
+    return safeArray(allRequests.value).filter(req => {
+      if (!req) return false;
+      
+      // Kategori filtresi
+      if (filters.value.category && req.category !== filters.value.category) {
+        return false;
+      }
+      
+      // Süre filtresi
+      if (filters.value.duration && req.duration !== filters.value.duration.value) {
+        return false;
+      }
+      
+      // Tarih filtresi
+      if (filters.value.date) {
+        const filterDate = new Date(filters.value.date);
+        const requestDate = new Date(req.study_date);
+        
+        filterDate.setHours(0, 0, 0, 0);
+        requestDate.setHours(0, 0, 0, 0);
+        
+        if (requestDate < filterDate) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  });
+
   return {
     // State
     allRequests,
@@ -230,6 +277,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     pastRequests,
     loading,
     error,
+    filters,
     
     // Actions
     fetchAllRequests,
@@ -237,9 +285,11 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     fetchPastRequests,
     createStudyRequest,
     deleteStudyRequest,
+    setFilters,
     
     // Computed
     activeRequests,
-    openRequests
+    openRequests,
+    filteredRequests
   }
 }) 
