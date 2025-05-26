@@ -270,8 +270,10 @@ export const friendRequestsApi = {
     }),
   
   sendFriendRequest: (senderId, receiverId) => 
-    apiCall(`friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
-      method: 'POST'
+    apiCall(`friend_requests/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sender_id: senderId, receiver_id: receiverId })
     }).then(response => {
       return { success: true, message: response.message || "Arkadaşlık isteği gönderildi" };
     }).catch(error => {
@@ -289,8 +291,15 @@ export const friendRequestsApi = {
     }),
   
   manageFriendRequest: (senderId, receiverId, status) => 
-    apiCall(`friend_requests/manage?sender_id=${senderId}&receiver_id=${receiverId}&status=${status}`, {
-      method: 'POST'
+    apiCall(`friend_requests/manage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sender_id: senderId, receiver_id: receiverId, status: status })
+    }).then(response => {
+      return { success: true, message: response.message || `Arkadaşlık isteği durumu '${status}' olarak güncellendi` };
+    }).catch(error => {
+      console.error("Arkadaşlık isteği durumu güncellenirken hata:", error);
+      throw error;
     })
 };
 
