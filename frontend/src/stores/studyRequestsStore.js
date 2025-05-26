@@ -35,8 +35,27 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     error.value = null
     
     try {
-      const response = await studyRequestsApi.getAllRequests()
-      allRequests.value = Array.isArray(response.requests) ? response.requests : []
+      // Hardcoded direct API call for demo
+      const response = await fetch('https://matchstudy-production.up.railway.app/users/list')
+      const data = await response.json()
+      
+      // Convert users to mock study requests for demo
+      if (data.users && Array.isArray(data.users)) {
+        allRequests.value = data.users.slice(0, 5).map(user => ({
+          id: user.id || Math.floor(Math.random() * 1000),
+          user_id: Math.floor(Math.random() * 100),
+          topic: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih'][Math.floor(Math.random() * 5)],
+          category: ['Akademik', 'Sınav', 'Proje', 'Ödev'][Math.floor(Math.random() * 4)],
+          study_date: new Date(Date.now() + Math.floor(Math.random() * 30) * 86400000).toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+          duration: `${Math.floor(Math.random() * 5) + 1} saat`,
+          note: 'Demo çalışma isteği',
+          status: ['open', 'matched', 'cancelled'][Math.floor(Math.random() * 3)]
+        }))
+      } else {
+        allRequests.value = []
+      }
+      
       return allRequests.value
     } catch (err) {
       console.error('API error response:', err)
@@ -58,8 +77,27 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     error.value = null
     
     try {
-      const response = await studyRequestsApi.getUserRequests(userStore.id)
-      userRequests.value = Array.isArray(response.requests) ? response.requests : []
+      // Hardcoded direct API call for demo
+      const response = await fetch('https://matchstudy-production.up.railway.app/users/list')
+      const data = await response.json()
+      
+      // Convert users to mock study requests for demo
+      if (data.users && Array.isArray(data.users)) {
+        userRequests.value = data.users.slice(0, 3).map(user => ({
+          id: user.id || Math.floor(Math.random() * 1000),
+          user_id: userStore.id,
+          topic: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih'][Math.floor(Math.random() * 5)],
+          category: ['Akademik', 'Sınav', 'Proje', 'Ödev'][Math.floor(Math.random() * 4)],
+          study_date: new Date(Date.now() + Math.floor(Math.random() * 30) * 86400000).toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+          duration: `${Math.floor(Math.random() * 5) + 1} saat`,
+          note: 'Kullanıcının çalışma isteği',
+          status: ['open', 'matched', 'cancelled'][Math.floor(Math.random() * 3)]
+        }))
+      } else {
+        userRequests.value = []
+      }
+      
       return userRequests.value
     } catch (err) {
       console.error('Error fetching user study requests:', err)
@@ -81,8 +119,27 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     error.value = null
     
     try {
-      const response = await studyRequestsApi.getUserRequests(userStore.id, true)
-      pastRequests.value = Array.isArray(response.requests) ? response.requests : []
+      // Hardcoded direct API call for demo
+      const response = await fetch('https://matchstudy-production.up.railway.app/users/list')
+      const data = await response.json()
+      
+      // Convert users to mock past study requests for demo
+      if (data.users && Array.isArray(data.users)) {
+        pastRequests.value = data.users.slice(0, 2).map(user => ({
+          id: user.id || Math.floor(Math.random() * 1000),
+          user_id: userStore.id,
+          topic: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih'][Math.floor(Math.random() * 5)],
+          category: ['Akademik', 'Sınav', 'Proje', 'Ödev'][Math.floor(Math.random() * 4)],
+          study_date: new Date(Date.now() - Math.floor(Math.random() * 30) * 86400000).toISOString().split('T')[0],
+          created_at: new Date(Date.now() - Math.floor(Math.random() * 60) * 86400000).toISOString(),
+          duration: `${Math.floor(Math.random() * 5) + 1} saat`,
+          note: 'Geçmiş çalışma isteği',
+          status: ['matched', 'cancelled'][Math.floor(Math.random() * 2)]
+        }))
+      } else {
+        pastRequests.value = []
+      }
+      
       return pastRequests.value
     } catch (err) {
       console.error('Error fetching past requests:', err)

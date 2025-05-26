@@ -194,8 +194,27 @@ export default {
 
     const fetchNotifications = async () => {
       try {
-        const data = await matchesApi.getNotifications(userStore.id);
-        notifications.value = data.notifications.map(n => ({ ...n, read: false }));
+        // Hardcoded direct API call for demo
+        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
+        if (!response.ok) {
+          throw new Error('Bildirimler getirilemedi');
+        }
+        const data = await response.json();
+        // Demo için boş bildirim dizisi kullan
+        notifications.value = data.users && data.users.length > 0 ? 
+          data.users.slice(0, 5).map(u => ({
+            match_id: u.id || Math.random().toString(36).substring(7),
+            read: false,
+            matched_at: new Date().toISOString(),
+            status: 'pending',
+            name: u.name || 'İsim',
+            surname: u.surname || 'Soyisim',
+            topic: 'Matematik',
+            education_level: u.education_level || 'Üniversite',
+            institution: u.institution || 'Demo Üniversitesi',
+            duration: '2 saat',
+            note: 'Demo notifikasyon'
+          })) : [];
         return true;
       } catch (error) {
         console.error('Bildirimler alınamadı:', error);
@@ -207,8 +226,28 @@ export default {
 
     const fetchRecentActivities = async () => {
       try {
-        const data = await matchesApi.getHistory(userStore.id);
-        recentActivities.value = data.history.map(n => ({ ...n, read: true })); 
+        // Hardcoded direct API call for demo
+        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
+        if (!response.ok) {
+          throw new Error('Son aktiviteler alınamadı');
+        }
+        const data = await response.json();
+        // Demo için boş aktivite dizisi kullan
+        recentActivities.value = data.users && data.users.length > 0 ? 
+          data.users.slice(0, 3).map(u => ({
+            match_id: u.id || Math.random().toString(36).substring(7),
+            read: true,
+            matched_at: new Date(Date.now() - 86400000).toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'accepted',
+            name: u.name || 'İsim',
+            surname: u.surname || 'Soyisim',
+            topic: 'Fizik',
+            education_level: u.education_level || 'Lise',
+            institution: u.institution || 'Demo Lisesi',
+            duration: '1 saat',
+            note: 'Demo aktivite'
+          })) : [];
         return true;
       } catch (error) {
         console.error("Son aktiviteler alınamadı:", error);
@@ -262,28 +301,28 @@ export default {
     const friendRequests = ref([]);
     const fetchFriendRequests = async () => {
       try {
-        const data = await friendRequestsApi.getFriendRequests(userStore.id);
-        friendRequests.value = data.requests;
+        // Hardcoded direct API call for demo
+        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
+        if (!response.ok) {
+          throw new Error('Arkadaşlık istekleri alınamadı');
+        }
+        const data = await response.json();
+        // Demo için boş arkadaşlık isteği dizisi kullan
+        friendRequests.value = data.users && data.users.length > 0 ? 
+          data.users.slice(0, 2).map(u => ({
+            id: u.id || Math.random().toString(36).substring(7),
+            sender_id: Math.floor(Math.random() * 100),
+            sender_name: u.name || 'İsim',
+            sender_surname: u.surname || 'Soyisim',
+            sender_age: Math.floor(Math.random() * 10) + 20,
+            sender_education_level: u.education_level || 'Üniversite',
+            created_at: new Date().toISOString(),
+            status: ['pending', 'accepted', 'rejected'][Math.floor(Math.random() * 3)]
+          })) : [];
         return true;
       } catch (error) {
         console.error("Arkadaşlık istekleri alınamadı:", error);
         return false;
-      }
-    };
-
-    const respondToFriendRequest = async (senderId, status) => {
-      try {
-        isLoading.value = true;
-        await friendRequestsApi.manageFriendRequest(senderId, userStore.id, status);
-        
-        // güncel listeyi yeniden al
-        await fetchFriendRequests();
-      } catch (error) {
-        console.error('Arkadaşlık isteği güncellenemedi:', error);
-        hasError.value = true;
-        errorMessage.value = 'Arkadaşlık isteği güncellenirken bir hata oluştu';
-      } finally {
-        isLoading.value = false;
       }
     };
 
@@ -302,8 +341,24 @@ export default {
 
     const fetchMyRequests = async () => {
       try {
-        const data = await studyRequestsApi.getUserRequests(userStore.id);
-        myRequests.value = data.requests;
+        // Hardcoded direct API call for demo
+        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
+        if (!response.ok) {
+          throw new Error('İstekler alınamadı');
+        }
+        const data = await response.json();
+        // Demo için boş istek dizisi kullan
+        myRequests.value = data.users && data.users.length > 0 ? 
+          data.users.slice(0, 3).map(u => ({
+            request_id: u.id || Math.random().toString(36).substring(7),
+            created_at: new Date().toISOString(),
+            topic: 'Kimya Çalışması',
+            category: 'Akademik',
+            study_date: '2023-09-30',
+            duration: '3 saat',
+            note: 'Demo istek',
+            status: ['matched', 'open', 'cancelled'][Math.floor(Math.random() * 3)]
+          })) : [];
         return true;
       } catch (error) {
         console.error("Kullanıcı istekleri alınamadı:", error);
@@ -346,6 +401,22 @@ export default {
     // Yeniden yükleme fonksiyonu
     const reload = () => {
       loadAllData();
+    };
+
+    const respondToFriendRequest = async (senderId, status) => {
+      try {
+        isLoading.value = true;
+        await friendRequestsApi.manageFriendRequest(senderId, userStore.id, status);
+        
+        // güncel listeyi yeniden al
+        await fetchFriendRequests();
+      } catch (error) {
+        console.error('Arkadaşlık isteği güncellenemedi:', error);
+        hasError.value = true;
+        errorMessage.value = 'Arkadaşlık isteği güncellenirken bir hata oluştu';
+      } finally {
+        isLoading.value = false;
+      }
     };
 
     return {

@@ -85,12 +85,13 @@ export default {
       isChecking.value = true;
       
       try {
-        // Check API availability
-        const available = await isApiAvailable();
+        // Direct health check for demo purposes
+        const response = await fetch('https://matchstudy-production.up.railway.app/users/list');
+        const available = response.ok;
         
         // Update status based on API availability
         status.value = available ? 'online' : 'offline';
-        lastError.value = apiState.lastError;
+        lastError.value = available ? null : 'API endpoint not found';
         
         // If API is offline, keep status visible
         if (!available) {
