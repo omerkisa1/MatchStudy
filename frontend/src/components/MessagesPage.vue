@@ -377,15 +377,38 @@ async function sendFriendRequest() {
     
     const data = await friendRequestsApi.sendFriendRequest(senderId, receiverId);
     
-    if (data.message) {
-      alert('Arkadaşlık isteği gönderildi!')
+    if (data.success) {
+      // Kullanıcıya daha açıklayıcı bir mesaj göster
+      if (data.alreadyExists) {
+        if (toast.value) {
+          toast.value.info('Arkadaşlık isteği zaten gönderilmişti.');
+        } else {
+          alert('Arkadaşlık isteği zaten gönderilmişti.');
+        }
+      } else {
+        if (toast.value) {
+          toast.value.success('Arkadaşlık isteği gönderildi!');
+        } else {
+          alert('Arkadaşlık isteği gönderildi!');
+        }
+      }
+      
       // Arkadaşlık durumunu güncelle
       friendshipStatus.value[selectedUserId.value] = 'pending';
     } else {
-      alert('İstek gönderilemedi: ' + data.detail)
+      if (toast.value) {
+        toast.value.error('İstek gönderilemedi: ' + (data.detail || 'Bilinmeyen hata'));
+      } else {
+        alert('İstek gönderilemedi: ' + (data.detail || 'Bilinmeyen hata'));
+      }
     }
   } catch (err) {
-    alert('Bir hata oluştu: ' + err.message)
+    console.error("Arkadaşlık isteği gönderilirken hata:", err);
+    if (toast.value) {
+      toast.value.error('Bir hata oluştu: ' + (err.message || 'Bilinmeyen hata'));
+    } else {
+      alert('Bir hata oluştu: ' + (err.message || 'Bilinmeyen hata'));
+    }
   }
 }
 

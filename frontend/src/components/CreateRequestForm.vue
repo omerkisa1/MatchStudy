@@ -269,7 +269,7 @@ const createStudyRequest = async () => {
 
   isLoading.value = true;
   try {
-    const response = await fetch('${import.meta.env.VITE_APP_API_URL}/study_requests/create', {
+    const response = await fetch('https://matchstudy-production.up.railway.app/study_requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

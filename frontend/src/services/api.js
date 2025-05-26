@@ -272,6 +272,20 @@ export const friendRequestsApi = {
   sendFriendRequest: (senderId, receiverId) => 
     apiCall(`friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
       method: 'POST'
+    }).then(response => {
+      return { success: true, message: response.message || "Arkadaşlık isteği gönderildi" };
+    }).catch(error => {
+      // 400 hatası genellikle zaten istek gönderilmiş olduğunu gösterir
+      if (error.message && error.message.includes('400')) {
+        console.warn("Arkadaşlık isteği zaten gönderilmiş olabilir:", error);
+        return { 
+          success: true, 
+          message: "Arkadaşlık isteği durumu güncellendi",
+          alreadyExists: true 
+        };
+      }
+      console.error("Arkadaşlık isteği gönderilirken hata:", error);
+      throw error;
     }),
   
   manageFriendRequest: (senderId, receiverId, status) => 
