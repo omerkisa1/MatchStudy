@@ -66,6 +66,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useUserStore } from '../stores/userStore';
 import { useRouter } from 'vue-router';
+import { getSocketUrl } from '@/services/api';
+import { matchesApi, studyRequestsApi } from '@/services/api';
 
 // Import all components
 import Sidebar from './Sidebar.vue';
@@ -370,21 +372,18 @@ export default {
     // Fetch notifications
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`);
-        if (!response.ok) throw new Error('Bildirimler getirilemedi');
-        const data = await response.json();
-        notifications.value = data.notifications;
+        const data = await matchesApi.getNotifications(userStore.id);
+        notifications.value = data.notifications || [];
       } catch (error) {
         console.error('Bildirimler alınamadı:', error);
+        notifications.value = [];
       }
     };
 
     // Fetch user study requests
     const fetchUserStudyRequests = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}`);
-        if (!response.ok) throw new Error('İstekler getirilemedi');
-        const data = await response.json();
+        const data = await studyRequestsApi.getUserRequests(userStore.id);
         // Her istek için varsayılan status değeri ekle
         userStudyRequests.value = (data.requests || []).map(request => ({
           ...request,
@@ -397,22 +396,18 @@ export default {
     };
 
     // Fetch study requests
-const fetchStudyRequests = async () => {
-  isLoadingRequests.value = true;
-  try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/all`);
-    if (!response.ok) {
-      throw new Error('Çalışma istekleri getirilemedi');
-    }
-    const data = await response.json();
-    studyRequests.value = data.requests;
-  } catch (error) {
-    console.error('Error fetching study requests:', error);
-  } finally {
-    isLoadingRequests.value = false;
-  }
-};
-
+    const fetchStudyRequests = async () => {
+      isLoadingRequests.value = true;
+      try {
+        const data = await studyRequestsApi.getAllRequests();
+        studyRequests.value = data.requests || [];
+      } catch (error) {
+        console.error('Error fetching study requests:', error);
+        studyRequests.value = [];
+      } finally {
+        isLoadingRequests.value = false;
+      }
+    };
 
     // Watch for content changes to load appropriate data
     watch(() => currentContent.value, (newContent) => {

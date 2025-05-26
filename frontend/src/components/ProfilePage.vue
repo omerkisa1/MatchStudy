@@ -217,6 +217,7 @@ import { ref, onMounted } from 'vue';
 import { useProfile } from '../composables/useProfile';
 import { useStudyRequests } from '../composables/useStudyRequests';
 import { useStudyRequestsStore } from '../stores/studyRequestsStore';
+import { userApi } from '@/services/api';
 import InterestTags from './InterestTags.vue';
 import AvatarUpload from './AvatarUpload.vue';
 import InterestModal from './InterestModal.vue';
@@ -357,7 +358,27 @@ export default {
     
     // Handle password change from modal
     const handlePasswordChange = async (passwordData) => {
-      await changePassword(passwordData);
+      try {
+        isLoading.value = true;
+        error.value = '';
+        
+        // Use the API service for password change
+        const result = await userApi.updateUser(profile.value.id, {
+          current_password: passwordData.currentPassword,
+          new_password: passwordData.newPassword
+        });
+        
+        if (result && result.status === 200) {
+          success.value = 'Password changed successfully';
+          showPasswordModal.value = false;
+        } else {
+          throw new Error(result.message || 'Failed to change password');
+        }
+      } catch (err) {
+        error.value = err.message || 'An error occurred while changing password';
+      } finally {
+        isLoading.value = false;
+      }
     };
     
     // Confirm account deletion

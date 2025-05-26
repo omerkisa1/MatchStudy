@@ -152,6 +152,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useMatchesStore } from '@/stores/matchesStore'
 import { useUserStore } from '@/stores/userStore'
 import { getSocket } from '@/socket'
+import { chatApi, userApi, friendRequestsApi } from '@/services/api'
 const socket = getSocket()
 import ConfirmDialog from './ConfirmDialog.vue'
 import ToastNotification from './ToastNotification.vue'
@@ -196,8 +197,7 @@ async function fetchUserInfo(userId) {
   if (userInfoCache.value[userId]) return;
   
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/user/${userId}`);
-    const data = await response.json();
+    const data = await userApi.getUser(userId);
     
     if (data.user) {
       userInfoCache.value[userId] = data.user;
@@ -216,8 +216,7 @@ async function fetchUserInfo(userId) {
 // Arkadaşlık durumunu kontrol et
 async function checkFriendshipStatus(userId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
-    const data = await response.json();
+    const data = await friendRequestsApi.getFriendRequests(currentUser.value);
     
     if (data.requests && data.requests.length > 0) {
       // Seçili kullanıcıyla ilgili arkadaşlık isteği var mı?
@@ -288,8 +287,7 @@ async function fetchUnreadCounts() {
   if (!currentUser.value) return
   
   try {
-    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/unread/${currentUser.value}`)
-    const data = await res.json()
+    const data = await chatApi.getUnreadMessages(currentUser.value);
     
     if (data.success) {
       // Chat ID'leri eşleşme ID'leriyle ilişkilendirmek için tüm sohbetleri dönüyoruz
@@ -298,8 +296,7 @@ async function fetchUnreadCounts() {
       for (const match of acceptedMatches.value) {
         // requester_id ve responder_id kullanarak karşı tarafı belirle
         const otherId = currentUser.value === match.requester_id ? match.responder_id : match.requester_id
-        const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${otherId}`)
-        const chatData = await res.json()
+        const chatData = await chatApi.getChat(currentUser.value, otherId);
         
         if (chatData.success) {
           chatMatchMap[chatData.chat_id] = getMatchId(match)
@@ -328,18 +325,9 @@ async function sendFriendRequest() {
   try {
     const senderId = currentUser.value
     const receiverId = selectedUserId.value
-    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/send?sender_id=${senderId}&receiver_id=${receiverId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sender_id: currentUser.value,
-        receiver_id: selectedUserId.value
-      })
-    })
     
-    const data = await res.json()
+    const data = await friendRequestsApi.sendFriendRequest(senderId, receiverId);
+    
     if (data.message) {
       alert('Arkadaşlık isteği gönderildi!')
       // Arkadaşlık durumunu güncelle
@@ -356,18 +344,7 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/mark_read_by_chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        user_id: currentUser.value
-      })
-    })
-    
-    const data = await response.json()
+    await chatApi.markRead(chatId);
     
     // Seçili eşleşmeye ait okunmamış mesajları sıfırla
     if (selectedMatchId.value) {
@@ -400,51 +377,48 @@ onMounted(async () => {
 
   // Kullanıcı listesini doldur ve isimlerini getir
   for (const match of acceptedMatches.value) {
-  const otherUserId = currentUser.value === match.requester_id
-    ? match.responder_id
-    : match.requester_id;
+    const otherUserId = currentUser.value === match.requester_id
+      ? match.responder_id
+      : match.requester_id;
 
-  if (!usersMap.has(otherUserId)) {
-    const userEntry = {
-      userId: otherUserId,
-      displayName: `Kullanıcı ${otherUserId}`, // Geçici, sonra güncellenecek
-      lastMessage: '', // Bu da dinamik olacak
-      lastMessageTime: '',
-      unreadCount: 0,
-      match
-    };
+    if (!usersMap.has(otherUserId)) {
+      const userEntry = {
+        userId: otherUserId,
+        displayName: `Kullanıcı ${otherUserId}`, // Geçici, sonra güncellenecek
+        lastMessage: '', // Bu da dinamik olacak
+        lastMessageTime: '',
+        unreadCount: 0,
+        match
+      };
 
-    usersMap.set(otherUserId, userEntry);
+      usersMap.set(otherUserId, userEntry);
 
-    try {
-      // 1. Kullanıcı adını getir
-      const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/users/user/${otherUserId}`);
-      const data = await res.json();
-      if (data.user) {
-        userEntry.displayName = `${data.user.name} ${data.user.surname}`;
-      }
-
-      // 2. Chat ID'yi al ve son mesajı getir
-      const chatRes = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${otherUserId}`);
-      const chatData = await chatRes.json();
-      if (chatData.success) {
-        const chatId = chatData.chat_id;
-
-        const msgRes = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/last/${chatId}`);
-        const msgData = await msgRes.json();
-
-        if (msgData.success && msgData.message) {
-          userEntry.lastMessage = msgData.message.content;
-          userEntry.lastMessageTime = formatMessageTime(msgData.message.sent_at);
+      try {
+        // 1. Kullanıcı adını getir
+        const data = await userApi.getUser(otherUserId);
+        if (data.user) {
+          userEntry.displayName = `${data.user.name} ${data.user.surname}`;
         }
-      }
-    } catch (e) {
-      console.error('Kullanıcı ya da mesaj bilgisi alınamadı:', e);
-    }
 
-    uniqueMatchedUsers.value.push(userEntry);
+        // 2. Chat ID'yi al ve son mesajı getir
+        const chatData = await chatApi.getChat(currentUser.value, otherUserId);
+        if (chatData.success) {
+          const chatId = chatData.chat_id;
+
+          const msgData = await chatApi.getLastMessage(chatId);
+
+          if (msgData.success && msgData.message) {
+            userEntry.lastMessage = msgData.message.content;
+            userEntry.lastMessageTime = formatMessageTime(msgData.message.sent_at);
+          }
+        }
+      } catch (e) {
+        console.error('Kullanıcı ya da mesaj bilgisi alınamadı:', e);
+      }
+
+      uniqueMatchedUsers.value.push(userEntry);
+    }
   }
-}
 
   
 
@@ -453,8 +427,7 @@ onMounted(async () => {
 
   // Arkadaşlık durumlarını getir
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${currentUser.value}`);
-    const data = await response.json();
+    const data = await friendRequestsApi.getFriendRequests(currentUser.value);
 
     if (data.requests && data.requests.length > 0) {
       data.requests.forEach(request => {
@@ -521,8 +494,7 @@ async function selectUserAndLoadMessages(user) {
   
   try {
     // Chat ID'yi backend'den al veya oluştur
-    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/${currentUser.value}/${user.userId}`)
-    const data = await res.json()
+    const data = await chatApi.getChat(currentUser.value, user.userId);
     
     if (data.success) {
       // Varolan chat ID'yi kullan
@@ -546,8 +518,7 @@ async function selectUserAndLoadMessages(user) {
 // Mesajları backend'den al
 async function fetchMessages(chatId) {
   try {
-    const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/messages/${chatId}`)
-    const data = await res.json()
+    const data = await chatApi.getMessages(chatId);
     
     if (data.success) {
       messages.value = data.messages || []
@@ -628,18 +599,7 @@ async function hideChat() {
   if (!selectedChatId.value) return;
   
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/chat/hide`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        chat_id: selectedChatId.value,
-        user_id: currentUser.value
-      })
-    });
-    
-    const data = await response.json();
+    const data = await chatApi.hideChat(selectedChatId.value, currentUser.value);
     
     if (data.success) {
       // Sohbeti listeden kaldır

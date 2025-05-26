@@ -27,7 +27,7 @@
   </template>
   
   <script>
-  import axios from "axios";
+  import { matchesApi } from "@/services/api";
   
   export default {
     name: "MatchesPage",
@@ -47,12 +47,12 @@
     methods: {
       async createMatch() {
         try {
-          const response = await axios.post("${import.meta.env.VITE_APP_API_URL}/matches/create", {
+          const response = await matchesApi.createMatch({
             user1_id: this.matchForm.user1_id,
             user2_id: this.matchForm.user2_id,
             request_id: this.matchForm.request_id,
           });
-          alert(response.data.message);
+          alert(response.message);
           await this.fetchMatches();
         } catch (error) {
           console.error(error);
@@ -61,8 +61,8 @@
       },
       async fetchMatches() {
         try {
-          const response = await axios.get("${import.meta.env.VITE_APP_API_URL}/matches/list");
-          this.matches = response.data.matches || [];
+          const response = await matchesApi.getAllMatches();
+          this.matches = response.matches || [];
         } catch (error) {
           console.error(error);
         }
@@ -70,8 +70,8 @@
       async deleteMatch(matchId) {
         if (!confirm("Bu eşleşmeyi silmek istediğinize emin misiniz?")) return;
         try {
-          const response = await axios.delete(`${import.meta.env.VITE_APP_API_URL}/matches/delete/${matchId}`);
-          alert(response.data.message);
+          const response = await matchesApi.deleteMatch(matchId);
+          alert(response.message);
           await this.fetchMatches();
         } catch (error) {
           console.error(error);

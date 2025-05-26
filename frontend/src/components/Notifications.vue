@@ -143,13 +143,12 @@
   </div>
 </template>
 
-
-
 <script>
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
 import { useUserStore } from '@/stores/userStore';
 import { useMatchesStore } from '@/stores/matchesStore';
+import { matchesApi, studyRequestsApi, friendRequestsApi } from '@/services/api';
+
 export default {
   name: 'Notifications',
   setup() {
@@ -168,42 +167,44 @@ export default {
 
     const fetchNotifications = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`);
-        notifications.value = response.data.notifications.map(n => ({ ...n, read: false }));
+        const data = await matchesApi.getNotifications(userStore.id);
+        notifications.value = data.notifications.map(n => ({ ...n, read: false }));
       } catch (error) {
         console.error('Bildirimler alınamadı:', error);
       }
     };
 
     const fetchRecentActivities = async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/matches/history/${userStore.id}`);
-    recentActivities.value = response.data.history.map(n => ({ ...n, read: true })); 
-  } catch (error) {
-    console.error("Son aktiviteler alınamadı:", error);
-  }
-};
-const unreadNotifications = computed(() => {
-  return notifications.value.filter(n => !n.read).length;
-});
-const studyMatches = computed(() => {
-  return matchesStore.pendingResponderMatches
-})
-const formatTime = (timestamp) => {
-  const now = new Date();
-  const time = new Date(timestamp);
-  const diffMs = now - time;
+      try {
+        const data = await matchesApi.getHistory(userStore.id);
+        recentActivities.value = data.history.map(n => ({ ...n, read: true })); 
+      } catch (error) {
+        console.error("Son aktiviteler alınamadı:", error);
+      }
+    };
+    
+    const unreadNotifications = computed(() => {
+      return notifications.value.filter(n => !n.read).length;
+    });
+    
+    const studyMatches = computed(() => {
+      return matchesStore.pendingResponderMatches
+    });
+    
+    const formatTime = (timestamp) => {
+      const now = new Date();
+      const time = new Date(timestamp);
+      const diffMs = now - time;
 
-  const minutes = Math.floor(diffMs / (1000 * 60));
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (minutes < 1) return "Az önce";
-  if (minutes < 60) return `${minutes} dakika önce`;
-  if (hours < 24) return `${hours} saat önce`;
-  return `${days} gün önce`;
-};
-
+      if (minutes < 1) return "Az önce";
+      if (minutes < 60) return `${minutes} dakika önce`;
+      if (hours < 24) return `${hours} saat önce`;
+      return `${days} gün önce`;
+    };
 
     const markAllAsRead = () => {
       notifications.value = notifications.value.map(n => ({ ...n, read: true }));
@@ -211,59 +212,55 @@ const formatTime = (timestamp) => {
 
     const respondToMatch = async (matchId, status) => {
       try {
-        await axios.put(`${import.meta.env.VITE_APP_API_URL}/matches/update/${matchId}?status=${status}`);
+        await matchesApi.updateMatch(matchId, status);
         notifications.value = notifications.value.map(n => n.match_id === matchId ? { ...n, read: true } : n);
       } catch (error) {
         console.error('Durum güncellenemedi:', error);
       }
     };
 
-
-    const friendRequests = ref([])
+    const friendRequests = ref([]);
     const fetchFriendRequests = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
-        friendRequests.value = res.data.requests
+        const data = await friendRequestsApi.getFriendRequests(userStore.id);
+        friendRequests.value = data.requests;
       } catch (error) {
-        console.error("Arkadaşlık istekleri alınamadı:", error)
+        console.error("Arkadaşlık istekleri alınamadı:", error);
       }
-    }
+    };
 
     const respondToFriendRequest = async (senderId, status) => {
-  try {
-    await axios.post(`${import.meta.env.VITE_APP_API_URL}/friend_requests/manage?sender_id=${senderId}&receiver_id=${userStore.id}&status=${status}`);
-    
-    // güncel listeyi yeniden al
-    await fetchFriendRequests();
-  } catch (error) {
-    console.error('Arkadaşlık isteği güncellenemedi:', error);
-  }
-};
-
+      try {
+        await friendRequestsApi.manageFriendRequest(senderId, userStore.id, status);
+        
+        // güncel listeyi yeniden al
+        await fetchFriendRequests();
+      } catch (error) {
+        console.error('Arkadaşlık isteği güncellenemedi:', error);
+      }
+    };
 
     const filteredNotifications = computed(() => {
-  if (currentFilter.value === 'latest') return recentActivities.value;
-  if (currentFilter.value === 'my_requests') return myRequests.value;
-  if (currentFilter.value === 'friend_requests') return friendRequests.value;
-  return notifications.value.filter(n => {
-    if (currentFilter.value === 'all') return n.status === 'pending';
-    if (currentFilter.value === 'study') return studyMatches.value;
-    return false;
-  });
-});
+      if (currentFilter.value === 'latest') return recentActivities.value;
+      if (currentFilter.value === 'my_requests') return myRequests.value;
+      if (currentFilter.value === 'friend_requests') return friendRequests.value;
+      return notifications.value.filter(n => {
+        if (currentFilter.value === 'all') return n.status === 'pending';
+        if (currentFilter.value === 'study') return studyMatches.value;
+        return false;
+      });
+    });
 
-const myRequests = ref([]);
+    const myRequests = ref([]);
 
-const fetchMyRequests = async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/study_requests/user/${userStore.id}`);
-    myRequests.value = response.data.requests;
-  } catch (error) {
-    console.error("Kullanıcı istekleri alınamadı:", error);
-  }
-};
-
-    
+    const fetchMyRequests = async () => {
+      try {
+        const data = await studyRequestsApi.getUserRequests(userStore.id);
+        myRequests.value = data.requests;
+      } catch (error) {
+        console.error("Kullanıcı istekleri alınamadı:", error);
+      }
+    };
 
     onMounted(() => {
       fetchNotifications();

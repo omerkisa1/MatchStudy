@@ -171,6 +171,7 @@
 <script>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { userApi } from '@/services/api';
 
 export default {
   name: 'RegisterPage',
@@ -219,30 +220,22 @@ export default {
       isLoading.value = true;
 
       try {
-        const response = await fetch('${import.meta.env.VITE_APP_API_URL}/users/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email.value,
-            password: password.value,
-            name: name.value,
-            surname: surname.value,
-            age: parseInt(age.value),
-            education_level: educationLevel.value
-          })
+        const result = await userApi.updateUser(null, {
+          email: email.value,
+          password: password.value,
+          name: name.value,
+          surname: surname.value,
+          age: parseInt(age.value),
+          education_level: educationLevel.value
         });
 
-        const data = await response.json();
-
-        if (response.ok && data.message === true) {
+        if (result && result.message === true) {
           registerSuccess.value = true;
           setTimeout(() => {
             router.push('/');
           }, 1500);
         } else {
-          throw new Error(data.detail || 'Kayıt işlemi başarısız oldu');
+          throw new Error(result.detail || 'Kayıt işlemi başarısız oldu');
         }
       } catch (error) {
         console.error('Register error:', error);
