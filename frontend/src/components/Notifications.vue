@@ -9,6 +9,12 @@
           </svg>
           Tümünü Okundu İşaretle
         </button>
+        <button class="reload-btn" @click="reload" title="Yenile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -23,8 +29,25 @@
       </button>
     </div>
 
+    <!-- Yükleniyor göstergesi -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Bildirimler yükleniyor...</p>
+    </div>
+
+    <!-- Hata durumu -->
+    <div v-else-if="hasError" class="error-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p>{{ errorMessage }}</p>
+      <button class="retry-btn" @click="reload">Tekrar Dene</button>
+    </div>
+
     <!-- Kullanıcının kendi oluşturduğu çalışma istekleri -->
-    <div v-if="currentFilter === 'my_requests'" class="notifications-list">
+    <div v-else-if="currentFilter === 'my_requests'" class="notifications-list">
       <div 
         v-for="req in myRequests" 
         :key="req.request_id" 
@@ -157,6 +180,10 @@ export default {
     const currentFilter = ref('all');
     const recentActivities = ref([]);
     const matchesStore = useMatchesStore();
+    const isLoading = ref(true);
+    const hasError = ref(false);
+    const errorMessage = ref('');
+    
     const filters = [
       { label: 'Tümü', value: 'all' },
       { label: 'Arkadaşlık İstekleri', value: 'friend_requests' },
@@ -169,8 +196,12 @@ export default {
       try {
         const data = await matchesApi.getNotifications(userStore.id);
         notifications.value = data.notifications.map(n => ({ ...n, read: false }));
+        return true;
       } catch (error) {
         console.error('Bildirimler alınamadı:', error);
+        hasError.value = true;
+        errorMessage.value = error.message || 'Bildirimler alınamadı';
+        return false;
       }
     };
 
@@ -178,8 +209,10 @@ export default {
       try {
         const data = await matchesApi.getHistory(userStore.id);
         recentActivities.value = data.history.map(n => ({ ...n, read: true })); 
+        return true;
       } catch (error) {
         console.error("Son aktiviteler alınamadı:", error);
+        return false;
       }
     };
     
@@ -192,6 +225,8 @@ export default {
     });
     
     const formatTime = (timestamp) => {
+      if (!timestamp) return '';
+      
       const now = new Date();
       const time = new Date(timestamp);
       const diffMs = now - time;
@@ -212,10 +247,15 @@ export default {
 
     const respondToMatch = async (matchId, status) => {
       try {
+        isLoading.value = true;
         await matchesApi.updateMatch(matchId, status);
         notifications.value = notifications.value.map(n => n.match_id === matchId ? { ...n, read: true } : n);
       } catch (error) {
         console.error('Durum güncellenemedi:', error);
+        hasError.value = true;
+        errorMessage.value = 'Durum güncellenirken bir hata oluştu';
+      } finally {
+        isLoading.value = false;
       }
     };
 
@@ -224,19 +264,26 @@ export default {
       try {
         const data = await friendRequestsApi.getFriendRequests(userStore.id);
         friendRequests.value = data.requests;
+        return true;
       } catch (error) {
         console.error("Arkadaşlık istekleri alınamadı:", error);
+        return false;
       }
     };
 
     const respondToFriendRequest = async (senderId, status) => {
       try {
+        isLoading.value = true;
         await friendRequestsApi.manageFriendRequest(senderId, userStore.id, status);
         
         // güncel listeyi yeniden al
         await fetchFriendRequests();
       } catch (error) {
         console.error('Arkadaşlık isteği güncellenemedi:', error);
+        hasError.value = true;
+        errorMessage.value = 'Arkadaşlık isteği güncellenirken bir hata oluştu';
+      } finally {
+        isLoading.value = false;
       }
     };
 
@@ -257,17 +304,49 @@ export default {
       try {
         const data = await studyRequestsApi.getUserRequests(userStore.id);
         myRequests.value = data.requests;
+        return true;
       } catch (error) {
         console.error("Kullanıcı istekleri alınamadı:", error);
+        return false;
+      }
+    };
+
+    const loadAllData = async () => {
+      isLoading.value = true;
+      hasError.value = false;
+      errorMessage.value = '';
+      
+      try {
+        // Tüm veri çekme işlemlerini paralel yap
+        const results = await Promise.allSettled([
+          fetchNotifications(),
+          fetchRecentActivities(),
+          fetchMyRequests(),
+          fetchFriendRequests()
+        ]);
+        
+        // Eğer hepsi başarısız olursa genel bir hata göster
+        if (results.every(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value === false))) {
+          hasError.value = true;
+          errorMessage.value = 'Veriler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.';
+        }
+      } catch (error) {
+        console.error("Veri yükleme hatası:", error);
+        hasError.value = true;
+        errorMessage.value = 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.';
+      } finally {
+        isLoading.value = false;
       }
     };
 
     onMounted(() => {
-      fetchNotifications();
-      fetchRecentActivities();
-      fetchMyRequests();
-      fetchFriendRequests();
+      loadAllData();
     });
+
+    // Yeniden yükleme fonksiyonu
+    const reload = () => {
+      loadAllData();
+    };
 
     return {
       notifications,
@@ -280,7 +359,11 @@ export default {
       respondToMatch,
       myRequests,
       friendRequests,
-      respondToFriendRequest
+      respondToFriendRequest,
+      isLoading,
+      hasError,
+      errorMessage,
+      reload
     };
   }
 };
@@ -311,7 +394,7 @@ export default {
   gap: 1rem;
 }
 
-.mark-all-read {
+.mark-all-read, .reload-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -324,20 +407,25 @@ export default {
   transition: all 0.3s ease;
 }
 
-.mark-all-read:hover {
+.mark-all-read:hover, .reload-btn:hover {
   background: rgba(126, 87, 194, 0.15);
   border-color: rgba(126, 87, 194, 0.3);
 }
 
-.mark-all-read svg {
+.mark-all-read svg, .reload-btn svg {
   width: 16px;
   height: 16px;
+}
+
+.reload-btn {
+  padding: 0.5rem;
 }
 
 .notifications-filters {
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .filter-btn {
@@ -477,5 +565,61 @@ export default {
 .empty-state p {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(126, 87, 194, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s infinite linear;
+  margin-bottom: 1rem;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: #F44336;
+  background: rgba(244, 67, 54, 0.05);
+  border-radius: 12px;
+}
+
+.error-state svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1rem;
+  stroke: #F44336;
+}
+
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(244, 67, 54, 0.1);
+  color: #F44336;
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: rgba(244, 67, 54, 0.2);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style> 

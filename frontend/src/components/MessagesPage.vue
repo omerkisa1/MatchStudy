@@ -151,9 +151,9 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useMatchesStore } from '@/stores/matchesStore'
 import { useUserStore } from '@/stores/userStore'
-import { getSocket } from '@/socket'
+import { getSocket, initSocket } from '@/socket'
 import { chatApi, userApi, friendRequestsApi } from '@/services/api'
-const socket = getSocket()
+let socket;
 import ConfirmDialog from './ConfirmDialog.vue'
 import ToastNotification from './ToastNotification.vue'
 
@@ -168,6 +168,9 @@ const currentUser = computed(() => userStore.id)
 // Benzersiz kullanıcılar listesi
 const uniqueMatchedUsers = ref([])
 
+// Hata durumu bilgisini tutalım
+const apiError = ref(false)
+const socketConnected = ref(false)
 
 const selectedMatchId = computed(() => matchesStore.selectedMatchId)
 const selectedUserId = ref(null);
@@ -192,6 +195,63 @@ const userInfoCache = ref({});
 // Arkadaşlık durumunu tutan obje
 const friendshipStatus = ref({});
 
+// Socket yönetimi - başlatma ve yeniden bağlanma
+function setupSocket() {
+  socket = getSocket();
+  
+  if (!socket.connected) {
+    // Socket bağlantısı yoksa, yeniden bağlanmayı dene
+    socket = initSocket(currentUser.value);
+  }
+  
+  // Yeni mesaj geldiğinde socket üzerinden ekle
+  socket.on('new_message', handleNewMessage);
+  
+  // Socket bağlantı durumunu takip et
+  socket.on('connect', () => {
+    socketConnected.value = true;
+    if (currentUser.value) {
+      socket.emit('user_login', currentUser.value);
+    }
+  });
+  
+  socket.on('disconnect', () => {
+    socketConnected.value = false;
+  });
+  
+  socket.on('connect_error', () => {
+    socketConnected.value = false;
+  });
+}
+
+// Yeni mesaj işleyicisi
+function handleNewMessage(msg) {
+  // Eğer bu mesajı kendimiz göndermişsek ve zaten UI'da gösteriyorsak, tekrar ekleme
+  if (msg.sender_id === currentUser.value) {
+    // Sadece son mesaj bilgilerini güncelleyelim
+    updateLastMessage(msg)
+    return;
+  }
+  
+  if (msg.chat_id === selectedChatId.value) {
+    messages.value.push(msg)
+    markMessagesAsRead(msg.chat_id)
+    scrollToBottom()
+    // Son mesajı güncelle
+    updateLastMessage(msg)
+  } else {
+    // Diğer sohbetlerden gelen mesajları okunmamış olarak işaretle
+    if (!unreadMessages.value[msg.chat_id]) {
+      unreadMessages.value[msg.chat_id] = 0
+    }
+    unreadMessages.value[msg.chat_id]++
+    // Toplam okunmamış mesaj sayacını da artır
+    userStore.incrementUnreadMessages()
+    // Son mesajı güncelle
+    updateLastMessage(msg)
+  }
+}
+
 // Kullanıcı bilgilerini getir
 async function fetchUserInfo(userId) {
   if (userInfoCache.value[userId]) return;
@@ -210,6 +270,9 @@ async function fetchUserInfo(userId) {
     }
   } catch (error) {
     console.error("Kullanıcı bilgileri alınamadı:", error);
+    if (toast.value) {
+      toast.value.error("Kullanıcı bilgileri alınamadı. Lütfen daha sonra tekrar deneyin.");
+    }
   }
 }
 
@@ -235,34 +298,6 @@ async function checkFriendshipStatus(userId) {
     console.error("Arkadaşlık durumu alınamadı:", error);
   }
 }
-
-// Yeni mesaj geldiğinde socket üzerinden ekle
-socket.on('new_message', (msg) => {
-  // Eğer bu mesajı kendimiz göndermişsek ve zaten UI'da gösteriyorsak, tekrar ekleme
-  if (msg.sender_id === currentUser.value) {
-    // Sadece son mesaj bilgilerini güncelleyelim
-    updateLastMessage(msg)
-    return;
-  }
-  
-  if (msg.chat_id === selectedChatId.value) {
-    messages.value.push(msg)
-    markMessagesAsRead(msg.chat_id)
-    scrollToBottom()
-    // Son mesajı güncelle
-    updateLastMessage(msg)
-  } else {
-    // Diğer sohbetlerden gelen mesajları okunmamış olarak işaretle
-    if (!unreadMessages.value[msg.chat_id]) {
-      unreadMessages.value[msg.chat_id] = 0
-    }
-    unreadMessages.value[msg.chat_id]++
-    // Toplam okunmamış mesaj sayacını da artır
-    userStore.incrementUnreadMessages()
-    // Son mesajı güncelle
-    updateLastMessage(msg)
-  }
-})
 
 // Son mesajı güncelle
 function updateLastMessage(msg) {
@@ -366,97 +401,98 @@ async function markMessagesAsRead(chatId) {
 
 // İlk açılışta eşleşmeleri ve okunmamış mesaj sayılarını getir
 onMounted(async () => {
-  //console.log("Mesaj sayfası yükleniyor, kullanıcı ID:", currentUser.value);
+  // Socket bağlantısını kur
+  setupSocket();
 
-  // Eşleşmeleri çek
-  await matchesStore.fetchMatches();
-  //console.log("Tüm eşleşmeler:", matchesStore.matches);
-  //console.log("Kabul edilmiş eşleşmeler:", acceptedMatches.value);
+  try {
+    // Eşleşmeleri çek
+    await matchesStore.fetchMatches();
+    
+    if (acceptedMatches.value.length > 0) {
+      const usersMap = new Map();
 
-  const usersMap = new Map();
+      // Kullanıcı listesini doldur ve isimlerini getir
+      for (const match of acceptedMatches.value) {
+        const otherUserId = currentUser.value === match.requester_id
+          ? match.responder_id
+          : match.requester_id;
 
-  // Kullanıcı listesini doldur ve isimlerini getir
-  for (const match of acceptedMatches.value) {
-    const otherUserId = currentUser.value === match.requester_id
-      ? match.responder_id
-      : match.requester_id;
+        if (!usersMap.has(otherUserId)) {
+          const userEntry = {
+            userId: otherUserId,
+            displayName: `Kullanıcı ${otherUserId}`, // Geçici, sonra güncellenecek
+            lastMessage: '', // Bu da dinamik olacak
+            lastMessageTime: '',
+            unreadCount: 0,
+            match
+          };
 
-    if (!usersMap.has(otherUserId)) {
-      const userEntry = {
-        userId: otherUserId,
-        displayName: `Kullanıcı ${otherUserId}`, // Geçici, sonra güncellenecek
-        lastMessage: '', // Bu da dinamik olacak
-        lastMessageTime: '',
-        unreadCount: 0,
-        match
-      };
+          usersMap.set(otherUserId, userEntry);
 
-      usersMap.set(otherUserId, userEntry);
+          try {
+            // 1. Kullanıcı adını getir
+            const data = await userApi.getUser(otherUserId);
+            if (data.user) {
+              userEntry.displayName = `${data.user.name} ${data.user.surname}`;
+            }
 
-      try {
-        // 1. Kullanıcı adını getir
-        const data = await userApi.getUser(otherUserId);
-        if (data.user) {
-          userEntry.displayName = `${data.user.name} ${data.user.surname}`;
-        }
+            // 2. Chat ID'yi al ve son mesajı getir
+            const chatData = await chatApi.getChat(currentUser.value, otherUserId);
+            if (chatData.success) {
+              const chatId = chatData.chat_id;
 
-        // 2. Chat ID'yi al ve son mesajı getir
-        const chatData = await chatApi.getChat(currentUser.value, otherUserId);
-        if (chatData.success) {
-          const chatId = chatData.chat_id;
+              const msgData = await chatApi.getLastMessage(chatId);
 
-          const msgData = await chatApi.getLastMessage(chatId);
-
-          if (msgData.success && msgData.message) {
-            userEntry.lastMessage = msgData.message.content;
-            userEntry.lastMessageTime = formatMessageTime(msgData.message.sent_at);
+              if (msgData.success && msgData.message) {
+                userEntry.lastMessage = msgData.message.content;
+                userEntry.lastMessageTime = formatMessageTime(msgData.message.sent_at);
+              }
+            }
+          } catch (e) {
+            console.error('Kullanıcı ya da mesaj bilgisi alınamadı:', e);
           }
+
+          uniqueMatchedUsers.value.push(userEntry);
         }
-      } catch (e) {
-        console.error('Kullanıcı ya da mesaj bilgisi alınamadı:', e);
       }
 
-      uniqueMatchedUsers.value.push(userEntry);
+      // Okunmamış mesaj sayılarını getir
+      await fetchUnreadCounts();
     }
-  }
 
-  
+    // Arkadaşlık durumlarını getir
+    try {
+      const data = await friendRequestsApi.getFriendRequests(currentUser.value);
 
-  // Okunmamış mesaj sayılarını getir
-  await fetchUnreadCounts();
+      if (data.requests && data.requests.length > 0) {
+        data.requests.forEach(request => {
+          const otherUserId = request.sender_id == currentUser.value ? request.receiver_id : request.sender_id;
+          friendshipStatus.value[otherUserId] = request.status;
+        });
+      }
+    } catch (error) {
+      console.error("Arkadaşlık durumları alınamadı:", error);
+      if (toast.value) {
+        toast.value.warning("Arkadaşlık durumları yüklenirken bir sorun oluştu.");
+      }
+    }
 
-  // Arkadaşlık durumlarını getir
-  try {
-    const data = await friendRequestsApi.getFriendRequests(currentUser.value);
-
-    if (data.requests && data.requests.length > 0) {
-      data.requests.forEach(request => {
-        const otherUserId = request.sender_id == currentUser.value ? request.receiver_id : request.sender_id;
-        friendshipStatus.value[otherUserId] = request.status;
-      });
+    // URL'de bir userId varsa doğrudan o kullanıcıyı aç
+    const urlParams = new URLSearchParams(window.location.search)
+    const userId = urlParams.get('userId')
+    if (userId) {
+      const user = uniqueMatchedUsers.value.find(u => u.userId === parseInt(userId))
+      if (user) {
+        selectUserAndLoadMessages(user)
+      }
     }
   } catch (error) {
-    console.error("Arkadaşlık durumları alınamadı:", error);
-  }
-
-  //console.log("Benzersiz eşleşilen kullanıcılar:", uniqueMatchedUsers.value);
-
-  // URL'de bir userId varsa doğrudan o kullanıcıyı aç
-  const urlParams = new URLSearchParams(window.location.search)
-  const userId = urlParams.get('userId')
-  if (userId) {
-    const user = uniqueMatchedUsers.value.find(u => u.userId === parseInt(userId))
-    if (user) {
-      selectUserAndLoadMessages(user)
+    console.error("Mesaj sayfası yüklenirken hata oluştu:", error);
+    apiError.value = true;
+    if (toast.value) {
+      toast.value.error("Veriler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.");
     }
   }
-
-  // Socket bağlantısı olduğunda kullanıcıyı login et
-  socket.on('connect', () => {
-    if (currentUser.value) {
-      socket.emit('user_login', currentUser.value)
-    }
-  });
 });
 
 
@@ -545,12 +581,12 @@ async function sendMessage() {
 
   // Kullanıcı engellenmiş veya arkadaşlıktan çıkarılmışsa mesaj gönderme
   if (friendshipStatus.value[selectedUserId.value] === 'blocked') {
-    alert('Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.');
+    toast.value.error('Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.');
     return;
   }
   
   if (friendshipStatus.value[selectedUserId.value] === 'rejected') {
-    alert('Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.');
+    toast.value.error('Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.');
     return;
   }
 
@@ -562,17 +598,33 @@ async function sendMessage() {
     sent_at: new Date().toISOString()
   }
 
-  // Socket üzerinden mesaj gönder (diğer kullanıcı çevrimiçiyse anında alır)
-  socket.emit("send_message", msg)
-  
-  // Kendi UI'mıza da ekleyelim
-  messages.value.push(msg)
-  
-  // Mesajı temizle
-  newMessage.value = ''
-  
-  // Otomatik kaydır
-  scrollToBottom()
+  try {
+    // Önce kendi UI'mıza ekleyelim
+    messages.value.push(msg)
+    
+    // Mesajı temizle
+    newMessage.value = ''
+    
+    // Otomatik kaydır
+    scrollToBottom()
+    
+    // Socket bağlantımız varsa, socket üzerinden mesaj gönder
+    if (socket && socket.connected) {
+      socket.emit("send_message", msg);
+    } else {
+      // Socket bağlantısı yoksa, REST API üzerinden mesaj gönder
+      await chatApi.sendMessage(selectedChatId.value, msg);
+      
+      // Socket bağlantısını yeniden kurmayı dene
+      setupSocket();
+    }
+  } catch (error) {
+    console.error("Mesaj gönderilirken hata:", error);
+    toast.value.error("Mesaj gönderilemedi. Lütfen daha sonra tekrar deneyin.");
+    
+    // Hata durumunda, son eklenen mesajı kaldıralım
+    messages.value.pop();
+  }
 }
 
 // Mesaj zamanını formatlama
