@@ -152,6 +152,14 @@
             <button class="action-btn accept" @click="respondToMatch(notification.match_id, 'accepted')">Kabul Et</button>
             <button class="action-btn reject" @click="respondToMatch(notification.match_id, 'rejected')">Reddet</button>
           </div>
+          <div class="notification-actions" v-else>
+            <template v-if="notification.status === 'accepted'">
+              <span style="color: #4CAF50; font-weight: 500;">✅ Kabul Edildi</span>
+            </template>
+            <template v-else-if="notification.status === 'rejected'">
+              <span style="color: #F44336; font-weight: 500;">❌ Reddedildi</span>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -288,7 +296,19 @@ export default {
       try {
         isLoading.value = true;
         await matchesApi.updateMatch(matchId, status);
-        notifications.value = notifications.value.map(n => n.match_id === matchId ? { ...n, read: true } : n);
+        
+        // Bildirim durumunu güncelle
+        notifications.value = notifications.value.map(n => {
+          if (n.match_id === matchId) {
+            return { 
+              ...n, 
+              read: true,
+              status: status,
+              updated_at: new Date().toISOString()
+            };
+          }
+          return n;
+        });
       } catch (error) {
         console.error('Durum güncellenemedi:', error);
         hasError.value = true;

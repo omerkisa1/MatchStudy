@@ -154,6 +154,13 @@ export const userApi = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
+    }),
+    
+  addUser: (userData) => 
+    apiCall(`users/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
     })
 };
 

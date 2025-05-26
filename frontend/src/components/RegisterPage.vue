@@ -220,14 +220,16 @@ export default {
       isLoading.value = true;
 
       try {
-        const result = await userApi.updateUser(null, {
+        const userData = {
           email: email.value,
           password: password.value,
           name: name.value,
           surname: surname.value,
           age: parseInt(age.value),
           education_level: educationLevel.value
-        });
+        };
+        
+        const result = await userApi.addUser(userData);
 
         if (result && result.message === true) {
           registerSuccess.value = true;
