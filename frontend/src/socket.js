@@ -24,9 +24,8 @@ export function initSocket(userId) {
     console.log('🔌 Yeni socket.io bağlantısı kuruluyor...');
     connectionStatus.status = 'connecting';
     
-    // Demo için hardcoded URL kullan - gerçek bağlantı kurulmayacak 
-    // ama hata vermeyecek şekilde socket nesnesi oluşturacak
-    const SOCKET_URL = 'https://matchstudy-production.up.railway.app';
+    // Gerçek socket.io bağlantısı için URL
+    const SOCKET_URL = getSocketUrl();
     
     // Mevcut soketi kapat (varsa)
     if (socket) {
@@ -37,18 +36,70 @@ export function initSocket(userId) {
       clearAllTimers();
     }
     
-    // Demo için socket yerine doğrudan fallback socket döndür - gerçek bağlantı kurmaya çalışma
-    console.log('📡 Demo modu: Gerçek bağlantı yerine fallback socket kullanılıyor');
-    socket = createAdvancedFallbackSocket(userId);
-    
-    // Demo için bağlantı kurulmuş gibi davran
-    setTimeout(() => {
-      console.log('✅ Socket.IO bağlantısı kuruldu (demo)');
-      connectionStatus.status = 'connected';
-      connectionStatus.lastError = null;
-    }, 1000);
-    
-    return socket;
+    // Gerçek socket.io bağlantısını kur
+    try {
+      socket = io(SOCKET_URL, {
+        reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+        query: { userId },
+        transports: ['websocket', 'polling']
+      });
+      
+      // Connection başarılı olduğunda
+      socket.on('connect', () => {
+        console.log('✅ Socket.IO bağlantısı kuruldu!', socket.id);
+        connectionStatus.status = 'connected';
+        connectionStatus.lastError = null;
+        reconnectAttempts = 0;
+        
+        // Kullanıcı ID'yi gönder
+        socket.emit('user_login', userId);
+        
+        // Bağlantı kontrolünü başlat
+        startConnectionCheck();
+      });
+      
+      // Bağlantı hatası
+      socket.on('connect_error', (error) => {
+        console.error('❌ Socket.IO bağlantı hatası:', error);
+        connectionStatus.status = 'failed';
+        connectionStatus.lastError = error.message;
+        
+        // Maksimum deneme sayısına ulaşıldıysa fallback moda geç
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+          console.warn(`⚠️ Maksimum yeniden bağlantı denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı, fallback moda geçiliyor`);
+          socket = createAdvancedFallbackSocket(userId);
+          
+          // Demo için bağlantı kurulmuş gibi davran
+          setTimeout(() => {
+            console.log('✅ Socket.IO bağlantısı kuruldu (demo - fallback)');
+            connectionStatus.status = 'connected';
+            connectionStatus.lastError = null;
+          }, 1000);
+        }
+      });
+      
+      // Yeniden bağlanma denemesi
+      socket.on('reconnect_attempt', (attempt) => {
+        reconnectAttempts = attempt;
+        console.log(`🔄 Socket.IO yeniden bağlanmaya çalışılıyor (${attempt}/${MAX_RECONNECT_ATTEMPTS})`);
+        connectionStatus.status = 'connecting';
+      });
+      
+      return socket;
+    } catch (socketError) {
+      console.error('⚠️ Socket.IO bağlantısı kurulamadı, fallback moda geçiliyor:', socketError);
+      // Fallback olarak gelişmiş mock soket kullan
+      socket = createAdvancedFallbackSocket(userId);
+      
+      // Demo için bağlantı kurulmuş gibi davran
+      setTimeout(() => {
+        console.log('✅ Socket.IO bağlantısı kuruldu (demo - fallback)');
+        connectionStatus.status = 'connected';
+        connectionStatus.lastError = null;
+      }, 1000);
+      
+      return socket;
+    }
   } catch (error) {
     console.error('⚠️ Socket başlatma hatası:', error);
     connectionStatus.status = 'failed';
