@@ -379,7 +379,7 @@ async function sendFriendRequest() {
 // Mesajları okundu olarak işaretle
 async function markMessagesAsRead(chatId) {
   try {
-    await chatApi.markRead(chatId);
+    await chatApi.markRead(chatId, currentUser.value);
     
     // Seçili eşleşmeye ait okunmamış mesajları sıfırla
     if (selectedMatchId.value) {
