@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { isApiAvailable, apiState } from '@/services/api';
 import { connectionStatus } from '@/socket';
 

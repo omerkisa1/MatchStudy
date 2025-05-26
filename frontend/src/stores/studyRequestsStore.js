@@ -4,6 +4,15 @@ import { useUserStore } from './userStore'
 import { studyRequestsApi } from '@/services/api'
 
 /**
+ * Safe array accessor to prevent "Cannot read properties of undefined (reading 'length')" errors
+ * @param {Array|undefined|null} arr - The array to check
+ * @returns {Array} - The original array or an empty array if undefined/null
+ */
+function safeArray(arr) {
+  return Array.isArray(arr) ? arr : [];
+}
+
+/**
  * Study Requests Store - handles all logic related to study requests
  * Creates, fetches, and filters study requests
  */
@@ -27,11 +36,12 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     
     try {
       const response = await studyRequestsApi.getAllRequests()
-      allRequests.value = response.requests || []
+      allRequests.value = Array.isArray(response.requests) ? response.requests : []
       return allRequests.value
     } catch (err) {
       console.error('API error response:', err)
       error.value = `API error: ${err.message}`
+      allRequests.value = []
       throw new Error('Tüm istekler getirilemedi')
     } finally {
       loading.value = false
@@ -49,11 +59,12 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     
     try {
       const response = await studyRequestsApi.getUserRequests(userStore.id)
-      userRequests.value = response.requests || []
+      userRequests.value = Array.isArray(response.requests) ? response.requests : []
       return userRequests.value
     } catch (err) {
       console.error('Error fetching user study requests:', err)
       error.value = err.message
+      userRequests.value = []
       throw new Error('İstekler getirilemedi')
     } finally {
       loading.value = false
@@ -71,11 +82,12 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     
     try {
       const response = await studyRequestsApi.getUserRequests(userStore.id, true)
-      pastRequests.value = response.requests || []
+      pastRequests.value = Array.isArray(response.requests) ? response.requests : []
       return pastRequests.value
     } catch (err) {
       console.error('Error fetching past requests:', err)
       error.value = err.message
+      pastRequests.value = []
       throw new Error('Geçmiş istekler getirilemedi')
     } finally {
       loading.value = false
@@ -118,8 +130,8 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
       await studyRequestsApi.deleteRequest(requestId)
       
       // Listeden sil
-      userRequests.value = userRequests.value.filter(req => req.id !== requestId)
-      allRequests.value = allRequests.value.filter(req => req.id !== requestId)
+      userRequests.value = safeArray(userRequests.value).filter(req => req && req.id !== requestId)
+      allRequests.value = safeArray(allRequests.value).filter(req => req && req.id !== requestId)
       
       return true
     } catch (err) {
@@ -133,7 +145,9 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
 
   // Computed properties
   const activeRequests = computed(() => {
-    return userRequests.value.filter(req => {
+    return safeArray(userRequests.value).filter(req => {
+      if (!req) return false;
+      
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
@@ -142,6 +156,14 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
       
       return requestDate >= today
     })
+  })
+  
+  // Open requests (always returns an array even if empty)
+  const openRequests = computed(() => {
+    return safeArray(userRequests.value).filter(req => {
+      if (!req) return false;
+      return req.status === 'open' || !req.status;
+    });
   })
 
   return {
@@ -160,6 +182,7 @@ export const useStudyRequestsStore = defineStore('studyRequests', () => {
     deleteStudyRequest,
     
     // Computed
-    activeRequests
+    activeRequests,
+    openRequests
   }
 }) 
