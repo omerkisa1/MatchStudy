@@ -225,7 +225,7 @@ export default {
         console.log("Login attempt with:", { 
           email: email.value,
           password: password.value,
-          url: `${import.meta.env.VITE_APP_API_URL}/users/get_id`
+          url: `https://matchstudy-production.up.railway.app/users/get_id`
         });
         
         // URLSearchParams kullanarak parametreleri daha güvenli bir şekilde ekle
@@ -233,7 +233,8 @@ export default {
         params.append('email', email.value);
         params.append('password', password.value);
         
-        const url = `${import.meta.env.VITE_APP_API_URL}/users/get_id?${params.toString()}`;
+        // API URL'sini doğrudan backend URL'si olarak değiştir (api prefix'i olmadan)
+        const url = `https://matchstudy-production.up.railway.app/users/get_id?${params.toString()}`;
         console.log("Request URL:", url);
         
         const response = await fetch(url);
