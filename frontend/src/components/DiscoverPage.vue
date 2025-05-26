@@ -255,13 +255,15 @@ export default {
         // Fetch study requests manually instead of using store - temporary fix
         const fetchStudyRequests = async () => {
           try {
-            const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/study_requests/all`);
+            // Doğrudan API'yi çağır
+            const response = await fetch('https://matchstudy-production.up.railway.app/study_requests/all');
             
             if (!response.ok) {
               throw new Error(`API yanıt hatası: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log("API study requests loaded:", data);
             studyRequestsStore.allRequests = data.requests || [];
           } catch (error) {
             console.error('Study requests alınırken hata oluştu:', error);
