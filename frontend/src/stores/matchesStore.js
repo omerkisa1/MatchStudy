@@ -2,6 +2,27 @@ import { defineStore } from 'pinia'
 import { useUserStore } from './userStore'
 
 /**
+ * Safe array accessor to prevent "Cannot read properties of undefined (reading 'length')" errors
+ * @param {Array|undefined|null} arr - The array to check
+ * @returns {Array} - The original array or an empty array if undefined/null
+ */
+function safeArray(arr) {
+  return Array.isArray(arr) ? arr : [];
+}
+
+/**
+ * Safe property access for objects
+ * @param {Object|undefined|null} obj - The object to check
+ * @param {String} prop - The property to access
+ * @param {*} defaultValue - Default value if property doesn't exist
+ * @returns {*} - The property value or default
+ */
+function safeGet(obj, prop, defaultValue = null) {
+  if (!obj || typeof obj !== 'object') return defaultValue;
+  return obj[prop] !== undefined ? obj[prop] : defaultValue;
+}
+
+/**
  * Matches Store - handles match status, sending responses, and pending count
  */
 export const useMatchesStore = defineStore('matches', {
@@ -13,7 +34,9 @@ export const useMatchesStore = defineStore('matches', {
     // Selected match for viewing details
     selectedMatchId: null,
     // Flag to determine if fetch was already performed
-    hasFetched: false
+    hasFetched: false,
+    // Error state
+    error: null
   }),
 
   actions: {
@@ -25,12 +48,14 @@ export const useMatchesStore = defineStore('matches', {
       if (!userStore.id) return
       
       this.isLoading = true
+      this.error = null
+      
       try {
         const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/user/${userStore.id}`)
         if (!response.ok) throw new Error('Eşleşmeler getirilemedi')
         
         const data = await response.json()
-        this.matches = data.matches || []
+        this.matches = Array.isArray(data.matches) ? data.matches : []
         
         // Backend debugging
         //console.log('Fetched matches from backend:', this.matches)
@@ -38,6 +63,7 @@ export const useMatchesStore = defineStore('matches', {
         this.hasFetched = true
       } catch (error) {
         console.error('Error fetching matches:', error)
+        this.error = error.message || 'Eşleşmeler getirilemedi'
         this.matches = []
       } finally {
         this.isLoading = false
@@ -54,7 +80,14 @@ export const useMatchesStore = defineStore('matches', {
       if (!userStore.id) {
         return { success: false, error: 'User not authenticated' }
       }
+      
+      if (!requestData || !requestData.user2_id || !requestData.request_id) {
+        return { success: false, error: 'Invalid request data' }
+      }
 
+      this.isLoading = true
+      this.error = null
+      
       try {
         const response = await fetch(
           `${import.meta.env.VITE_APP_API_URL}/matches/create?user1_id=${userStore.id}&user2_id=${requestData.user2_id}&request_id=${requestData.request_id}`,
@@ -71,7 +104,10 @@ export const useMatchesStore = defineStore('matches', {
         return { success: true }
       } catch (error) {
         console.error('Error creating match:', error)
+        this.error = error.message || 'Eşleşme oluşturulamadı'
         return { success: false, error: error.message }
+      } finally {
+        this.isLoading = false
       }
     },
 
@@ -82,6 +118,13 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {Object} - Response with success status
      */
     async respondToMatch(matchId, accept) {
+      if (!matchId) {
+        return { success: false, error: 'Invalid match ID' }
+      }
+      
+      this.isLoading = true
+      this.error = null
+      
       try {
         const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/${matchId}/respond`, {
           method: 'PUT',
@@ -99,7 +142,7 @@ export const useMatchesStore = defineStore('matches', {
         }
 
         // Update the local match status
-        const matchIndex = this.matches.findIndex(m => this.getMatchId(m) === matchId)
+        const matchIndex = safeArray(this.matches).findIndex(m => this.getMatchId(m) === matchId)
         if (matchIndex !== -1) {
           this.matches[matchIndex].status = accept ? 'accepted' : 'rejected'
         }
@@ -110,7 +153,10 @@ export const useMatchesStore = defineStore('matches', {
         return { success: true }
       } catch (error) {
         console.error('Error responding to match:', error)
+        this.error = error.message || 'Yanıt gönderilemedi'
         return { success: false, error: error.message }
+      } finally {
+        this.isLoading = false
       }
     },
 
@@ -145,7 +191,18 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {Number} - The match ID
      */
     getMatchId(match) {
-      return match.match_id || match.id;
+      if (!match) return null;
+      return safeGet(match, 'match_id', safeGet(match, 'id', null));
+    },
+    
+    /**
+     * Clear all matches data (for testing or logout)
+     */
+    clearMatches() {
+      this.matches = [];
+      this.selectedMatchId = null;
+      this.hasFetched = false;
+      this.error = null;
     }
   },
 
@@ -155,7 +212,7 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {Array} - List of pending matches
      */
     pendingMatches() {
-      return this.matches.filter(match => match.status === 'pending')
+      return safeArray(this.matches).filter(match => match && match.status === 'pending')
     },
     
     /**
@@ -171,15 +228,11 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {Array} - List of accepted matches
      */
     acceptedMatches() {
-      // Debug: Tüm eşleşmelerin statülerini kontrol et
-      //console.log("Tüm eşleşme statüleri:", this.matches.map(m => ({ id: this.getMatchId(m), status: m.status })));
-      
       // Hem "accepted" hem de "ACCEPTED" olabilir, case-insensitive kontrol yapalım
-      const acceptedMatches = this.matches.filter(match => 
-        match.status && match.status.toLowerCase() === 'accepted'
+      const acceptedMatches = safeArray(this.matches).filter(match => 
+        match && match.status && match.status.toLowerCase() === 'accepted'
       );
       
-      //console.log("Kabul edilmiş eşleşmeler:", acceptedMatches);
       return acceptedMatches;
     },
     
@@ -191,8 +244,8 @@ export const useMatchesStore = defineStore('matches', {
       if (!this.selectedMatchId) return null
       
       // Hem id hem de match_id kontrolü yapalım
-      return this.matches.find(match => 
-        this.getMatchId(match) === this.selectedMatchId
+      return safeArray(this.matches).find(match => 
+        match && this.getMatchId(match) === this.selectedMatchId
       ) || null
     },
     
@@ -202,15 +255,22 @@ export const useMatchesStore = defineStore('matches', {
      * @returns {String|null} - Match status or null
      */
     getMatchStatusForRequest: (state) => (requestId) => {
-      const match = state.matches.find(m => m.request_id === requestId)
+      if (!requestId) return null;
+      const match = safeArray(state.matches).find(m => m && m.request_id === requestId)
       return match ? match.status : null
     },
+    
+    /**
+     * Get pending matches where current user is the responder
+     * @returns {Array} - List of pending matches for response
+     */
     pendingResponderMatches(state) {
       const userStore = useUserStore()
-      return state.matches.filter(
-        m => m.status === 'pending' && m.responder_id === userStore.id
+      if (!userStore.id) return [];
+      
+      return safeArray(state.matches).filter(
+        m => m && m.status === 'pending' && m.responder_id === userStore.id
       )
     }
-    
   }
 }) 

@@ -2,6 +2,15 @@ import { defineStore } from 'pinia'
 import { useUserStore } from './userStore'
 
 /**
+ * Safe array accessor to prevent "Cannot read properties of undefined (reading 'length')" errors
+ * @param {Array|undefined|null} arr - The array to check
+ * @returns {Array} - The original array or an empty array if undefined/null
+ */
+function safeArray(arr) {
+  return Array.isArray(arr) ? arr : [];
+}
+
+/**
  * Notifications Store - handles fetching and storing notifications
  */
 export const useNotificationsStore = defineStore('notifications', {
@@ -12,7 +21,9 @@ export const useNotificationsStore = defineStore('notifications', {
     // Loading state
     isLoading: false,
     // Last fetch timestamp
-    lastFetched: null
+    lastFetched: null,
+    // Error state
+    error: null
   }),
 
   actions: {
@@ -24,30 +35,42 @@ export const useNotificationsStore = defineStore('notifications', {
       if (!userStore.id) return
       
       this.isLoading = true
+      this.error = null
+      
       try {
         const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/notifications/${userStore.id}`)
         if (!response.ok) throw new Error('Bildirimler getirilemedi')
         
         const data = await response.json()
-        this.notifications = data.notifications || []
+        this.notifications = Array.isArray(data.notifications) ? data.notifications : []
         this.lastFetched = new Date()
       } catch (error) {
         console.error('Error fetching notifications:', error)
+        this.error = error.message || 'Bildirimler yüklenemedi'
+        this.notifications = []
       } finally {
         this.isLoading = false
       }
     },
+
     async fetchFriendRequests() {
       const userStore = useUserStore()
       if (!userStore.id) return
     
+      this.isLoading = true
+      this.error = null
+      
       try {
         const res = await fetch(`${import.meta.env.VITE_APP_API_URL}/friend_requests/get_friend_requests?user_id=${userStore.id}`)
         if (!res.ok) throw new Error("Arkadaşlık istekleri alınamadı")
         const data = await res.json()
-        this.friendRequests = data.requests || []
+        this.friendRequests = Array.isArray(data.requests) ? data.requests : []
       } catch (error) {
         console.error("Error fetching friend requests:", error)
+        this.error = error.message || 'Arkadaşlık istekleri yüklenemedi'
+        this.friendRequests = []
+      } finally {
+        this.isLoading = false
       }
     },
     
@@ -56,6 +79,8 @@ export const useNotificationsStore = defineStore('notifications', {
      * @param {Number} notificationId - ID of the notification to mark as read
      */
     async markAsRead(notificationId) {
+      if (!notificationId) return { success: false, error: 'Invalid notification ID' }
+      
       try {
         // In a real app, this would send a request to the API
         // const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/notifications/${notificationId}/read`, {
@@ -65,7 +90,7 @@ export const useNotificationsStore = defineStore('notifications', {
         // if (!response.ok) throw new Error('Notification could not be marked as read')
         
         // Update local state
-        const notification = this.notifications.find(n => n.id === notificationId)
+        const notification = this.notifications.find(n => n && n.id === notificationId)
         if (notification) notification.read = true
         
         return { success: true }
@@ -88,10 +113,12 @@ export const useNotificationsStore = defineStore('notifications', {
         
         // if (!response.ok) throw new Error('Notifications could not be marked as read')
         
-        // Update local state
-        this.notifications.forEach(notification => {
-          notification.read = true
-        })
+        // Update local state - safely handle the array
+        if (Array.isArray(this.notifications)) {
+          this.notifications.forEach(notification => {
+            if (notification) notification.read = true
+          })
+        }
         
         return { success: true }
       } catch (error) {
@@ -117,6 +144,16 @@ export const useNotificationsStore = defineStore('notifications', {
       if (diffMinutes >= minutes) {
         await this.fetchNotifications()
       }
+    },
+    
+    /**
+     * Clear all notifications (for testing or logout)
+     */
+    clearNotifications() {
+      this.notifications = []
+      this.friendRequests = []
+      this.lastFetched = null
+      this.error = null
     }
   },
 
@@ -126,7 +163,7 @@ export const useNotificationsStore = defineStore('notifications', {
      * @returns {Number} - Count of unread notifications
      */
     unreadCount() {
-      return this.notifications.filter(notification => !notification.read).length
+      return safeArray(this.notifications).filter(notification => notification && !notification.read).length
     },
     
     /**
@@ -134,7 +171,7 @@ export const useNotificationsStore = defineStore('notifications', {
      * @returns {Array} - List of unread notifications
      */
     unreadNotifications() {
-      return this.notifications.filter(notification => !notification.read)
+      return safeArray(this.notifications).filter(notification => notification && !notification.read)
     },
     
     /**
@@ -142,13 +179,19 @@ export const useNotificationsStore = defineStore('notifications', {
      * @returns {Array} - Sorted notifications
      */
     sortedNotifications() {
-      return [...this.notifications].sort((a, b) => {
+      return safeArray(this.notifications).sort((a, b) => {
+        if (!a || !a.created_at) return 1
+        if (!b || !b.created_at) return -1
         return new Date(b.created_at) - new Date(a.created_at)
       })
     },
-    pendingFriendRequests() {
-      return this.friendRequests.filter(req => req.status === 'pending')
-    }
     
+    /**
+     * Get pending friend requests
+     * @returns {Array} - List of pending friend requests
+     */
+    pendingFriendRequests() {
+      return safeArray(this.friendRequests).filter(req => req && req.status === 'pending')
+    }
   }
 }) 

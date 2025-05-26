@@ -10,6 +10,13 @@ const SOCKET_URL = 'https://socket-production-8bf7.up.railway.app';
 // API URL prefix - add /api/ prefix for Railway deployment
 const API_PREFIX = '/api';
 
+// Global API state
+export const apiState = {
+  isAvailable: true,
+  lastError: null,
+  lastCheck: null
+};
+
 /**
  * Generic API call function with improved error handling
  * @param {string} endpoint - API endpoint (without leading slash)
@@ -26,30 +33,69 @@ export async function apiCall(endpoint, options = {}) {
     
     console.log(`API Request to: ${url}`);
     
-    // 5 second timeout for fetch requests
+    // 10 second timeout for fetch requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increase to 10 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
     
     const fetchOptions = {
       ...options,
       signal: controller.signal,
       // Add credentials to handle cookies if needed
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        ...(options.headers || {}),
+        'Accept': 'application/json'
+      }
     };
     
-    const response = await fetch(url, fetchOptions);
+    // Retry mechanism for failed requests (max 2 retries)
+    let retries = 0;
+    const maxRetries = 2;
+    let response;
+    
+    while (retries <= maxRetries) {
+      try {
+        response = await fetch(url, fetchOptions);
+        break; // Success - exit retry loop
+      } catch (error) {
+        retries++;
+        
+        if (retries > maxRetries || error.name !== 'TypeError') {
+          throw error; // Re-throw if not a network error or max retries reached
+        }
+        
+        console.log(`🔄 Retrying API request (${retries}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retries)); // Exponential backoff
+      }
+    }
+    
     clearTimeout(timeoutId);
+    
+    if (!response) {
+      throw new Error('Sunucu yanıt vermedi');
+    }
     
     if (!response.ok) {
       // Handle specific error status codes
-      if (response.status === 502) {
-        console.error(`502 Bad Gateway error for ${url}`);
-        throw new Error(`Sunucu bağlantı hatası (502 Bad Gateway)`);
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        console.error(`${response.status} Gateway error for ${url}`);
+        apiState.isAvailable = false;
+        apiState.lastError = `Sunucu bağlantı hatası (${response.status})`;
+        throw new Error(`Sunucu bağlantı hatası (${response.status})`);
+      } else if (response.status === 401) {
+        throw new Error('Oturum süresi dolmuş olabilir, lütfen tekrar giriş yapın');
+      } else if (response.status === 404) {
+        throw new Error(`API uç noktası bulunamadı: ${endpoint}`);
       } else {
         console.error(`API error: ${response.status} for ${url}`);
         throw new Error(`API error: ${response.status}`);
       }
     }
+    
+    // API is available if we got here
+    apiState.isAvailable = true;
+    apiState.lastError = null;
+    apiState.lastCheck = Date.now();
     
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -64,9 +110,12 @@ export async function apiCall(endpoint, options = {}) {
     // Handle different error types
     if (error.name === 'AbortError') {
       console.error(`API timeout for ${endpoint}`);
+      apiState.lastError = 'İstek zaman aşımına uğradı';
       throw new Error('İstek zaman aşımına uğradı. Lütfen tekrar deneyin.');
     } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
       console.error(`Network error for ${endpoint}:`, error);
+      apiState.isAvailable = false;
+      apiState.lastError = 'Ağ bağlantısı hatası';
       throw new Error('Ağ bağlantısı hatası. İnternet bağlantınızı kontrol edin.');
     } else {
       console.error(`API error for ${endpoint}:`, error);
@@ -82,7 +131,7 @@ export async function apiCall(endpoint, options = {}) {
  * @returns {any} - The value or default value
  */
 export function safeValue(value, defaultValue = []) {
-  return value !== undefined ? value : defaultValue;
+  return value !== undefined && value !== null ? value : defaultValue;
 }
 
 /**
@@ -93,7 +142,12 @@ export const userApi = {
     apiCall(`users/get_id?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
   
   getUser: (userId) => 
-    apiCall(`users/user/${userId}`),
+    apiCall(`users/user/${userId}`).then(response => {
+      return {
+        ...response,
+        user: safeValue(response?.user, {})
+      };
+    }),
   
   updateUser: (userId, userData) => 
     apiCall(`users/update/${userId}`, {
@@ -231,7 +285,12 @@ export const friendRequestsApi = {
  */
 export const chatApi = {
   getChat: (userId1, userId2) => 
-    apiCall(`chat/${userId1}/${userId2}`),
+    apiCall(`chat/${userId1}/${userId2}`).then(response => {
+      return {
+        ...response,
+        chat: safeValue(response?.chat, {})
+      };
+    }),
   
   getMessages: (chatId) => 
     apiCall(`messages/${chatId}`).then(response => {
@@ -242,13 +301,18 @@ export const chatApi = {
     }),
   
   getLastMessage: (chatId) => 
-    apiCall(`messages/last/${chatId}`),
+    apiCall(`messages/last/${chatId}`).then(response => {
+      return {
+        ...response,
+        message: safeValue(response?.message, {})
+      };
+    }),
     
   getUnreadMessages: (userId) => 
     apiCall(`messages/unread/${userId}`).then(response => {
       return {
         ...response,
-        unread_counts: response?.unread_counts || {}
+        unread_counts: safeValue(response?.unread_counts, {})
       };
     }),
   
@@ -287,21 +351,56 @@ export function getSocketUrl() {
   return SOCKET_URL;
 }
 
-// Helper function to detect if the API is available
+/**
+ * Helper function to detect if the API is available
+ * @returns {Promise<boolean>} True if API is available, false otherwise
+ */
 export async function isApiAvailable() {
   try {
-    await fetch(`${BACKEND_URL}/health`, { 
+    // Try hitting a simple endpoint first
+    const response = await fetch(`${BACKEND_URL}/health`, { 
       method: 'GET',
-      mode: 'no-cors',
+      mode: 'cors',
       cache: 'no-cache',
       timeout: 3000
     });
+    
+    // If health endpoint fails, try with the API prefix
+    if (!response.ok) {
+      const apiResponse = await fetch(`${BACKEND_URL}${API_PREFIX}/health`, { 
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache',
+        timeout: 3000
+      });
+      
+      apiState.isAvailable = apiResponse.ok;
+      apiState.lastCheck = Date.now();
+      return apiResponse.ok;
+    }
+    
+    apiState.isAvailable = true;
+    apiState.lastCheck = Date.now();
     return true;
   } catch (error) {
     console.error('API health check failed:', error);
+    apiState.isAvailable = false;
+    apiState.lastError = error.message;
+    apiState.lastCheck = Date.now();
     return false;
   }
 }
+
+// Check API availability on load
+setTimeout(() => {
+  isApiAvailable()
+    .then(available => {
+      console.log(`API availability check: ${available ? 'ONLINE' : 'OFFLINE'}`);
+    })
+    .catch(error => {
+      console.error('API availability check error:', error);
+    });
+}, 1000);
 
 export default {
   userApi,
@@ -310,5 +409,6 @@ export default {
   friendRequestsApi,
   chatApi,
   getSocketUrl,
-  isApiAvailable
+  isApiAvailable,
+  apiState
 }; 
