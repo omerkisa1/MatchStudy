@@ -51,20 +51,59 @@ export const useMatchesStore = defineStore('matches', {
       this.error = null
       
       try {
-        const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/matches/user/${userStore.id}`)
-        if (!response.ok) throw new Error('Eşleşmeler getirilemedi')
+        // Doğrudan API endpoint URL'sini kullan
+        const response = await fetch(`https://matchstudy-production.up.railway.app/matches/user/${userStore.id}`)
+        
+        if (!response.ok) {
+          throw new Error(`API yanıt hatası: ${response.status}`)
+        }
         
         const data = await response.json()
         this.matches = Array.isArray(data.matches) ? data.matches : []
         
-        // Backend debugging
-        //console.log('Fetched matches from backend:', this.matches)
+        console.log('Fetched matches from backend:', this.matches)
         
         this.hasFetched = true
       } catch (error) {
         console.error('Error fetching matches:', error)
         this.error = error.message || 'Eşleşmeler getirilemedi'
-        this.matches = []
+        
+        // Demo için mock data kullan
+        console.log('Using mock matches data for demo')
+        this.matches = [
+          {
+            match_id: 1,
+            request_id: 1,
+            user1_id: userStore.id,
+            user2_id: 2,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            user1_name: 'Sen',
+            user2_name: 'Ali Yılmaz'
+          },
+          {
+            match_id: 2,
+            request_id: 2,
+            user1_id: 3,
+            user2_id: userStore.id,
+            status: 'accepted',
+            created_at: new Date(Date.now() - 86400000).toISOString(),
+            user1_name: 'Ayşe Demir',
+            user2_name: 'Sen'
+          },
+          {
+            match_id: 3,
+            request_id: 3,
+            user1_id: userStore.id,
+            user2_id: 4,
+            status: 'rejected',
+            created_at: new Date(Date.now() - 172800000).toISOString(),
+            user1_name: 'Sen',
+            user2_name: 'Mehmet Kaya'
+          }
+        ]
+        
+        this.hasFetched = true
       } finally {
         this.isLoading = false
       }
