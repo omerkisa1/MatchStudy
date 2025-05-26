@@ -47,7 +47,7 @@ import axios from 'axios'
  */
 
 // API base URL
-const API_URL = '${import.meta.env.VITE_APP_API_URL}'
+const API_URL = 'https://matchstudy-production.up.railway.app'
 
 /**
  * Composable for managing user profile - handles profile data, editing, and uploads
