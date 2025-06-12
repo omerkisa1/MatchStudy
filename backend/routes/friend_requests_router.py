@@ -44,24 +44,30 @@ async def send_request(
         raise HTTPException(status_code=500, detail="Arkadaşlık isteği gönderilemedi")
 
 @router.post("/manage")
-async def manage_request(
-    request_data: ManageRequestBody
-):
+async def manage_request(request_data: ManageRequestBody):
+    # Direkt olarak request_data’dan alıyoruz
+    sender_id   = request_data.sender_id
+    receiver_id = request_data.receiver_id
+    status      = request_data.status
+
+    # Basit kontrol
+    if not (sender_id and receiver_id and status):
+        raise HTTPException(status_code=400,
+                            detail="sender_id, receiver_id ve status gerekli")
+
     try:
-        # Request body'den parametreleri al veya query string'den gelen parametreleri kullan
-        final_sender_id = request_data.sender_id if request_data else sender_id
-        final_receiver_id = request_data.receiver_id if request_data else receiver_id
-        final_status = request_data.status if request_data else status
-        
-        if not final_sender_id or not final_receiver_id or not final_status:
-            raise ValueError("Eksik parametreler: sender_id, receiver_id ve status gerekli")
-            
-        manage_friend_request_status(final_sender_id, final_receiver_id, final_status)
-        return {"success": True, "message": f"Arkadaşlık isteği '{final_status}' olarak güncellendi"}
+        manage_friend_request_status(sender_id, receiver_id, status)
+        return {
+            "success": True,
+            "message": f"Arkadaşlık isteği '{status}' olarak güncellendi"
+        }
     except ValueError as ve:
+        # Eğer manage_friend_request_status yanlış bir eşleşme vs. sebebiyle ValueError fırlatıyorsa
         raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="İstek durumu güncellenemedi")
+    except Exception:
+        raise HTTPException(status_code=500,
+                            detail="İstek durumu güncellenemedi")
+
 
 @router.get("/get_friend_requests")
 async def get_requests(user_id: int):

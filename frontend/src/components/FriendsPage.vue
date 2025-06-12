@@ -92,13 +92,17 @@ export default {
       if (!confirm('Bu kullanıcıyı engellemek istediğinize emin misiniz?')) return;
       
       try {
-        await axios.post(`https://matchstudy-production.up.railway.app/friend_requests/manage`, null, {
-          params: {
-            sender_id: userId,
-            receiver_id: userStore.id,
-            status: 'blocked'
-          }
-        });
+   await axios.post(
+      `https://matchstudy-production.up.railway.app/friend_requests/manage`,
+      {
+        sender_id:   userId,
+        receiver_id: userStore.id,
+        status:      'blocked'
+      },
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
         
         // Engellenen kullanıcıyı listeden kaldır
         friends.value = friends.value.filter(f => f.sender_id !== userId);
