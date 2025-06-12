@@ -112,13 +112,20 @@ export default {
       if (!confirm('Bu kullanıcıyı arkadaş listenizden çıkarmak istediğinize emin misiniz?')) return;
       
       try {
-        await axios.post(`https://matchstudy-production.up.railway.app/friend_requests/manage`, null, {
-          params: {
+        await axios.post(
+          `https://matchstudy-production.up.railway.app/friend_requests/manage`,
+          {
             sender_id: userId,
             receiver_id: userStore.id,
             status: 'rejected'
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
           }
-        });
+        );
+
         
         // Arkadaşlıktan çıkarılan kullanıcıyı listeden kaldır
         friends.value = friends.value.filter(f => f.sender_id !== userId);
