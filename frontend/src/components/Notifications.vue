@@ -214,36 +214,17 @@ const fetchNotifications = async () => {
 };
 
 
-    const fetchRecentActivities = async () => {
-      try {
-        // Hardcoded direct API call for demo
-        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
-        if (!response.ok) {
-          throw new Error('Son aktiviteler alınamadı');
-        }
-        const data = await response.json();
-        // Demo için boş aktivite dizisi kullan
-        recentActivities.value = data.users && data.users.length > 0 ? 
-          data.users.slice(0, 3).map(u => ({
-            match_id: u.id || Math.random().toString(36).substring(7),
-            read: true,
-            matched_at: new Date(Date.now() - 86400000).toISOString(),
-            updated_at: new Date().toISOString(),
-            status: 'accepted',
-            name: u.name || 'İsim',
-            surname: u.surname || 'Soyisim',
-            topic: 'Fizik',
-            education_level: u.education_level || 'Lise',
-            institution: u.institution || 'Demo Lisesi',
-            duration: '1 saat',
-            note: 'Demo aktivite'
-          })) : [];
-        return true;
-      } catch (error) {
-        console.error("Son aktiviteler alınamadı:", error);
-        return false;
-      }
-    };
+const fetchRecentActivities = async () => {
+  try {
+    const { history } = await matchesApi.getHistory(userStore.id);
+    recentActivities.value = history;
+    return true;
+  } catch (error) {
+    console.error('Geçmiş eşleşmeler yüklenemedi:', error);
+    return false;
+  }
+};
+
     
     const unreadNotifications = computed(() => {
       return notifications.value.filter(n => !n.read).length;
