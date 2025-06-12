@@ -200,37 +200,19 @@ export default {
       { label: 'Kendi İsteklerim', value: 'my_requests' }
     ];
 
-    const fetchNotifications = async () => {
-      try {
-        // Hardcoded direct API call for demo
-        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
-        if (!response.ok) {
-          throw new Error('Bildirimler getirilemedi');
-        }
-        const data = await response.json();
-        // Demo için boş bildirim dizisi kullan
-        notifications.value = data.users && data.users.length > 0 ? 
-          data.users.slice(0, 5).map(u => ({
-            match_id: u.id || Math.random().toString(36).substring(7),
-            read: false,
-            matched_at: new Date().toISOString(),
-            status: 'pending',
-            name: u.name || 'İsim',
-            surname: u.surname || 'Soyisim',
-            topic: 'Matematik',
-            education_level: u.education_level || 'Üniversite',
-            institution: u.institution || 'Demo Üniversitesi',
-            duration: '2 saat',
-            note: 'Demo notifikasyon'
-          })) : [];
-        return true;
-      } catch (error) {
-        console.error('Bildirimler alınamadı:', error);
-        hasError.value = true;
-        errorMessage.value = error.message || 'Bildirimler alınamadı';
-        return false;
-      }
-    };
+const fetchNotifications = async () => {
+  try {
+    const { notifications: realNotes } = await matchesApi.getNotifications(userStore.id);
+    notifications.value = realNotes;
+    return true;
+  } catch (error) {
+    console.error('Bildirimler alınamadı:', error);
+    hasError.value = true;
+    errorMessage.value = error.message || 'Bildirimler yüklenirken hata oluştu';
+    return false;
+  }
+};
+
 
     const fetchRecentActivities = async () => {
       try {
@@ -344,32 +326,17 @@ const fetchFriendRequests = async () => {
 
     const myRequests = ref([]);
 
-    const fetchMyRequests = async () => {
-      try {
-        // Hardcoded direct API call for demo
-        const response = await fetch(`https://matchstudy-production.up.railway.app/users/list`);
-        if (!response.ok) {
-          throw new Error('İstekler alınamadı');
-        }
-        const data = await response.json();
-        // Demo için boş istek dizisi kullan
-        myRequests.value = data.users && data.users.length > 0 ? 
-          data.users.slice(0, 3).map(u => ({
-            request_id: u.id || Math.random().toString(36).substring(7),
-            created_at: new Date().toISOString(),
-            topic: 'Kimya Çalışması',
-            category: 'Akademik',
-            study_date: '2023-09-30',
-            duration: '3 saat',
-            note: 'Demo istek',
-            status: ['matched', 'open', 'cancelled'][Math.floor(Math.random() * 3)]
-          })) : [];
-        return true;
-      } catch (error) {
-        console.error("Kullanıcı istekleri alınamadı:", error);
-        return false;
-      }
-    };
+const fetchMyRequests = async () => {
+  try {
+    const { requests } = await studyRequestsApi.getUserRequests(userStore.id);
+    myRequests.value = requests;
+    return true;
+  } catch (error) {
+    console.error('Kendi isteklerim yüklenemedi:', error);
+    return false;
+  }
+};
+
 
     const loadAllData = async () => {
       isLoading.value = true;
