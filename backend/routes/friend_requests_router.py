@@ -45,10 +45,7 @@ async def send_request(
 
 @router.post("/manage")
 async def manage_request(
-    sender_id: Optional[int] = None, 
-    receiver_id: Optional[int] = None, 
-    status: Optional[str] = None,
-    request_data: Optional[ManageRequestBody] = Body(None)
+    request_data: ManageRequestBody
 ):
     try:
         # Request body'den parametreleri al veya query string'den gelen parametreleri kullan
