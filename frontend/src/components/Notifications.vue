@@ -305,7 +305,7 @@ const fetchFriendRequests = async () => {
   try {
     const { requests } = await friendRequestsApi.getFriendRequests(userStore.id);
     // Sadece bekleyenleri alın:
-    friendRequests.value = requests.filter(r => r.status === 'pending');
+    friendRequests.value = requests;
   } catch (error) {
     console.error("Arkadaşlık istekleri alınamadı:", error);
     hasError.value = true;
@@ -382,6 +382,9 @@ const fetchMyRequests = async () => {
         
         // güncel listeyi yeniden al
         await fetchFriendRequests();
+      friendRequests.value = friendRequests.value.map(r =>
+     r.sender_id === senderId ? { ...r, status } : r
+   );
       } catch (error) {
         console.error('Arkadaşlık isteği güncellenemedi:', error);
         hasError.value = true;
