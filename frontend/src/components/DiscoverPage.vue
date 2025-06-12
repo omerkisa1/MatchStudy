@@ -210,9 +210,12 @@ export default {
     });
 
     // Get filtered study requests from the store
-    const filteredStudyRequests = computed(() => {
-      return studyRequestsStore.filteredRequests;
-    });
+ const filteredStudyRequests = computed(() => {
+   return studyRequestsStore
+     .filteredRequests
+     // userStore.id ile eşleşen kendi isteklerinizi çıkarın
+     .filter(req => req.user_id !== userStore.id);
+ });
 
     // Get match status for a request
     const getMatchStatus = (requestId) => {
