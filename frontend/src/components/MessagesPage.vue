@@ -660,14 +660,14 @@ async function sendMessage() {
 
   // Kullanıcı engellenmiş veya arkadaşlıktan çıkarılmışsa mesaj gönderme
   if (friendshipStatus.value[selectedUserId.value] === 'blocked') {
-    toast.value.error('Bu kullanıcı engellenmiş durumda. Mesaj gönderemezsiniz.');
+    toast.value.error('Bu kullanıcıya artık mesaj gönderemezsiniz.');
     return;
   }
   
-  if (friendshipStatus.value[selectedUserId.value] === 'rejected') {
-    toast.value.error('Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.');
-    return;
-  }
+  //if (friendshipStatus.value[selectedUserId.value] === 'rejected') {
+    //toast.value.error('Bu kullanıcıyla arkadaş değilsiniz. Mesaj gönderebilmek için arkadaş olmanız gerekiyor.');
+    //return;
+  //}
 
   const msg = {
     chat_id: selectedChatId.value,
