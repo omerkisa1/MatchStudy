@@ -102,16 +102,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Güvenli fetch fonksiyonu - hata yönetimi geliştirilmiş
 let pendingTransactions = new Set();
+let isRefreshing = false;
+
+function clearTransaction(key) {
+    pendingTransactions.delete(key);
+}
 
 function safeFetch(url, options = {}) {
     const transactionKey = `${options.method || 'GET'}_${url}`;
     
+    // Eğer veri yenileme işlemi devam ediyorsa, diğer işlemleri engelle
+    if (isRefreshing && !url.includes('/admin/logs')) {
+        return Promise.reject(new Error('Veriler yenileniyor, lütfen bekleyin'));
+    }
+
+    // Aynı endpoint için işlem devam ediyorsa engelle
     if (pendingTransactions.has(transactionKey)) {
         return Promise.reject(new Error('İşlem zaten devam ediyor'));
     }
 
     pendingTransactions.add(transactionKey);
-
+    
     return new Promise((resolve, reject) => {
         fetch(url, options)
             .then(response => {
@@ -131,7 +142,7 @@ function safeFetch(url, options = {}) {
                 reject(error);
             })
             .finally(() => {
-                pendingTransactions.delete(transactionKey);
+                clearTransaction(transactionKey);
             });
     });
 }
@@ -314,65 +325,73 @@ function createMessageStatsChart(stats) {
 
 // Kullanıcı verilerini yükleme
 function loadUsers() {
-    const usersTableBody = document.getElementById('usersTableBody');
-    if (!usersTableBody) return;
-    
-    // Yükleniyor göstergesi
-    usersTableBody.innerHTML = `
-        <tr>
-            <td colspan="7" class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Yükleniyor...</span>
-                </div>
-            </td>
-        </tr>
-    `;
-    
-    safeFetch('/admin/users')
-        .then(data => {
-            if (data.success && Array.isArray(data.users)) {
-                const users = data.users;
-                
-                if (users.length > 0) {
-                    let usersTableHtml = '';
+    return new Promise((resolve, reject) => {
+        const usersTableBody = document.getElementById('usersTableBody');
+        if (!usersTableBody) {
+            resolve();
+            return;
+        }
+        
+        // Yükleniyor göstergesi
+        usersTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        safeFetch('/admin/users')
+            .then(data => {
+                if (data.success && Array.isArray(data.users)) {
+                    const users = data.users;
                     
-                    users.forEach(user => {
-                        usersTableHtml += `
-                            <tr>
-                                <td>${user.id || '-'}</td>
-                                <td>${escapeHtml(user.name || '-')}</td>
-                                <td>${escapeHtml(user.surname || '-')}</td>
-                                <td>${escapeHtml(user.email || '-')}</td>
-                                <td>${user.age || '-'}</td>
-                                <td>${escapeHtml(user.education_level || '-')}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="viewUser(${user.id})">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
+                    if (users.length > 0) {
+                        let usersTableHtml = '';
+                        
+                        users.forEach(user => {
+                            usersTableHtml += `
+                                <tr>
+                                    <td>${user.id || '-'}</td>
+                                    <td>${escapeHtml(user.name || '-')}</td>
+                                    <td>${escapeHtml(user.surname || '-')}</td>
+                                    <td>${escapeHtml(user.email || '-')}</td>
+                                    <td>${user.age || '-'}</td>
+                                    <td>${escapeHtml(user.education_level || '-')}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewUser(${user.id})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        usersTableBody.innerHTML = usersTableHtml;
+                    } else {
+                        usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Kullanıcı bulunamadı</td></tr>';
+                    }
                     
-                    usersTableBody.innerHTML = usersTableHtml;
+                    // DataTable başlat
+                    initializeDataTable('#usersTable');
+                    resolve();
                 } else {
-                    usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Kullanıcı bulunamadı</td></tr>';
+                    const errorMsg = data.message || 'Veri yüklenirken hata oluştu';
+                    usersTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${escapeHtml(errorMsg)}</td></tr>`;
+                    reject(new Error(errorMsg));
                 }
-                
-                // DataTable başlat
-                initializeDataTable('#usersTable');
-            } else {
-                const errorMsg = data.message || 'Veri yüklenirken hata oluştu';
-                usersTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${escapeHtml(errorMsg)}</td></tr>`;
-            }
-        })
-        .catch(error => {
-            console.error('Users error:', error);
-            usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Veri yüklenirken bir bağlantı hatası oluştu</td></tr>';
-        });
+            })
+            .catch(error => {
+                console.error('Users error:', error);
+                usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Veri yüklenirken bir bağlantı hatası oluştu</td></tr>';
+                reject(error);
+            });
+    });
 }
 
 // DataTable başlatma yardımcı fonksiyonu
@@ -886,6 +905,9 @@ function deleteUser(userId) {
         deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
     }
 
+    // Veri yenileme işlemini başlat
+    isRefreshing = true;
+
     // API çağrısını safeFetch ile yap
     safeFetch(`/admin/users/${userId}`, {
         method: "DELETE"
@@ -893,33 +915,42 @@ function deleteUser(userId) {
     .then(data => {
         if (data.success) {
             alert("✅ Kullanıcı başarıyla silindi.");
-            // Veri görünümünü güncelle
-            loadUsers();
-            loadStats();
-            loadChats();
+            
+            // Tüm işlemleri temizle
+            pendingTransactions.clear();
+            
+            // Veri görünümünü sırayla güncelle
+            return loadUsers()
+                .then(() => loadStats())
+                .then(() => loadChats())
+                .catch(error => {
+                    console.error('Veri yenileme hatası:', error);
+                })
+                .finally(() => {
+                    isRefreshing = false;
+                });
         } else {
-            alert(`❌ Hata: ${data.message || "Kullanıcı silinirken bir hata oluştu."}`);
-            if (userRow) {
-                userRow.classList.remove("table-warning");
-            }
-            // Silme butonunu tekrar aktif et
-            if (deleteButton) {
-                deleteButton.disabled = false;
-                deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
-            }
+            throw new Error(data.message || "Kullanıcı silinirken bir hata oluştu.");
         }
     })
     .catch(error => {
         console.error("Delete user error:", error);
         alert("❌ " + (error.message || "Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin."));
+        
         if (userRow) {
             userRow.classList.remove("table-warning");
         }
+        
         // Silme butonunu tekrar aktif et
         if (deleteButton) {
             deleteButton.disabled = false;
             deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
         }
+    })
+    .finally(() => {
+        // İşlem bittiğinde tüm kilitleri temizle
+        clearTransaction(deleteKey);
+        isRefreshing = false;
     });
 }
 

@@ -162,9 +162,14 @@ async def admin_panel(request: Request):
 # Kullanıcılar listesi
 @router.get("/users", response_class=JSONResponse)
 async def get_users(request: Request, username: str = Depends(verify_admin_cookie)):
+    connection = None
+    cursor = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
+        
+        # Transaction başlat - READ COMMITTED seviyesinde
+        connection.start_transaction(isolation_level='READ COMMITTED')
         
         # Tam kullanıcı bilgilerini al - Profil tablosuna daha güvenli bir join
         cursor.execute("""
@@ -179,18 +184,17 @@ async def get_users(request: Request, username: str = Depends(verify_admin_cooki
                     u.updated_at,
                     p.bio,
                     p.institution,
-                    COUNT(m.id) AS message_count
+                    COUNT(DISTINCT m.id) AS message_count
                 FROM users u
                 LEFT JOIN profiles p ON u.id = p.user_id
                 LEFT JOIN messages m ON u.id = m.sender_id
                 GROUP BY 
                     u.id, u.email, u.name, u.surname, u.age, u.education_level, 
-                    u.created_at, u.updated_at, p.bio, p.institution;
-                    """)
+                    u.created_at, u.updated_at, p.bio, p.institution
+                ORDER BY u.id DESC
+                """)
         
         users = cursor.fetchall()
-        cursor.close()
-        connection.close()
         
         # MySQL datetime objelerini seri hale getirilebilir formata dönüştür
         for user in users:
@@ -198,12 +202,31 @@ async def get_users(request: Request, username: str = Depends(verify_admin_cooki
                 if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
                     user[key] = value.isoformat()
         
+        # Transaction'ı başarıyla tamamla
+        connection.commit()
+        
         logger.info(f"Users list fetched by admin: {username}, count: {len(users)}")
         return {"success": True, "users": users}
+    except mysql.connector.Error as db_error:
+        if connection:
+            connection.rollback()
+        error_details = traceback.format_exc()
+        logger.error(f"Database error fetching users: {str(db_error)}\n{error_details}")
+        return {"success": False, "error": str(db_error), "message": "Veritabanı hatası oluştu."}
     except Exception as e:
+        if connection:
+            connection.rollback()
         error_details = traceback.format_exc()
         logger.error(f"Error fetching users: {str(e)}\n{error_details}")
         return {"success": False, "error": str(e), "message": "Kullanıcı listesi alınırken bir hata oluştu."}
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup: {str(cleanup_error)}")
 
 # Sohbetler listesi
 @router.get("/chats", response_class=JSONResponse)
@@ -377,50 +400,49 @@ async def get_system_logs(limit: int = 100, request: Request = None, username: s
 # Kullanıcı silme
 @router.delete("/users/{user_id}", response_class=JSONResponse)
 async def delete_user(user_id: int, request: Request = None, username: str = Depends(verify_admin_cookie)):
+    connection = None
+    cursor = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
         
         # İlk olarak kullanıcının var olduğunu kontrol et
-        cursor.execute("SELECT id, name, email FROM users WHERE id = %s", (user_id,))
+        cursor.execute("SELECT id, name, email FROM users WHERE id = %s FOR UPDATE", (user_id,))
         user = cursor.fetchone()
         
         if not user:
-            cursor.close()
-            connection.close()
             logger.warning(f"Admin {username} attempted to delete non-existent user with ID {user_id}")
             return {"success": False, "message": f"Kullanıcı {user_id} bulunamadı."}
             
         # İlişkili tüm verileri silmek için transaction başlat
-        connection.start_transaction()
+        connection.start_transaction(isolation_level='SERIALIZABLE')
         
         try:
-            # İlişkili verileri sil
-            # Sıralama önemli - önce bağımlı tablolar, sonra ana tablolar
-            cursor.execute("DELETE FROM user_interests WHERE user_id = %s", (user_id,))
-            cursor.execute("DELETE FROM message_status WHERE message_id IN (SELECT id FROM messages WHERE sender_id = %s)", (user_id,))
-            cursor.execute("DELETE FROM messages WHERE sender_id = %s", (user_id,))
+            # Önce tüm aktif işlemlerin bitmesini bekle
+            cursor.execute("SELECT 1 FROM users WHERE id = %s FOR UPDATE NOWAIT", (user_id,))
             
-            # Kullanıcının olduğu sohbetleri bul ve sil
-            cursor.execute("""
-                SELECT chat_id FROM chats 
-                WHERE user_1_id = %s OR user_2_id = %s
-            """, (user_id, user_id))
+            # İlişkili verileri sil - sıralama önemli
+            delete_queries = [
+                "DELETE FROM user_interests WHERE user_id = %s",
+                "DELETE FROM message_status WHERE message_id IN (SELECT id FROM messages WHERE sender_id = %s)",
+                "DELETE FROM messages WHERE sender_id = %s",
+                "DELETE FROM chats WHERE user_1_id = %s OR user_2_id = %s",
+                "DELETE FROM friend_requests WHERE sender_id = %s OR receiver_id = %s",
+                "DELETE FROM matches WHERE requester_id = %s OR responder_id = %s",
+                "DELETE FROM study_requests WHERE user_id = %s",
+                "DELETE FROM profiles WHERE user_id = %s",
+                "DELETE FROM users WHERE id = %s"
+            ]
             
-            chat_ids = cursor.fetchall()
-            for chat_row in chat_ids:
-                chat_id = chat_row[0]
-                # İlgili sohbetteki tüm mesajları sil
-                cursor.execute("DELETE FROM messages WHERE chat_id = %s", (chat_id,))
-            
-            cursor.execute("DELETE FROM chats WHERE user_1_id = %s OR user_2_id = %s", (user_id, user_id))
-            cursor.execute("DELETE FROM friend_requests WHERE sender_id = %s OR receiver_id = %s", (user_id, user_id))
-            cursor.execute("DELETE FROM matches WHERE requester_id = %s OR responder_id = %s", (user_id, user_id))
-            cursor.execute("DELETE FROM study_requests WHERE user_id = %s", (user_id,))
-            cursor.execute("DELETE FROM profiles WHERE user_id = %s", (user_id,))
-            
-            # Son olarak kullanıcıyı sil
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            for query in delete_queries:
+                try:
+                    if "OR" in query:
+                        cursor.execute(query, (user_id, user_id))
+                    else:
+                        cursor.execute(query, (user_id,))
+                except mysql.connector.Error as query_error:
+                    logger.error(f"Error executing delete query: {query} for user {user_id}: {str(query_error)}")
+                    raise
             
             # Değişiklikleri kaydet
             connection.commit()
@@ -428,20 +450,30 @@ async def delete_user(user_id: int, request: Request = None, username: str = Dep
             logger.info(f"User {user_id} successfully deleted by admin: {username}")
             return {"success": True, "message": f"Kullanıcı {user_id} başarıyla silindi."}
             
-        except Exception as inner_e:
+        except mysql.connector.Error as inner_e:
             # Hata durumunda rollback yap
-            connection.rollback()
+            if connection:
+                connection.rollback()
             error_details = traceback.format_exc()
             logger.error(f"Transaction error when deleting user {user_id}: {str(inner_e)}\n{error_details}")
-            return {"success": False, "error": str(inner_e), "message": f"İşlem sırasında hata oluştu: {str(inner_e)}"}
-        finally:
-            cursor.close()
-            connection.close()
+            return {"success": False, "error": str(inner_e), "message": "İşlem sırasında veritabanı hatası oluştu."}
             
+    except mysql.connector.Error as e:
+        error_details = traceback.format_exc()
+        logger.error(f"Database error deleting user {user_id}: {str(e)}\n{error_details}")
+        return {"success": False, "error": str(e), "message": "Veritabanı bağlantı hatası oluştu."}
     except Exception as e:
         error_details = traceback.format_exc()
-        logger.error(f"Error deleting user {user_id}: {str(e)}\n{error_details}")
-        return {"success": False, "error": str(e), "message": f"Kullanıcı {user_id} silinirken bir hata oluştu."}
+        logger.error(f"Unexpected error deleting user {user_id}: {str(e)}\n{error_details}")
+        return {"success": False, "error": str(e), "message": "Beklenmeyen bir hata oluştu."}
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup: {str(cleanup_error)}")
 
 # API durumu
 @router.get("/api-status", response_class=JSONResponse)
