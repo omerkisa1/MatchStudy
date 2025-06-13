@@ -554,7 +554,7 @@ async def get_user_details(user_id: int, request: Request = None, username: str 
         cursor.execute("""
             SELECT 
                 u.id, u.email, u.name, u.surname, u.age, u.education_level,
-                u.created_at, u.updated_at, u.last_seen,
+                u.created_at, u.updated_at,
                 (SELECT COUNT(*) FROM messages WHERE sender_id = u.id) AS message_count
             FROM users u
             WHERE u.id = %s
