@@ -45,20 +45,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ana veri yükleme fonksiyonu
     function initializeData() {
-        // API durumunu kontrol et
-        checkApiStatus();
+        // İşlem başlamadan önce pendingTransactions'ı temizle
+        pendingTransactions.clear();
+        isRefreshing = true;
         
-        // İstatistik verilerini yükle
-        loadStats();
+        console.log("Veri yükleme başlıyor...");
         
-        // Kullanıcı verilerini yükle
-        loadUsers();
-        
-        // Sohbet verilerini yükle
-        loadChats();
-        
-        // Logları yükle
-        loadLogs();
+        // API durumunu kontrol et ve ardından sırayla diğer verileri yükle
+        checkApiStatus()
+            .then(() => {
+                console.log("API durumu kontrol edildi, istatistikler yükleniyor...");
+                return loadStats();
+            })
+            .then(() => {
+                console.log("İstatistikler yüklendi, kullanıcılar yükleniyor...");
+                return loadUsers();
+            })
+            .then(() => {
+                console.log("Kullanıcılar yüklendi, sohbetler yükleniyor...");
+                return loadChats();
+            })
+            .then(() => {
+                console.log("Sohbetler yüklendi, loglar yükleniyor...");
+                return loadLogs();
+            })
+            .catch(error => {
+                console.error("Veri yükleme hatası:", error);
+            })
+            .finally(() => {
+                console.log("Veri yükleme tamamlandı");
+                isRefreshing = false;
+            });
     }
     
     // Veri yenileme zamanlaması (her 30 saniyede bir - performans için süreyi artırdık)
@@ -103,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Güvenli fetch fonksiyonu - hata yönetimi geliştirilmiş
 let pendingTransactions = new Set();
 let isRefreshing = false;
+let parallelRequestsAllowed = true; // Paralel isteklere izin ver
 
 function clearTransaction(key) {
     if (pendingTransactions.has(key)) {
@@ -117,14 +135,16 @@ function safeFetch(url, options = {}) {
     // Silme işlemi için özel kontrol - silme işlemi her zaman izin verilmeli
     const isDeleteOperation = (options.method === 'DELETE' && url.includes('/admin/users/'));
     
-    // Eğer veri yenileme işlemi devam ediyorsa ve silme işlemi değilse, engelle
-    if (isRefreshing && !url.includes('/admin/logs') && !isDeleteOperation) {
-        return Promise.reject(new Error('Veriler yenileniyor, lütfen bekleyin'));
-    }
-
-    // Aynı endpoint için işlem devam ediyorsa engelle
+    // Aynı endpoint için işlem devam ediyorsa engelle (sadece aynı URL için kontrol et)
     if (pendingTransactions.has(transactionKey)) {
+        console.warn(`İşlem zaten devam ediyor: ${transactionKey}`);
         return Promise.reject(new Error('İşlem zaten devam ediyor'));
+    }
+    
+    // Veri yenileme kontrolünü sadece paralel isteklere izin verilmediğinde ve silme işlemi değilse yap
+    if (!parallelRequestsAllowed && isRefreshing && !url.includes('/admin/logs') && !isDeleteOperation) {
+        console.warn(`Veri yenileme devam ediyor, işlem engellendi: ${transactionKey}`);
+        return Promise.reject(new Error('Veriler yenileniyor, lütfen bekleyin'));
     }
 
     pendingTransactions.add(transactionKey);
@@ -158,11 +178,11 @@ function safeFetch(url, options = {}) {
 // API durumunu kontrol etme
 function checkApiStatus() {
     const apiStatus = document.getElementById('apiStatus');
-    if (!apiStatus) return;
+    if (!apiStatus) return Promise.resolve();
     
     apiStatus.innerHTML = 'API Durumu: <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
     
-    safeFetch('/admin/api-status')
+    return safeFetch('/admin/api-status')
         .then(data => {
             if (data.success) {
                 apiStatus.innerHTML = 'API Durumu: <span class="badge bg-success">Çevrimiçi</span>';
@@ -194,9 +214,9 @@ function loadStats() {
     };
     
     // Eğer elementler sayfada yoksa işlem yapma
-    if (!statsElements.totalUsers || !statsElements.totalChats) return;
+    if (!statsElements.totalUsers || !statsElements.totalChats) return Promise.resolve();
     
-    safeFetch('/admin/stats')
+    return safeFetch('/admin/stats')
         .then(data => {
             if (data.success && data.stats) {
                 const stats = data.stats;
@@ -512,6 +532,9 @@ function loadLogs() {
     const logsContainer = document.getElementById('logsContainer');
     const recentLogs = document.getElementById('recentLogs');
     
+    // Eğer konteynerler yoksa işlem yapma
+    if (!logsContainer && !recentLogs) return Promise.resolve();
+    
     // Yükleniyor göstergesi
     const loadingHtml = `
         <div class="text-center">
@@ -524,7 +547,7 @@ function loadLogs() {
     if (logsContainer) logsContainer.innerHTML = loadingHtml;
     if (recentLogs) recentLogs.innerHTML = loadingHtml;
     
-    safeFetch('/admin/logs')
+    return safeFetch('/admin/logs')
         .then(data => {
             if (data.success && Array.isArray(data.logs)) {
                 const logs = data.logs;
