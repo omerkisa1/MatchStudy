@@ -101,7 +101,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Güvenli fetch fonksiyonu - hata yönetimi geliştirilmiş
+let pendingTransactions = new Set();
+
 function safeFetch(url, options = {}) {
+    const transactionKey = `${options.method || 'GET'}_${url}`;
+    
+    if (pendingTransactions.has(transactionKey)) {
+        return Promise.reject(new Error('İşlem zaten devam ediyor'));
+    }
+
+    pendingTransactions.add(transactionKey);
+
     return new Promise((resolve, reject) => {
         fetch(url, options)
             .then(response => {
@@ -119,6 +129,9 @@ function safeFetch(url, options = {}) {
             .catch(error => {
                 console.error(`Fetch error for ${url}:`, error);
                 reject(error);
+            })
+            .finally(() => {
+                pendingTransactions.delete(transactionKey);
             });
     });
 }
@@ -830,10 +843,16 @@ function viewChatMessages(chatId, user1Name, user2Name) {
 }
 
 // Kullanıcı silme
-// Düzeltilmiş deleteUser fonksiyonu - admin.js
 function deleteUser(userId) {
     if (!userId) {
         console.error('User ID is required');
+        return;
+    }
+
+    // İşlem devam ediyorsa engelle
+    const deleteKey = `DELETE_/admin/users/${userId}`;
+    if (pendingTransactions.has(deleteKey)) {
+        alert('❌ Silme işlemi zaten devam ediyor, lütfen bekleyin.');
         return;
     }
 
@@ -860,6 +879,13 @@ function deleteUser(userId) {
         userRow.classList.add("table-warning");
     }
 
+    // Silme butonunu devre dışı bırak
+    const deleteButton = userRow?.querySelector('button.btn-outline-danger');
+    if (deleteButton) {
+        deleteButton.disabled = true;
+        deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+    }
+
     // API çağrısını safeFetch ile yap
     safeFetch(`/admin/users/${userId}`, {
         method: "DELETE"
@@ -876,17 +902,26 @@ function deleteUser(userId) {
             if (userRow) {
                 userRow.classList.remove("table-warning");
             }
+            // Silme butonunu tekrar aktif et
+            if (deleteButton) {
+                deleteButton.disabled = false;
+                deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+            }
         }
     })
     .catch(error => {
         console.error("Delete user error:", error);
-        alert("❌ Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin.");
+        alert("❌ " + (error.message || "Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin."));
         if (userRow) {
             userRow.classList.remove("table-warning");
         }
+        // Silme butonunu tekrar aktif et
+        if (deleteButton) {
+            deleteButton.disabled = false;
+            deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+        }
     });
 }
-
 
 // Kullanıcı detaylarını görüntüleme
 function viewUser(userId) {
@@ -961,7 +996,6 @@ function viewUser(userId) {
             });
         });
 }
-
 
 // Kullanıcı detayları API çağrısı
 function getUserDetails(userId) {
