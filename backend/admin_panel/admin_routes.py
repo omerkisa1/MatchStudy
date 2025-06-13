@@ -544,6 +544,8 @@ async def receive_client_log(log_data: dict):
 # Kullanıcı detayları
 @router.get("/users/{user_id}", response_class=JSONResponse)
 async def get_user_details(user_id: int, request: Request = None, username: str = Depends(verify_admin_cookie)):
+    connection = None
+    cursor = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
@@ -552,26 +554,24 @@ async def get_user_details(user_id: int, request: Request = None, username: str 
         cursor.execute("""
             SELECT 
                 u.id, u.email, u.name, u.surname, u.age, u.education_level,
-                u.created_at, u.updated_at, p.institution,
+                u.created_at, u.updated_at, u.last_seen,
                 (SELECT COUNT(*) FROM messages WHERE sender_id = u.id) AS message_count
             FROM users u
-            JOIN profiles p ON p.user_id = u.id
             WHERE u.id = %s
         """, (user_id,))
         
         user = cursor.fetchone()
         
         if not user:
-            cursor.close()
-            connection.close()
-            return {"success": False, "message": f"Kullanıcı {user_id} bulunamadı."}
+            logger.warning(f"Admin {username} kullanıcı detaylarını görüntülemeye çalıştı ama kullanıcı bulunamadı: {user_id}")
+            return {"success": False, "message": f"Kullanıcı (ID: {user_id}) bulunamadı."}
         
         # MySQL datetime objelerini seri hale getirilebilir formata dönüştür
         for key, value in user.items():
             if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
                 user[key] = value.isoformat()
         
-        # Kullanıcının profil bilgilerini al
+        # Kullanıcının profil bilgilerini al - profil olmayabilir
         cursor.execute("""
             SELECT bio, institution
             FROM profiles
@@ -579,17 +579,28 @@ async def get_user_details(user_id: int, request: Request = None, username: str 
         """, (user_id,))
         
         profile = cursor.fetchone()
-        user["profile"] = profile or {}
         
-        cursor.close()
-        connection.close()
+        # Profil boş gelebilir, bu durumda boş bir sözlük kullan
+        user["profile"] = profile or {"bio": "", "institution": ""}
         
         logger.info(f"Admin {username} kullanıcı detaylarını görüntüledi: {user_id}")
         return {"success": True, "user": user}
+    except mysql.connector.Error as db_error:
+        error_details = traceback.format_exc()
+        logger.error(f"Veritabanı hatası - kullanıcı detaylarını alma hatası {user_id}: {str(db_error)}\n{error_details}")
+        return {"success": False, "error": str(db_error), "message": f"Veritabanı hatası: {str(db_error)}"}
     except Exception as e:
         error_details = traceback.format_exc()
-        logger.error(f"Kullanıcı detaylarını alma hatası {user_id}: {str(e)}\n{error_details}")
+        logger.error(f"Genel hata - kullanıcı detaylarını alma hatası {user_id}: {str(e)}\n{error_details}")
         return {"success": False, "error": str(e), "message": f"Kullanıcı detayları alınırken bir hata oluştu."}
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup: {str(cleanup_error)}")
 
 # Kullanıcı güncelleme
 @router.put("/users/{user_id}", response_class=JSONResponse)

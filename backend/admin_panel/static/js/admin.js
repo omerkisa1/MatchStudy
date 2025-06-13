@@ -1025,90 +1025,183 @@ function viewUser(userId) {
         return;
     }
     
+    console.log(`Kullanıcı detayları yükleniyor: ${userId}`);
+    
     // Modal hata mesajını gizle
     const errorElement = document.getElementById('userDetailsError');
-    errorElement.classList.add('d-none');
+    if (errorElement) {
+        errorElement.classList.add('d-none');
+    }
     
     // Verileri yüklerken UI'ı hazırla
-    document.getElementById('userDetailsModalLabel').textContent = `Kullanıcı Detayları - ID: ${userId}`;
-    document.getElementById('editUserId').value = userId;
-    document.getElementById('editName').value = '';
-    document.getElementById('editSurname').value = '';
-    document.getElementById('editEmail').value = '';
-    document.getElementById('editAge').value = '';
-    document.getElementById('editEducationLevel').value = '';
-    document.getElementById('editBio').value = '';
-    document.getElementById('editInstitution').value = '';
-    document.getElementById('editCreatedAt').textContent = '-';
-    document.getElementById('editUpdatedAt').textContent = '-';
-    document.getElementById('editLastSeen').textContent = '-';
-    document.getElementById('editMessageCount').textContent = '-';
+    const modalLabel = document.getElementById('userDetailsModalLabel');
+    if (modalLabel) {
+        modalLabel.textContent = `Kullanıcı Detayları - ID: ${userId}`;
+    }
+    
+    // Form alanlarını temizle
+    const formElements = {
+        'editUserId': userId,
+        'editName': '',
+        'editSurname': '',
+        'editEmail': '',
+        'editAge': '',
+        'editEducationLevel': '',
+        'editBio': '',
+        'editInstitution': '',
+        'editCreatedAt': '-',
+        'editUpdatedAt': '-',
+        'editLastSeen': '-',
+        'editMessageCount': '-'
+    };
+    
+    // Form alanlarını doldur
+    for (const [id, value] of Object.entries(formElements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
+                element.value = value;
+            } else {
+                element.textContent = value;
+            }
+        }
+    }
     
     // Modal'ı göster
     const modalEl = document.getElementById('userDetailsModal');
-    const userDetailsModal = new bootstrap.Modal(modalEl);
-    userDetailsModal.show();
-
-    // ─── ARIA-HIDDEN VE FOKUS DÜZELTME ───
-    // Modal container artık erişilebilir olsun
-    modalEl.setAttribute('aria-hidden', 'false');
-    // İçindeki dialog ya da close butonuna odaklan
-    const dialog = modalEl.querySelector('.modal-dialog');
-    if (dialog) {
-        dialog.setAttribute('tabindex', '-1');
-        dialog.focus();
-    } else {
-        const closeBtn = modalEl.querySelector('.btn-close');
-        if (closeBtn) closeBtn.focus();
+    if (!modalEl) {
+        console.error('userDetailsModal element bulunamadı');
+        return;
     }
-    // ─────────────────────────────────────
+    
+    // Modal nesnesini oluştur
+    let userDetailsModal = bootstrap.Modal.getInstance(modalEl);
+    if (!userDetailsModal) {
+        userDetailsModal = new bootstrap.Modal(modalEl);
+    }
     
     // Form alanlarını devre dışı bırak (yüklenene kadar)
-    const formElements = document.querySelectorAll(
+    const formElementsList = document.querySelectorAll(
         '#userDetailsForm input, #userDetailsForm select, #userDetailsForm textarea'
     );
-    formElements.forEach(element => {
+    formElementsList.forEach(element => {
         element.disabled = true;
     });
     
     // Kullanıcı verilerini al
     getUserDetails(userId)
         .then(userData => {
-            if (userData && userData.success) {
+            if (userData && userData.success && userData.user) {
                 fillUserDetailsForm(userData.user);
             } else {
-                showUserDetailsError(userData.message || 'Kullanıcı verileri alınamadı.');
+                throw new Error(userData?.message || 'Kullanıcı verileri alınamadı.');
             }
         })
         .catch(error => {
-            showUserDetailsError('Kullanıcı verileri yüklenirken bir hata oluştu: ' + error.message);
             console.error('Error loading user details:', error);
+            showUserDetailsError(error.message || 'Kullanıcı verileri yüklenirken bir hata oluştu.');
         })
         .finally(() => {
             // Form alanlarını etkinleştir
-            formElements.forEach(element => {
+            formElementsList.forEach(element => {
                 element.disabled = false;
             });
+            
+            // Modal'ı göster - eğer bir hata nedeniyle henüz açılmadıysa
+            if (modalEl && !modalEl.classList.contains('show')) {
+                userDetailsModal.show();
+            }
         });
+        
+    // Modal'ı hemen göster, veriler arka planda yüklenecek
+    userDetailsModal.show();
+    
+    // ARIA erişilebilirlik düzeltmesi
+    setTimeout(() => {
+        // Modal artık erişilebilir olsun
+        modalEl.removeAttribute('aria-hidden');
+        
+        // Dialog focuslanabilir olsun
+        const dialog = modalEl.querySelector('.modal-dialog');
+        if (dialog) {
+            dialog.setAttribute('tabindex', '-1');
+            dialog.focus();
+        }
+    }, 300); // Modal animasyonunun tamamlanması için kısa bir gecikme
 }
 
 // Kullanıcı detayları API çağrısı
 function getUserDetails(userId) {
-    return safeFetch(`/admin/users/${userId}`)
-        .catch(error => {
-            console.error('Error fetching user details:', error);
-            throw error;
-        });
+    if (!userId) {
+        return Promise.reject(new Error('User ID is required'));
+    }
+    
+    const transactionKey = `GET_/admin/users/${userId}`;
+    
+    // İşlem zaten yapılıyorsa tekrar etme
+    if (pendingTransactions.has(transactionKey)) {
+        return Promise.reject(new Error('Kullanıcı detayları zaten yükleniyor'));
+    }
+    
+    pendingTransactions.add(transactionKey);
+    console.log(`Kullanıcı detay bilgisi isteği gönderiliyor: ${userId}`);
+    
+    return fetch(`/admin/users/${userId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            console.error(`HTTP hata kodu: ${response.status}`);
+            return response.json().then(data => {
+                throw new Error(data.message || `HTTP error: ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .catch(error => {
+        console.error('Kullanıcı detayları alınırken hata oluştu:', error);
+        throw error;
+    })
+    .finally(() => {
+        pendingTransactions.delete(transactionKey);
+        console.log(`Kullanıcı detay bilgisi isteği tamamlandı: ${userId}`);
+    });
 }
 
 // Kullanıcı verilerini form alanlarına doldur
 function fillUserDetailsForm(user) {
+    if (!user) {
+        console.error('User data is missing');
+        return;
+    }
+    
     // Ana kullanıcı bilgileri
-    document.getElementById('editName').value = user.name || '';
-    document.getElementById('editSurname').value = user.surname || '';
-    document.getElementById('editEmail').value = user.email || '';
-    document.getElementById('editAge').value = user.age || '';
-    document.getElementById('editEducationLevel').value = user.education_level || '';
+    const formFields = {
+        'editName': user.name || '',
+        'editSurname': user.surname || '',
+        'editEmail': user.email || '',
+        'editAge': user.age || '',
+        'editEducationLevel': user.education_level || '',
+        'editCreatedAt': formatDate(user.created_at) || '-',
+        'editUpdatedAt': formatDate(user.updated_at) || '-',
+        'editLastSeen': formatDate(user.last_seen) || 'Bilinmiyor',
+        'editMessageCount': user.message_count || '0'
+    };
+    
+    // Form alanlarını doldur
+    for (const [id, value] of Object.entries(formFields)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
+                element.value = value;
+            } else {
+                element.textContent = value;
+            }
+        }
+    }
     
     // Profil bilgileri (varsa)
     if (user.profile) {
@@ -1116,11 +1209,7 @@ function fillUserDetailsForm(user) {
         document.getElementById('editInstitution').value = user.profile.institution || '';
     }
     
-    // Sistem bilgileri
-    document.getElementById('editCreatedAt').textContent = formatDate(user.created_at) || '-';
-    document.getElementById('editUpdatedAt').textContent = formatDate(user.updated_at) || '-';
-    document.getElementById('editLastSeen').textContent = formatDate(user.last_seen) || 'Bilinmiyor';
-    document.getElementById('editMessageCount').textContent = user.message_count || '0';
+    console.log('Kullanıcı detayları form alanlarına dolduruldu');
 }
 
 // Hata mesajını göster
@@ -1128,8 +1217,13 @@ function showUserDetailsError(message) {
     const errorElement = document.getElementById('userDetailsError');
     const errorTextElement = document.getElementById('userDetailsErrorText');
     
-    errorTextElement.textContent = message;
-    errorElement.classList.remove('d-none');
+    if (errorElement && errorTextElement) {
+        errorTextElement.textContent = message;
+        errorElement.classList.remove('d-none');
+    } else {
+        console.error('Error elements not found in the modal');
+        alert('Hata: ' + message);
+    }
 }
 
 // Tarih biçimlendirme yardımcı fonksiyonu
