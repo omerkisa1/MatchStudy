@@ -532,6 +532,22 @@ function loadLogs() {
 
 // Log girişini ayrıştırıp format verme
 function parseLogEntry(log) {
+    if (!log || typeof log !== 'string') {
+        return {
+            html: '',
+            timestamp: '',
+            level: 'INFO',
+            levelClass: 'info',
+            logClass: '',
+            dotClass: 'activity-info',
+            module: '',
+            logType: 'system',
+            content: '',
+            shortContent: '',
+            clientData: {}
+        };
+    }
+
     let logClass = '';
     let dotClass = 'activity-info';
     let level = 'INFO';
@@ -563,7 +579,8 @@ function parseLogEntry(log) {
     if (timestampMatch && timestampMatch[1]) {
         timestamp = timestampMatch[1];
         // Zaman damgasından sonraki kısmı içerik olarak al
-        content = log.substring(log.indexOf(' - ') + 3);
+        const dashIndex = log.indexOf(' - ');
+        content = dashIndex !== -1 ? log.substring(dashIndex + 3) : log;
     }
     
     // Client log tipini belirle
@@ -607,14 +624,37 @@ function parseLogEntry(log) {
     let clientData = {};
     if (logType.startsWith('client')) {
         try {
-            // JSON içeriğini bul ve ayrıştır
-            const jsonMatch = message.match(/\{.*\}/);
-            if (jsonMatch) {
-                const jsonStr = jsonMatch[0];
-                clientData = JSON.parse(jsonStr);
+            // Find the last occurrence of a JSON-like structure
+            const lastBraceIndex = message.lastIndexOf('}');
+            const lastOpenBraceIndex = message.lastIndexOf('{');
+            
+            if (lastBraceIndex > lastOpenBraceIndex && lastOpenBraceIndex !== -1) {
+                // Extract the potential JSON string
+                const jsonStr = message.substring(lastOpenBraceIndex, lastBraceIndex + 1).trim();
+                
+                // Basic JSON validation before parsing
+                if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+                    try {
+                        // Remove any potential trailing commas
+                        const cleanJsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+                        clientData = JSON.parse(cleanJsonStr);
+                    } catch (e) {
+                        // If parsing fails, try to clean the string further
+                        try {
+                            // Remove any non-JSON content that might be mixed in
+                            const cleanerJsonStr = jsonStr.replace(/[^\x20-\x7E]/g, '')
+                                                        .replace(/\\[^"\\\/bfnrtu]/g, '');
+                            clientData = JSON.parse(cleanerJsonStr);
+                        } catch (e2) {
+                            // If all parsing attempts fail, return empty object
+                            clientData = {};
+                        }
+                    }
+                }
             }
         } catch (e) {
-            console.warn('Client log JSON parsing failed:', e);
+            // Silently fail and continue with empty object
+            clientData = {};
         }
     }
     
@@ -645,21 +685,18 @@ function parseLogEntry(log) {
             <small class="text-muted d-block mt-1">${dateOnly}</small>
         </div>
     `;
-    
+
     return {
         html,
-        logClass,
-        dotClass,
+        timestamp,
         level,
         levelClass,
-        timestamp,
-        dateOnly,
-        timeOnly,
+        logClass,
+        dotClass,
         module,
-        content,
-        message,
-        shortContent,
         logType,
+        content: message,
+        shortContent,
         clientData
     };
 }
