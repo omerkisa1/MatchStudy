@@ -105,14 +105,20 @@ let pendingTransactions = new Set();
 let isRefreshing = false;
 
 function clearTransaction(key) {
-    pendingTransactions.delete(key);
+    if (pendingTransactions.has(key)) {
+        pendingTransactions.delete(key);
+        console.log(`Transaction ${key} cleared.`);
+    }
 }
 
 function safeFetch(url, options = {}) {
     const transactionKey = `${options.method || 'GET'}_${url}`;
     
-    // Eğer veri yenileme işlemi devam ediyorsa, diğer işlemleri engelle
-    if (isRefreshing && !url.includes('/admin/logs')) {
+    // Silme işlemi için özel kontrol - silme işlemi her zaman izin verilmeli
+    const isDeleteOperation = (options.method === 'DELETE' && url.includes('/admin/users/'));
+    
+    // Eğer veri yenileme işlemi devam ediyorsa ve silme işlemi değilse, engelle
+    if (isRefreshing && !url.includes('/admin/logs') && !isDeleteOperation) {
         return Promise.reject(new Error('Veriler yenileniyor, lütfen bekleyin'));
     }
 
@@ -122,6 +128,7 @@ function safeFetch(url, options = {}) {
     }
 
     pendingTransactions.add(transactionKey);
+    console.log(`Transaction ${transactionKey} started.`);
     
     return new Promise((resolve, reject) => {
         fetch(url, options)
@@ -143,6 +150,7 @@ function safeFetch(url, options = {}) {
             })
             .finally(() => {
                 clearTransaction(transactionKey);
+                console.log(`Transaction ${transactionKey} finished.`);
             });
     });
 }
@@ -332,6 +340,13 @@ function loadUsers() {
             return;
         }
         
+        // İşlem zaten devam ediyorsa engelle
+        if (pendingTransactions.has('GET_/admin/users')) {
+            console.log('Kullanıcı yükleme işlemi zaten devam ediyor.');
+            resolve();
+            return;
+        }
+        
         // Yükleniyor göstergesi
         usersTableBody.innerHTML = `
             <tr>
@@ -342,6 +357,9 @@ function loadUsers() {
                 </td>
             </tr>
         `;
+        
+        // Veri yenileme bayrağını ayarla
+        isRefreshing = true;
         
         safeFetch('/admin/users')
             .then(data => {
@@ -390,6 +408,10 @@ function loadUsers() {
                 console.error('Users error:', error);
                 usersTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Veri yüklenirken bir bağlantı hatası oluştu</td></tr>';
                 reject(error);
+            })
+            .finally(() => {
+                // Veri yenileme işlemi tamamlandı
+                isRefreshing = false;
             });
     });
 }
@@ -870,6 +892,13 @@ function deleteUser(userId) {
 
     // İşlem devam ediyorsa engelle
     const deleteKey = `DELETE_/admin/users/${userId}`;
+    
+    if (isRefreshing) {
+        console.warn('Veri yenileme işlemi devam ediyor, silme işlemi için bekleyin.');
+        alert('❌ Veri yenileme işlemi devam ediyor. Lütfen birkaç saniye bekleyip tekrar deneyin.');
+        return;
+    }
+
     if (pendingTransactions.has(deleteKey)) {
         alert('❌ Silme işlemi zaten devam ediyor, lütfen bekleyin.');
         return;
@@ -905,30 +934,29 @@ function deleteUser(userId) {
         deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
     }
 
-    // Veri yenileme işlemini başlat
+    // Tüm diğer işlemleri durdur ve kilitle
+    pendingTransactions.add(deleteKey);
     isRefreshing = true;
 
-    // API çağrısını safeFetch ile yap
-    safeFetch(`/admin/users/${userId}`, {
-        method: "DELETE"
+    // API çağrısını safeFetch ile yap - isRefreshing kontrolünü bypass et
+    fetch(`/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
     })
     .then(data => {
         if (data.success) {
             alert("✅ Kullanıcı başarıyla silindi.");
             
-            // Tüm işlemleri temizle
-            pendingTransactions.clear();
-            
-            // Veri görünümünü sırayla güncelle
-            return loadUsers()
-                .then(() => loadStats())
-                .then(() => loadChats())
-                .catch(error => {
-                    console.error('Veri yenileme hatası:', error);
-                })
-                .finally(() => {
-                    isRefreshing = false;
-                });
+            // Sayfayı yenile - temiz bir başlangıç için
+            window.location.reload();
         } else {
             throw new Error(data.message || "Kullanıcı silinirken bir hata oluştu.");
         }
@@ -949,7 +977,7 @@ function deleteUser(userId) {
     })
     .finally(() => {
         // İşlem bittiğinde tüm kilitleri temizle
-        clearTransaction(deleteKey);
+        pendingTransactions.delete(deleteKey);
         isRefreshing = false;
     });
 }
