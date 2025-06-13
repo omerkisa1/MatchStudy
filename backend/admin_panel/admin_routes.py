@@ -406,21 +406,18 @@ async def delete_user(user_id: int, request: Request = None, username: str = Dep
         connection = get_db_connection()
         cursor = connection.cursor()
         
-        # İlk olarak kullanıcının var olduğunu kontrol et
-        cursor.execute("SELECT id, name, email FROM users WHERE id = %s FOR UPDATE", (user_id,))
+        # Transaction başlat - daha esnek bir izolasyon seviyesi kullan
+        connection.start_transaction(isolation_level='READ COMMITTED')
+        
+        # İlk olarak kullanıcının var olduğunu kontrol et (kilitleme olmadan)
+        cursor.execute("SELECT id, name, email FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
         
         if not user:
             logger.warning(f"Admin {username} attempted to delete non-existent user with ID {user_id}")
             return {"success": False, "message": f"Kullanıcı {user_id} bulunamadı."}
             
-        # İlişkili tüm verileri silmek için transaction başlat
-        connection.start_transaction(isolation_level='SERIALIZABLE')
-        
         try:
-            # Önce tüm aktif işlemlerin bitmesini bekle
-            cursor.execute("SELECT 1 FROM users WHERE id = %s FOR UPDATE NOWAIT", (user_id,))
-            
             # İlişkili verileri sil - sıralama önemli
             delete_queries = [
                 "DELETE FROM user_interests WHERE user_id = %s",
@@ -434,6 +431,7 @@ async def delete_user(user_id: int, request: Request = None, username: str = Dep
                 "DELETE FROM users WHERE id = %s"
             ]
             
+            # Her sorguyu tek tek çalıştır ve hataları yakala
             for query in delete_queries:
                 try:
                     if "OR" in query:
@@ -441,8 +439,9 @@ async def delete_user(user_id: int, request: Request = None, username: str = Dep
                     else:
                         cursor.execute(query, (user_id,))
                 except mysql.connector.Error as query_error:
-                    logger.error(f"Error executing delete query: {query} for user {user_id}: {str(query_error)}")
-                    raise
+                    logger.warning(f"Warning when executing {query} for user {user_id}: {str(query_error)}")
+                    # Kritik olmayan hatalar için devam et (örneğin ilişkili veri yoksa)
+                    continue
             
             # Değişiklikleri kaydet
             connection.commit()

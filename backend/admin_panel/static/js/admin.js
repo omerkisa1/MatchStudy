@@ -959,7 +959,8 @@ function deleteUser(userId) {
 
     // Tüm diğer işlemleri durdur ve kilitle
     pendingTransactions.add(deleteKey);
-    isRefreshing = true;
+    
+    console.log(`Kullanıcı silme işlemi başlatılıyor: ${userId}`);
 
     // API çağrısını safeFetch ile yap - isRefreshing kontrolünü bypass et
     fetch(`/admin/users/${userId}`, {
@@ -970,13 +971,17 @@ function deleteUser(userId) {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            console.error(`HTTP hata kodu: ${response.status}`);
+            return response.json().then(data => {
+                throw new Error(data.message || `HTTP error: ${response.status}`);
+            });
         }
         return response.json();
     })
     .then(data => {
         if (data.success) {
             alert("✅ Kullanıcı başarıyla silindi.");
+            console.log("Kullanıcı silindi, sayfa yenileniyor...");
             
             // Sayfayı yenile - temiz bir başlangıç için
             window.location.reload();
@@ -986,7 +991,15 @@ function deleteUser(userId) {
     })
     .catch(error => {
         console.error("Delete user error:", error);
-        alert("❌ " + (error.message || "Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin."));
+        
+        // Daha detaylı hata mesajı göster
+        let errorMessage = "Kullanıcı silinirken bir hata oluştu.";
+        
+        if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        alert("❌ " + errorMessage);
         
         if (userRow) {
             userRow.classList.remove("table-warning");
@@ -999,9 +1012,9 @@ function deleteUser(userId) {
         }
     })
     .finally(() => {
-        // İşlem bittiğinde tüm kilitleri temizle
+        // İşlem bittiğinde kilidi temizle
         pendingTransactions.delete(deleteKey);
-        isRefreshing = false;
+        console.log(`Kullanıcı silme işlemi tamamlandı: ${userId}`);
     });
 }
 
