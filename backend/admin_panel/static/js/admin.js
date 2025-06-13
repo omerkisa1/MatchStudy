@@ -793,50 +793,63 @@ function viewChatMessages(chatId, user1Name, user2Name) {
 }
 
 // Kullanıcı silme
+// Düzeltilmiş deleteUser fonksiyonu - admin.js
 function deleteUser(userId) {
     if (!userId) {
         console.error('User ID is required');
         return;
     }
-    
-    if (!confirm(`${userId} ID'li kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm ilişkili veriler de silinecektir.`)) {
+
+    const confirmed = confirm(
+        `${userId} ID'li kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm ilişkili veriler de silinecektir.`
+    );
+    if (!confirmed) {
         return;
     }
-    
-    // Yükleniyor göstergesi
-    const userRow = document.querySelector(`#usersTableBody tr td:first-child:contains('${userId}')`).closest('tr');
-    if (userRow) {
-        userRow.classList.add('table-warning');
+
+    // Satırı bulmak için tüm satırlarda dolaş
+    const rows = document.querySelectorAll("#usersTableBody tr");
+    let userRow = null;
+    for (const row of rows) {
+        const firstCell = row.querySelector("td:first-child");
+        if (firstCell && firstCell.textContent.trim() === String(userId)) {
+            userRow = row;
+            break;
+        }
     }
-    
-    fetch(`/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
+
+    // Silme işlemi başlamadan önce sarı uyarı rengi ekle
+    if (userRow) {
+        userRow.classList.add("table-warning");
+    }
+
+    // API çağrısını safeFetch ile yap
+    safeFetch(`/admin/users/${userId}`, {
+        method: "DELETE"
+    })
+    .then(data => {
+        if (data.success) {
+            alert("✅ Kullanıcı başarıyla silindi.");
+            // Veri görünümünü güncelle
+            loadUsers();
+            loadStats();
+            loadChats();
+        } else {
+            alert(`❌ Hata: ${data.message || "Kullanıcı silinirken bir hata oluştu."}`);
+            if (userRow) {
+                userRow.classList.remove("table-warning");
+            }
         }
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ Kullanıcı başarıyla silindi.');
-                loadUsers();  // Kullanıcı listesini yenile
-                loadStats();  // İstatistikleri güncelle
-                loadChats();  // Sohbetleri güncelle
-            } else {
-                alert(`❌ Hata: ${data.message || 'Kullanıcı silinirken bir hata oluştu.'}`);
-                if (userRow) {
-                    userRow.classList.remove('table-warning');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Delete user error:', error);
-            alert('❌ Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin.');
-            if (userRow) {
-                userRow.classList.remove('table-warning');
-            }
-        });
+    .catch(error => {
+        console.error("Delete user error:", error);
+        alert("❌ Kullanıcı silinirken bir bağlantı hatası oluştu. Lütfen tekrar deneyin.");
+        if (userRow) {
+            userRow.classList.remove("table-warning");
+        }
+    });
 }
+
 
 // Kullanıcı detaylarını görüntüleme
 function viewUser(userId) {
@@ -865,11 +878,28 @@ function viewUser(userId) {
     document.getElementById('editMessageCount').textContent = '-';
     
     // Modal'ı göster
-    const userDetailsModal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+    const modalEl = document.getElementById('userDetailsModal');
+    const userDetailsModal = new bootstrap.Modal(modalEl);
     userDetailsModal.show();
+
+    // ─── ARIA-HIDDEN VE FOKUS DÜZELTME ───
+    // Modal container artık erişilebilir olsun
+    modalEl.setAttribute('aria-hidden', 'false');
+    // İçindeki dialog ya da close butonuna odaklan
+    const dialog = modalEl.querySelector('.modal-dialog');
+    if (dialog) {
+        dialog.setAttribute('tabindex', '-1');
+        dialog.focus();
+    } else {
+        const closeBtn = modalEl.querySelector('.btn-close');
+        if (closeBtn) closeBtn.focus();
+    }
+    // ─────────────────────────────────────
     
     // Form alanlarını devre dışı bırak (yüklenene kadar)
-    const formElements = document.querySelectorAll('#userDetailsForm input, #userDetailsForm select, #userDetailsForm textarea');
+    const formElements = document.querySelectorAll(
+        '#userDetailsForm input, #userDetailsForm select, #userDetailsForm textarea'
+    );
     formElements.forEach(element => {
         element.disabled = true;
     });
@@ -894,6 +924,7 @@ function viewUser(userId) {
             });
         });
 }
+
 
 // Kullanıcı detayları API çağrısı
 function getUserDetails(userId) {
