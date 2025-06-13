@@ -127,8 +127,6 @@
               </svg>
               <select v-model="educationLevel" class="form-input">
                 <option value="">Eğitim Seviyeniz</option>
-                <option value="İlkokul">İlkokul</option>
-                <option value="Ortaokul">Ortaokul</option>
                 <option value="Lise">Lise</option>
                 <option value="Lisans">Lisans</option>
                 <option value="Yüksek Lisans">Yüksek Lisans</option>
